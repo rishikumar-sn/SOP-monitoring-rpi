@@ -1,0 +1,13 @@
+{
+  "image_path": "E:\\Projects\\jewel-segmentation\\cropped_outputs1\\00050_2025-12-06_15-34-14_necklace_s0.93.png",
+  "pendant_bbox": [
+    18,
+    435,
+    175,
+    574
+  ],
+  "working_size": [
+    747,
+    747
+  ]
+}

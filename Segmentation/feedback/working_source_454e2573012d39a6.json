@@ -1,0 +1,52 @@
+{
+  "image_path": "/home/pi/Desktop/EMBSYS-AI/runtime_sessions/18-06-2026_20260623_140830_25612640/source/working_source.png",
+  "updated_at": "2026-06-23T14:09:08",
+  "jewel_type": "Necklace",
+  "signature": {
+    "exact_hash": "454e2573012d39a6c3b15dc6bc72f7162ceb0761",
+    "image_dhash": "ff9fb7b7cfdfdfff",
+    "mask_dhash": "ffe1d9ebf3e7e7ef",
+    "object_aspect_ratio": 0.547059,
+    "object_fill_ratio": 0.02284,
+    "object_density": 0.121454,
+    "edge_dhash": "f7e9d9cbf3e7e7ff",
+    "color_histogram": [
+      0.943343,
+      0.005666,
+      0.0,
+      0.045326,
+      0.0,
+      0.0,
+      0.002833,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.002833,
+      0.0,
+      0.0
+    ]
+  },
+  "feedback_version": 3,
+  "object_bbox": [
+    539,
+    176,
+    910,
+    855
+  ],
+  "no_pendant": true,
+  "working_size": [
+    1046,
+    1286
+  ]
+}

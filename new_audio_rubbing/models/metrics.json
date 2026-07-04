@@ -1,0 +1,68 @@
+{
+  "classification_report": {
+    "JEWEL_RUB_OK": {
+      "precision": 0.9704142011834319,
+      "recall": 0.82,
+      "f1-score": 0.8888888888888888,
+      "support": 200.0
+    },
+    "NAIL_RUB_NOK": {
+      "precision": 0.9157894736842105,
+      "recall": 0.87,
+      "f1-score": 0.8923076923076924,
+      "support": 100.0
+    },
+    "FINGER_RUB_NOK": {
+      "precision": 0.7272727272727273,
+      "recall": 0.5,
+      "f1-score": 0.5925925925925926,
+      "support": 80.0
+    },
+    "STONE_TAP_HANDLING_NOK": {
+      "precision": 0.8690476190476191,
+      "recall": 0.9125,
+      "f1-score": 0.8902439024390244,
+      "support": 80.0
+    },
+    "EXTERNAL_NOISE_NOK": {
+      "precision": 0.6349206349206349,
+      "recall": 0.7692307692307693,
+      "f1-score": 0.6956521739130435,
+      "support": 52.0
+    },
+    "NO_RUB_NOK": {
+      "precision": 1.0,
+      "recall": 0.74,
+      "f1-score": 0.8505747126436781,
+      "support": 50.0
+    },
+    "WEAK_RUB_NOK": {
+      "precision": 0.625,
+      "recall": 0.9900990099009901,
+      "f1-score": 0.7662835249042146,
+      "support": 101.0
+    },
+    "accuracy": 0.8159879336349924,
+    "macro avg": {
+      "precision": 0.8203492365869461,
+      "recall": 0.8002613970188228,
+      "f1-score": 0.7966490696698764,
+      "support": 663.0
+    },
+    "weighted avg": {
+      "precision": 0.8439039039617017,
+      "recall": 0.8159879336349924,
+      "f1-score": 0.8170931392187998,
+      "support": 663.0
+    }
+  },
+  "ok_recall": 0.82,
+  "nok_false_accept_rate": 0.01079913606911447,
+  "dataset_audit": {
+    "total": 3313,
+    "malformed_duration": 0,
+    "impulse_artifacts": 833,
+    "mostly_clipped": 5,
+    "very_low_energy": 0
+  }
+}

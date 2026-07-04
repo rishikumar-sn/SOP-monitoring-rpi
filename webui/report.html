@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pledge Report Search - Embsys</title>
+  <style>
+    body { font-family: "Segoe UI", Tahoma, sans-serif; background: #f0f4f8; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08); width: 100%; max-width: 400px; text-align: center; }
+    h1 { margin-top: 0; color: #1a202c; font-size: 24px; }
+    input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #d0dce6; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+    button { background: #2563eb; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; transition: all 0.2s ease; }
+    button:hover { background: #1d4ed8; transform: translateY(-1px); }
+    .error { color: #dc2626; margin-top: 10px; font-size: 14px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img src="/webui/embsys_logo.png" alt="Embsys Logo" style="height: 50px; margin-bottom: 15px;" />
+    <h1>Pledge Report Search</h1>
+    <p style="color: #4a5568; font-size: 14px; margin-bottom: 20px;">Enter the Pledge ID to view the combined jewelry analysis report.</p>
+    <input type="text" id="pledgeInput" placeholder="Enter Pledge ID" />
+    <button onclick="downloadReport()">View Report PDF</button>
+    <div id="errorMsg" class="error"></div>
+  </div>
+
+  <script>
+    async function downloadReport() {
+      const pledgeId = document.getElementById('pledgeInput').value.trim();
+      const errorMsg = document.getElementById('errorMsg');
+      errorMsg.style.display = 'none';
+
+      if (!pledgeId) {
+        errorMsg.textContent = 'Please enter a valid Pledge ID.';
+        errorMsg.style.display = 'block';
+        return;
+      }
+
+      window.open(`/api/report/pdf?pledge_id=${encodeURIComponent(pledgeId)}`, '_blank');
+
+      try {
+        const response = await fetch(`/api/report/assets?pledge_id=${encodeURIComponent(pledgeId)}`, {
+          cache: 'no-store',
+        });
+        const data = await response.json();
+        if (data.ok && data.has_packet_video && data.packet_video_url) {
+          const link = document.createElement('a');
+          link.href = data.packet_video_url;
+          link.download = data.packet_video_name || 'packet_sealing.mp4';
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        }
+      } catch (error) {
+        console.warn('Packet video lookup failed:', error);
+      }
+    }
+  </script>
+</body>
+</html>

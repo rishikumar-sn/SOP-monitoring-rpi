@@ -1,0 +1,311 @@
+{
+  "camera_matrix": [
+    [
+      3161.733970700914,
+      0.0,
+      1243.744942989912
+    ],
+    [
+      0.0,
+      3178.6657652241774,
+      708.2189313304135
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "dist_coeffs": [
+    -0.1280175300438905,
+    14.492336668044311,
+    0.012001012991118967,
+    -0.014689227503456371,
+    -148.48276212117787
+  ],
+  "image_size": [
+    2560,
+    1440
+  ],
+  "rms_reprojection_error": 1.0530186524225835,
+  "calibration_method": "cv2.calibrateCamera",
+  "board": {
+    "squares_x": 11,
+    "squares_y": 8,
+    "square_length_mm": 20.0,
+    "marker_length_mm": 15.0,
+    "dictionary": "DICT_5X5_50",
+    "legacy_pattern": true
+  },
+  "usable_image_count": 38,
+  "usable_images": [
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_14_48_40_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_14_50_52_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_04_38_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_04_44_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_04_48_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_04_52_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_04_57_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_02_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_06_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_08_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_11_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_13_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_15_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_17_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_19_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_23_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_30_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_36_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_39_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_28_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_33_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_36_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_42_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_46_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_49_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_51_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_53_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_55_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_59_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_03_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_06_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_10_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_46_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_51_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_54_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_10_00_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_10_01_Pro.jpg",
+    "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_17_28_Pro.jpg"
+  ],
+  "detection_summary": [
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_14_48_40_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_14_50_52_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_04_38_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_04_44_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_04_48_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_04_52_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_04_57_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_02_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_06_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_08_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_11_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_13_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_15_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_17_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_19_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_23_Pro.jpg",
+      "markers": 43,
+      "charuco_corners": 66,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_30_Pro.jpg",
+      "markers": 42,
+      "charuco_corners": 65,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_36_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_05_39_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_28_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_33_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_36_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_42_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_46_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_49_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_51_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_53_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_55_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_08_59_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_03_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_06_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_10_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_46_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_51_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_09_54_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_10_00_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_10_01_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    },
+    {
+      "image": "/home/pi/Desktop/EMBSYS-AI/captures/charuco/WIN_20260620_15_17_28_Pro.jpg",
+      "markers": 44,
+      "charuco_corners": 70,
+      "status": "usable"
+    }
+  ]
+}

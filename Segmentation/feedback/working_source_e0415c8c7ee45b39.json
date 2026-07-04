@@ -1,0 +1,21 @@
+{
+  "image_path": "E:\\Projects\\MainApp-Jewelry\\runtime_sessions\\20260511_174523_dc29c905\\source\\working_source.png",
+  "updated_at": "2026-05-11T17:46:20",
+  "signature": {
+    "exact_hash": "e0415c8c7ee45b394cf1479d2114954198b70c96",
+    "image_dhash": "fbf7e5c987ab2fbf",
+    "mask_dhash": "fdfcfaf2f8e5d1df",
+    "object_aspect_ratio": 0.84858,
+    "object_fill_ratio": 0.108804
+  },
+  "pendant_bbox": [
+    121,
+    769,
+    364,
+    1047
+  ],
+  "working_size": [
+    1079,
+    1079
+  ]
+}

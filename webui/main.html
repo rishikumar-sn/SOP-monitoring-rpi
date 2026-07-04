@@ -1,0 +1,4631 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Integrated Jewellery Workflow</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --panel: #ffffff;
+      --panel-strong: #f8fafb;
+      --border: #d0dce6;
+      --text: #1a202c;
+      --muted: #4a5568;
+      --accent: #2563eb;
+      --accent-dark: #1d4ed8;
+      --gold: #c18b2f;
+      --gold-soft: #f6e4b8;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+      --video-bg: linear-gradient(145deg, #1f2937, #111827);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(255, 228, 160, 0.45), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(205, 168, 83, 0.35), transparent 26%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    /* Enhanced UI styles for better user experience */
+    .card {
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+    }
+
+    .btn {
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-success {
+      background-color: #10b981;
+    }
+
+    .status-error {
+      background-color: #ef4444;
+    }
+
+    .status-warning {
+      background-color: #f59e0b;
+    }
+
+    .status-info {
+      background-color: #2563eb;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      color: white;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #2563eb;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-text {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .status-message {
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin: 8px 0;
+      font-weight: 600;
+    }
+
+    .status-success-bg {
+      background-color: #f0fdf4;
+      border: 1px solid #16a34a;
+      color: #166534;
+    }
+
+    .status-error-bg {
+      background-color: #fef2f2;
+      border: 1px solid #ef4444;
+      color: #dc2626;
+    }
+
+    .status-warning-bg {
+      background-color: #fffbeb;
+      border: 1px solid #f59e0b;
+      color: #c2410c;
+    }
+
+    .wrap {
+      height: 100vh;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .logoImage {
+      height: 58px;
+      object-fit: contain;
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: 40px;
+      line-height: 1;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
+      font-weight: 900;
+    }
+
+    .title .sub {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .main {
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(0, 1.15fr) minmax(370px, 0.95fr);
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    .card h2,
+    .card h3 {
+      margin: 0 0 12px 0;
+      font-size: 18px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .leftColumn {
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .leftColumn::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .leftColumn::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 999px;
+    }
+
+    .previewCard {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .previewToolbar,
+    .toolRow,
+    .actionRow,
+    .buttonRow,
+    .statusRow {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .canvasWrap {
+      flex: 1;
+      min-height: 300px;
+      display: grid;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--video-bg);
+      position: relative;
+    }
+
+    #previewCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: transparent;
+      cursor: crosshair;
+      object-fit: contain;
+    }
+
+    .tiny {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    input,
+    select,
+    button {
+      font: inherit;
+    }
+
+    input[type="file"] {
+      max-width: 100%;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+
+    .twoCol,
+    .threeCol {
+      display: grid;
+      gap: 12px;
+    }
+
+    .twoCol {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .threeCol {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .btn {
+      border: 1px solid var(--accent-dark);
+      background: linear-gradient(180deg, #3b82f6, var(--accent));
+      color: #ffffff;
+      padding: 11px 15px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+      min-height: 46px;
+    }
+
+    .btn:hover {
+      filter: brightness(1.04);
+    }
+
+    .btn.secondary {
+      background: linear-gradient(180deg, #f0f4f8, #e5eef7);
+      border-color: #cbd5e1;
+      color: var(--text);
+    }
+
+    .btn.success {
+      background: linear-gradient(180deg, #22c55e, #16a34a);
+      border-color: #15803d;
+    }
+
+    .btn.danger {
+      background: linear-gradient(180deg, #ef4444, #dc2626);
+      border-color: #b91c1c;
+    }
+
+    .btn.gold {
+      background: linear-gradient(180deg, #e5b95c, #c18b2f);
+      border-color: #9f6a13;
+      color: #fffaf0;
+    }
+
+    .btn.prev {
+      background: linear-gradient(180deg, #64748b, #475569);
+      border-color: #334155;
+      color: #ffffff;
+    }
+
+    .btn:disabled {
+      opacity: 0.58;
+      cursor: not-allowed;
+      filter: none;
+    }
+
+    .modePill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      font-weight: 700;
+      color: var(--accent-dark);
+    }
+
+    .rightColumn {
+      min-height: 0;
+      overflow: auto;
+      padding-right: 6px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .rightColumn::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .rightColumn::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 999px;
+    }
+
+    .heroValue {
+      font-size: 38px;
+      line-height: 1;
+      font-weight: 800;
+      color: var(--accent-dark);
+      letter-spacing: 0.01em;
+      word-break: break-word;
+    }
+
+    .heroSub {
+      margin-top: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .summaryGrid {
+      display: grid;
+      gap: 6px;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .statBox {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel-strong);
+      padding: 6px 10px;
+    }
+
+    .statBox .k {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .statBox .v {
+      display: block;
+      font-size: 16px;
+      font-weight: 800;
+      word-break: break-word;
+    }
+
+    .artifactStrip {
+      display: grid;
+      gap: 10px;
+    }
+
+    .artifactImage {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+    }
+
+    .scoreTable {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    .scoreTable th,
+    .scoreTable td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 8px 6px;
+      text-align: left;
+    }
+
+    .scoreTable th {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 11px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .stageCard {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.96)),
+        var(--panel-strong);
+    }
+
+    .stageHead {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .stageTag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 58px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #e5b95c, #c18b2f);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .stageNote {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #fff9eb;
+      border: 1px solid #f2d59c;
+      font-size: 13px;
+      color: #7a5716;
+      line-height: 1.35;
+    }
+
+    .lineList {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .footerBar {
+      min-height: 54px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .statusValue {
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    @media (max-width: 1180px) {
+      .wrap {
+        height: auto;
+        overflow: auto;
+      }
+
+      .main {
+        grid-template-columns: 1fr;
+        overflow: visible;
+      }
+
+      .twoCol,
+      .threeCol,
+      .summaryGrid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="header" style="justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <img src="/webui/embsys_logo.png" alt="Embsys Logo" class="logoImage" />
+        <div class="title">
+          <h1>Embsys Intelligence Jewellery Analyser</h1>
+        </div>
+      </div>
+      <div>
+        <a href="/report" target="_blank" style="text-decoration: none;">
+          <button class="btn accent" style="display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            Pledge Reports
+          </button>
+        </a>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="leftColumn">
+        <div class="card previewCard">
+          <h2>Source Preview</h2>
+
+
+
+          <div class="canvasWrap">
+            <img id="hiddenLiveImage" class="hidden" alt="RPi live camera frame" />
+            <canvas id="previewCanvas"></canvas>
+          </div>
+
+          <div class="toolRow">
+            <button id="btnToggleAdvancedTools" class="btn secondary"
+              style="width: 100%; display: flex; justify-content: space-between; align-items: center;"
+              onclick="document.getElementById('advancedToolsContainer').classList.toggle('hidden'); document.getElementById('advancedToolsIcon').innerText = document.getElementById('advancedToolsContainer').classList.contains('hidden') ? '▼' : '▲';">
+              <span>Setup Tools</span>
+              <span id="advancedToolsIcon">▼</span>
+            </button>
+          </div>
+          <div id="advancedToolsContainer" class="toolRow hidden"
+            style="margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-strong); flex-direction: column; align-items: stretch;">
+            <div class="tiny" style="margin-bottom: 8px; color: var(--muted); line-height: 1.4;">
+              Live camera, ROI-based capture, jewel type, dimension, segmentation, hand removal, and stone detection in one staged dashboard.
+            </div>
+            <div style="display: grid; grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr); gap: 12px; width: 100%; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+              <div class="field">
+                <label for="ttsOutputSelect">TTS Audio Output</label>
+                <select id="ttsOutputSelect"></select>
+              </div>
+              <div class="field">
+                <label for="ttsOutputStatus">Speaker Status</label>
+                <div id="ttsOutputStatus" class="heroSub">Checking speaker...</div>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; width: 100%; align-items: end; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+              <div class="field">
+                <label for="audioOkThreshold">Audio OK confidence <span id="audioOkThresholdValue">90%</span></label>
+                <input id="audioOkThreshold" type="range" min="0.50" max="0.99" step="0.01" value="0.90" />
+              </div>
+              <div class="field">
+                <label for="audioOkThresholdNumber">Threshold</label>
+                <input id="audioOkThresholdNumber" type="number" min="0.50" max="0.99" step="0.01" value="0.90" />
+              </div>
+              <button id="btnApplyAudioThreshold" class="btn secondary">Apply Audio Threshold</button>
+              <div id="audioOkThresholdStatus" class="tiny" style="grid-column: 1 / -1; color: var(--muted);">Audio OK threshold: 90%.</div>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <div class="field" style="min-width: 260px; flex: 1 1 260px;">
+                <label for="fileMainImage">Load Jewel Image For Testing</label>
+                <input id="fileMainImage" type="file" accept="image/*" />
+              </div>
+              <span id="previewModePill" class="modePill">Preview: RPi Live Camera</span>
+              <span id="annotationModePill" class="modePill">Draw Mode: None</span>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button id="btnCaptureFrame" class="btn">Capture Frame</button>
+              <button id="btnUseLiveNow" class="btn gold">Use Current Live Frame</button>
+              <button id="btnDrawProcessingRoi" class="btn secondary">Draw Processing ROI</button>
+              <button id="btnDrawArucoRoi" class="btn secondary">Draw ArUco ROI</button>
+              <button id="btnDrawScaleLine" class="btn secondary hidden">Draw Calibration Line</button>
+              <button id="btnDrawPendantBox" class="btn secondary hidden">Draw Pendant Box</button>
+              <button id="btnDrawTasselBox" class="btn secondary hidden">Draw Tassel Box</button>
+              <button id="btnShowSourceView" class="btn secondary">Show Source View</button>
+              <button id="btnClearCurrentDraw" class="btn secondary">Clear Current Draw</button>
+              <button id="btnClearRois" class="btn secondary">Clear ROIs</button>
+            </div>
+            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);">
+              <div style="font-weight: 800; color: var(--accent); margin-bottom: 4px;">Captured Jewel Preview</div>
+              <div class="tiny" style="color: var(--muted); margin-bottom: 10px;">
+                These controls affect only the still-image preview. Stone analysis uses neutral color normalization and is not changed by preview saturation.
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 12px;">
+                <div class="field">
+                  <label for="stoneSaturation">Preview saturation <span id="stoneSaturationValue">1.00x</span></label>
+                  <input id="stoneSaturation" type="range" min="0.50" max="2.50" step="0.05" value="1.00" disabled />
+                </div>
+                <div class="field">
+                  <label for="stoneContrast">Contrast <span id="stoneContrastValue">1.05x</span></label>
+                  <input id="stoneContrast" type="range" min="0.70" max="1.60" step="0.05" value="1.05" disabled />
+                </div>
+                <div class="field">
+                  <label for="stoneBrightness">Brightness <span id="stoneBrightnessValue">0</span></label>
+                  <input id="stoneBrightness" type="range" min="-60" max="60" step="2" value="0" disabled />
+                </div>
+              </div>
+              <div style="font-weight: 800; color: var(--accent); margin: 14px 0 8px;">Selective Stone Color Recovery</div>
+              <div style="display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px;">
+                <div class="field">
+                  <label for="stoneColorBoost">Color detection boost <span id="stoneColorBoostValue">1.00x</span></label>
+                  <input id="stoneColorBoost" type="range" min="1.00" max="2.50" step="0.05" value="1.00" />
+                </div>
+                <div class="field">
+                  <label for="greenRecovery">Green recovery <span id="greenRecoveryValue">1.15x</span></label>
+                  <input id="greenRecovery" type="range" min="1.00" max="1.50" step="0.05" value="1.15" />
+                </div>
+                <div class="field">
+                  <label for="darkGreenRecovery">Dark-green recovery <span id="darkGreenRecoveryValue">1.20x</span></label>
+                  <input id="darkGreenRecovery" type="range" min="1.00" max="1.60" step="0.05" value="1.20" />
+                </div>
+              </div>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
+                <label style="display: flex; gap: 8px; align-items: center; font-weight: 800; color: var(--text);">
+                  <input id="stoneSuperResolution" type="checkbox" />
+                  Real-ESRGAN x2 stone SR
+                </label>
+                <span id="stoneSuperResolutionStatus" class="tiny" style="color:var(--muted);">Stone SR off.</span>
+              </div>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
+                <button id="btnSetStoneBackground" class="btn secondary" disabled>Set Background From Click</button>
+                <button id="btnClearStoneBackground" class="btn secondary">Clear Background Calibration</button>
+                <span id="stoneBackgroundStatus" class="tiny" style="color: var(--muted);">Background not calibrated.</span>
+              </div>
+              <div style="font-weight: 800; color: var(--accent); margin: 16px 0 8px;">Human Feedback: Learn a Missed Stone</div>
+              <div class="tiny" style="color: var(--muted); margin-bottom: 10px; line-height: 1.45;">
+                Choose the expected color, name the sample, then click the center of a missed stone in the captured preview.
+                Its normalized HSV/LAB range is saved and reused in future detections.
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px;">
+                <div class="field">
+                  <label for="learnStoneColor">Expected color</label>
+                  <select id="learnStoneColor">
+                    <option>Red</option>
+                    <option>Orange</option>
+                    <option>Yellow/Gold</option>
+                    <option>Green</option>
+                    <option>Blue</option>
+                    <option>Purple/Violet</option>
+                    <option>Pink</option>
+                    <option>Black</option>
+                    <option>White/Colorless</option>
+                    <option>Multicolor/Color-changing</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="learnStoneLabel">Representation label</label>
+                  <input id="learnStoneLabel" type="text" maxlength="80" placeholder="Example: Tiny dark red ruby" />
+                </div>
+                <div class="field">
+                  <label for="learnStoneRadius">Sample radius (px)</label>
+                  <input id="learnStoneRadius" type="number" min="4" max="24" step="1" value="8" />
+                </div>
+              </div>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px;">
+                <button id="btnLearnStoneColor" class="btn secondary" disabled>Click Missed Stone to Learn</button>
+                <button id="btnClearLearnedStoneColors" class="btn secondary">Clear Learned Stone Colors</button>
+                <span id="learnedStoneStatus" class="tiny" style="color:var(--muted);">No learned stone colors.</span>
+              </div>
+            </div>
+            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);">
+              <div style="font-weight: 800; color: var(--accent); margin-bottom: 8px;">Camera & Millimetre Calibration</div>
+              <div style="display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 12px;">
+                <div class="field">
+                  <label for="setupMarkerId">AprilTag ID</label>
+                  <input id="setupMarkerId" type="number" min="0" step="1" value="1" />
+                </div>
+                <div class="field">
+                  <label for="setupMarkerSide">Printed marker side (mm)</label>
+                  <input id="setupMarkerSide" type="number" min="0.1" step="0.1" value="20" />
+                </div>
+                <div class="field">
+                  <label for="cameraToBed">Camera to test bed (mm)</label>
+                  <input id="cameraToBed" type="number" min="1" step="1" value="500" />
+                </div>
+                <div class="field">
+                  <label for="nominalStoneHeight">Nominal stone height (mm)</label>
+                  <input id="nominalStoneHeight" type="number" min="0" step="0.1" value="0" />
+                </div>
+                <div class="field">
+                  <label for="cameraCalibrationFile">ChArUco calibration JSON</label>
+                  <input id="cameraCalibrationFile" type="file" accept=".json,application/json" />
+                </div>
+                <div class="field">
+                  <label>Lens calibration</label>
+                  <div id="cameraCalibrationStatus" class="tiny">Not loaded.</div>
+                </div>
+              </div>
+              <label style="display:flex; align-items:center; gap:8px; margin-top:12px;">
+                <input id="fourMarkerEnabled" type="checkbox" />
+                Use four-marker top-down rectification
+              </label>
+              <div class="tiny" style="color:var(--muted); margin-top:8px; line-height:1.5;">
+                Place four different AprilTags around the jewel so all four are visible in the full captured frame.
+                Enter their IDs in clockwise order: top-left, top-right, bottom-right, bottom-left.
+                Measure center-to-center width between the left/right tag centers and center-to-center height between the top/bottom tag centers.
+                When enabled, capture the full marker layout; Processing and ArUco ROIs are ignored because the image is automatically undistorted, warped to a top-down rectangle, and calibrated in mm.
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 12px; margin-top: 10px;">
+                <div class="field">
+                  <label for="fourMarkerIds">IDs TL,TR,BR,BL</label>
+                  <input id="fourMarkerIds" type="text" value="0,1,2,3" />
+                </div>
+                <div class="field">
+                  <label for="markerCenterWidth">Center width (mm)</label>
+                  <input id="markerCenterWidth" type="number" min="0" step="0.1" value="0" />
+                </div>
+                <div class="field">
+                  <label for="markerCenterHeight">Center height (mm)</label>
+                  <input id="markerCenterHeight" type="number" min="0" step="0.1" value="0" />
+                </div>
+              </div>
+              <button id="btnSaveCalibrationSetup" class="btn secondary" style="margin-top:12px;">Save Calibration Setup</button>
+            </div>
+          </div>
+
+          <div class="tiny" id="previewHint" style="margin-top: 10px;">
+            Draw the blue Processing ROI to limit the full workflow area. Draw the green ArUco ROI over the base marker
+            so calibration and ignore masking use the correct region.
+          </div>
+        </div>
+      </div>
+
+      <div class="rightColumn">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <h2 style="margin-bottom: 0;">Workflow Status</h2>
+            <button id="btnResetUi" class="btn danger"
+              style="padding: 8px 12px; min-height: unset; font-size: 13px;">Reset Workflow</button>
+          </div>
+          
+          <div class="field" style="margin-bottom: 12px;">
+            <label for="inputPledgeId" style="color: var(--accent);">Pledge ID</label>
+            <div style="display: flex; gap: 10px;">
+              <input id="inputPledgeId" type="text" placeholder="Enter Pledge ID" style="flex: 1;" />
+              <button id="btnSetPledge" class="btn success" style="min-height: unset; padding: 8px 16px;">Set</button>
+            </div>
+            <div id="pledgeStatus" class="tiny" style="font-weight: bold; color: var(--success); height: 16px; margin-top: 4px;"></div>
+          </div>
+
+          <div id="jewelCountSetup" class="field" style="margin-bottom: 14px;">
+            <label for="inputJewelCount" style="color: var(--accent);">Jewel Count</label>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <input id="inputJewelCount" type="number" min="1" step="1" placeholder="Enter Jewel Count" style="flex: 1 1 180px;" />
+              <button id="btnSaveJewelCount" class="btn success" style="min-height: unset; padding: 8px 16px;">Save</button>
+              <button id="btnClearJewelCount" class="btn secondary" style="min-height: unset; padding: 8px 16px;">Clear</button>
+              <button id="btnPledgeSetupNext" class="btn gold" style="min-height: unset; padding: 8px 16px;" disabled>Next</button>
+            </div>
+            <div id="jewelCountStatus" class="tiny" style="font-weight: bold; color: var(--muted); min-height: 16px; margin-top: 4px;"></div>
+          </div>
+
+          <div class="summaryGrid">
+            <div class="statBox"><span class="k">Stage</span><span id="workflowStage" class="v">Waiting</span></div>
+            <div class="statBox"><span class="k">Branch</span><span id="workflowBranch" class="v">-</span></div>
+            <div class="statBox"><span class="k">Source</span><span id="workflowSource" class="v">RPi live camera</span>
+            </div>
+            <div class="statBox"><span class="k">Jewel</span><span id="workflowSize" class="v">-</span></div>
+          </div>
+        </div>
+
+        <div id="stageProgressFlow" class="hidden"
+          style="margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
+        </div>
+
+        <div id="classificationPanel" class="card stageCard">
+          <div class="stageHead">
+            <h3>STAGE 1 JEWEL TYPE</h3>
+          </div>
+          <div class="buttonRow">
+            <button id="btnCaptureMainImage" class="btn secondary">Capture Image</button>
+            <button id="btnRunClassification" class="btn">Run Jewel Type</button>
+          </div>
+          <div class="heroValue" id="classificationValue" style="margin-top: 14px;">--</div>
+          <div class="heroSub" id="classificationSub">Capture or load the main jewellery image, then run jewel type.
+          </div>
+
+          <div id="classificationActions" class="hidden" style="margin-top: 14px;">
+            <div class="buttonRow">
+              <button id="btnClassYes" class="btn success">Yes, Correct</button>
+              <button id="btnClassNo" class="btn danger">No, Override</button>
+              <button id="btnClassificationNext" class="btn gold" disabled>Next</button>
+            </div>
+            <div id="overrideArea" class="twoCol hidden" style="margin-top: 12px;">
+              <div class="field">
+                <label for="overrideClassSelect">Correct Jewel Type</label>
+                <select id="overrideClassSelect"></select>
+              </div>
+              <div class="field">
+                <label>&nbsp;</label>
+                <button id="btnApplyOverride" class="btn">Use Selected Jewel Type</button>
+              </div>
+            </div>
+          </div>
+
+          <table class="scoreTable hidden" id="classificationTable">
+            <thead>
+              <tr>
+                <th>Jewel Type</th>
+              </tr>
+            </thead>
+            <tbody id="classificationTableBody"></tbody>
+          </table>
+        </div>
+
+        <div id="dimensionPanel" class="card stageCard hidden">
+          <div class="stageHead">
+            <h3>STAGE 2 DIMENSION</h3>
+          </div>
+
+          <div class="twoCol" style="margin-top: 12px;">
+            <div class="field">
+              <label for="calibrationMethod">Calibration Method</label>
+              <select id="calibrationMethod">
+                <option value="aruco">ArUco Marker</option>
+                <option value="line">Manual Line</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="arucoDict">ArUco Dictionary</label>
+              <select id="arucoDict"></select>
+            </div>
+          </div>
+
+          <div id="arucoFields" class="twoCol" style="margin-top: 12px;">
+            <div class="field">
+              <label for="markerLength">Marker Length (mm)</label>
+              <input id="markerLength" type="number" min="0.1" step="0.1" value="20" />
+            </div>
+            <div class="field">
+              <label for="markerBreadth">Marker Breadth (mm)</label>
+              <input id="markerBreadth" type="number" min="0.1" step="0.1" value="20" />
+            </div>
+          </div>
+
+          <div id="lineFields" class="twoCol hidden" style="margin-top: 12px;">
+            <div class="field">
+              <label for="knownDistance">Known Distance (mm)</label>
+              <input id="knownDistance" type="number" min="0.1" step="0.1" value="10" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button id="btnEnableScaleLine" class="btn secondary">Enable Line Drawing</button>
+            </div>
+          </div>
+
+          <div id="manualScaleFields" class="hidden">
+            <input id="manualScale" type="hidden" value="0.085" />
+          </div>
+
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnDimensionPrev" class="btn prev">Previous</button>
+            <button id="btnRunDimension" class="btn">Measure OD / ID</button>
+            <button id="btnDimensionNext" class="btn gold" disabled>Next</button>
+          </div>
+
+          <div class="heroValue" id="dimensionValue" style="margin-top: 14px;">--</div>
+          <div class="heroSub" id="dimensionSub">Run OD/ID measurement after jewel type is confirmed.</div>
+          <div id="dimensionArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
+        </div>
+
+        <div id="sidePanel" class="card stageCard hidden">
+          <div class="stageHead">
+            <h3>STAGE 3 SIDE CAPTURE</h3>
+          </div>
+
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnCaptureSideLive" class="btn secondary">Capture Side From Live Camera</button>
+          </div>
+          <div class="field" style="margin-top: 12px;">
+            <label for="fileSideImage">Upload Side Image</label>
+            <input id="fileSideImage" type="file" accept="image/*" />
+          </div>
+          <div class="field" style="margin-top: 12px;">
+            <label for="sideJewelWeight">Measured whole jewel weight (g, optional)</label>
+            <input id="sideJewelWeight" type="number" min="0" step="0.001" placeholder="Optional reference only" />
+          </div>
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnSidePrev" class="btn prev">Previous</button>
+            <button id="btnRunSidePipeline" class="btn">Run Hand Removal + Stones</button>
+            <button id="btnShowFinalFromSide" class="btn gold" disabled>Acid Test</button>
+          </div>
+
+          <div class="heroValue" id="sideStoneValue" style="margin-top: 14px;">--</div>
+          <div class="heroSub" id="sideStoneSub">Awaiting side image.</div>
+
+          <table class="scoreTable hidden" id="sideStoneTable" style="margin-top: 14px;">
+            <thead>
+              <tr>
+                <th>Color</th>
+                <th>% of Jewel</th>
+                <th>% of Stones</th>
+              </tr>
+            </thead>
+            <tbody id="sideStoneTableBody"></tbody>
+          </table>
+
+          <div id="sideArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
+        </div>
+
+        <div id="segmentationPanel" class="card stageCard hidden">
+          <div class="stageHead">
+            <h3>STAGE 2 SEGMENTATION</h3>
+          </div>
+
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnRunSegmentation" class="btn">Run Segmentation</button>
+            <button id="btnNoPendant" class="btn secondary" disabled>No Pendant</button>
+            <button id="btnNoTassel" class="btn secondary" disabled>No Tassel</button>
+          </div>
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnStartPendantCorrection" class="btn secondary" disabled>Draw Correct Pendant</button>
+            <button id="btnApplyPendantCorrection" class="btn secondary" disabled>Apply Pendant Box</button>
+            <button id="btnStartTasselCorrection" class="btn secondary" disabled>Draw Correct Tassel</button>
+            <button id="btnApplyTasselCorrection" class="btn secondary" disabled>Apply Tassel Box</button>
+          </div>
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnSegmentationPrev" class="btn prev">Previous</button>
+            <button id="btnSegmentationNext" class="btn gold" disabled>Next</button>
+          </div>
+
+          <div class="heroValue" id="segmentationValue" style="margin-top: 14px;">--</div>
+          <div class="heroSub" id="segmentationSub">Run segmentation after jewel type is confirmed.</div>
+          <div id="segmentationArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
+        </div>
+
+        <div id="mainStonePanel" class="card stageCard hidden">
+          <div class="stageHead">
+            <h3 id="mainStoneTitle">STAGE 2 STONE DETECTION</h3>
+          </div>
+
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnRunMainStoneDetection" class="btn">Run Stone Detection</button>
+            <button id="btnShowFinalFromMain" class="btn gold" disabled>Acid Test</button>
+          </div>
+          <div class="field" style="margin-top: 12px;">
+            <label for="mainJewelWeight">Measured whole jewel weight (g, optional)</label>
+            <input id="mainJewelWeight" type="number" min="0" step="0.001" placeholder="Optional reference only" />
+          </div>
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnMainStonePrev" class="btn prev">Previous</button>
+          </div>
+
+          <div class="heroValue" id="mainStoneValue" style="margin-top: 14px;">--</div>
+          <div class="heroSub" id="mainStoneSub">Run stone detection for the confirmed workflow branch.</div>
+
+          <table class="scoreTable hidden" id="mainStoneTable" style="margin-top: 14px;">
+            <thead>
+              <tr>
+                <th>Color</th>
+                <th>% of Jewel</th>
+                <th>% of Stones</th>
+              </tr>
+            </thead>
+            <tbody id="mainStoneTableBody"></tbody>
+          </table>
+
+          <div id="mainStoneArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
+        </div>
+
+        <div id="purityPanel" class="card stageCard hidden">
+          <div class="stageHead">
+            <h3 id="purityTitle">STAGE 3 ACID TEST</h3>
+          </div>
+
+          <div class="grid twoCols" style="margin-top: 12px;">
+            <div class="field">
+              <label for="purityMicSelect">Microphone</label>
+              <select id="purityMicSelect"></select>
+            </div>
+            <div class="field">
+              <label for="purityAudioStatus">Microphone Status</label>
+              <div id="purityAudioStatus" class="heroSub">Waiting for microphone selection.</div>
+            </div>
+          </div>
+
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnRefreshPurityAudio" class="btn secondary">Refresh Mics</button>
+            <button id="btnStartPurityTest" class="btn">Start Acid Test</button>
+            <button id="btnSkipPurityTest" class="btn secondary">Skip Acid Test</button>
+            <button id="btnStopPurityTest" class="btn secondary" disabled>Stop</button>
+          </div>
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnPurityPrev" class="btn prev">Previous</button>
+            <button id="btnNextJewelFromPurity" class="btn success hidden">Next Jewel</button>
+            <button id="btnShowFinalFromPurity" class="btn gold" disabled>Capture Jewel Count</button>
+          </div>
+
+          <div class="heroValue" id="purityValue" style="margin-top: 14px;">--</div>
+          <div class="heroSub" id="puritySub">Start or skip the acid test after stone detection completes.</div>
+
+          <div class="purityAudioLive" style="margin-top: 14px;">
+            <div class="purityAudioHead">
+              <span>Live Audio Prediction</span>
+              <span id="purityAudioDecision" class="purityAudioDecision">Waiting</span>
+            </div>
+            <div id="purityAudioLabel" class="purityAudioLabel">Waiting...</div>
+            <div id="purityAudioMeta" class="purityAudioMeta">No rubbing audio prediction yet.</div>
+            <div id="purityAudioProbabilities" class="purityAudioProbabilities"></div>
+          </div>
+
+          <div id="purityProgress" class="purityProgress" style="margin-top: 14px;"></div>
+          <div id="purityArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
+        </div>
+
+        <div id="finalPanel" class="card stageCard hidden">
+          <div class="stageHead">
+            <h3 id="finalTitle">PLEDGE CLOSURE</h3>
+          </div>
+          <div class="heroValue" id="finalHeadline">--</div>
+          <ol id="finalLines" class="lineList" style="margin-top: 12px;"></ol>
+          <div id="finalArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
+          <div id="pledgeClosurePanel" class="hidden" style="margin-top: 16px; display: grid; gap: 14px;">
+            <div style="padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-strong);">
+              <div class="stageHead">
+                <h3>CAPTURE JEWEL COUNT</h3>
+              </div>
+              <div class="buttonRow" style="margin-top: 10px;">
+                <button id="btnCaptureFinalJewelCount" class="btn">Capture Jewel Count</button>
+              </div>
+              <div class="heroValue" id="countCaptureValue" style="margin-top: 10px;">--</div>
+              <div class="heroSub" id="countCaptureSub">Place all jewels on the test bed and capture the final count.</div>
+              <div id="countCaptureArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
+            </div>
+
+            <div style="padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-strong);">
+              <div class="stageHead">
+                <h3>PACKET SEALING</h3>
+              </div>
+              <div class="buttonRow" style="margin-top: 10px;">
+                <button id="btnOpenPacketSealing" class="btn secondary">Packet Sealing</button>
+              </div>
+              <div id="packetSealingControls" class="buttonRow hidden" style="margin-top: 10px;">
+                <button id="btnStartPacketSealing" class="btn">Start</button>
+                <button id="btnStopPacketSealing" class="btn secondary" disabled>Stop</button>
+              </div>
+              <div class="heroValue" id="packetSealingValue" style="margin-top: 10px;">--</div>
+              <div class="heroSub" id="packetSealingSub">Record the appraiser placing all jewels into the packet and sealing it.</div>
+              <a id="packetVideoLink" class="btn secondary hidden" style="margin-top: 12px; text-decoration: none; width: fit-content;" download>Download Sealing Video</a>
+            </div>
+          </div>
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnFinalPrev" class="btn prev">Previous</button>
+            <button id="btnNextJewelFromFinal" class="btn success hidden">Next Jewel</button>
+            <button id="btnGeneratePdf" class="btn gold">Download PDF Report</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footerBar">
+      <div>
+        <div class="tiny">Backend Status</div>
+        <div id="statusValue" class="statusValue">Ready.</div>
+      </div>
+      <div>
+        <div class="tiny">Drawing Hint</div>
+        <div id="drawStatus" class="statusValue">No active drawing mode.</div>
+      </div>
+    </div>
+
+    <!-- Loading overlay for better user feedback -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Processing...</div>
+    </div>
+  </div>
+
+  <!-- Loading spinner styles -->
+  <style>
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      color: white;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #2563eb;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-text {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-success {
+      background-color: #10b981;
+    }
+
+    .status-error {
+      background-color: #ef4444;
+    }
+
+    .status-warning {
+      background-color: #f59e0b;
+    }
+
+    .purityProgress {
+      display: grid;
+      gap: 10px;
+    }
+
+    .purityProgressRow {
+      padding: 10px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.32);
+    }
+
+    .purityProgressHead {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .purityProgressBar {
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(148, 163, 184, 0.18);
+      margin-top: 8px;
+    }
+
+    .purityProgressFill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.2s ease;
+    }
+
+    .purityTone-done,
+    .purityTone-success {
+      background: linear-gradient(90deg, #16a34a, #22c55e);
+    }
+
+    .purityTone-warn {
+      background: linear-gradient(90deg, #d97706, #f59e0b);
+    }
+
+    .purityTone-danger,
+    .purityTone-locked {
+      background: linear-gradient(90deg, #b91c1c, #ef4444);
+    }
+
+    .purityTone-idle {
+      background: linear-gradient(90deg, #475569, #64748b);
+    }
+
+    .purityAudioLive {
+      padding: 10px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.28);
+    }
+
+    .purityAudioHead,
+    .purityAudioProbRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .purityAudioHead {
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .purityAudioDecision {
+      min-width: 54px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-align: center;
+      color: #e2e8f0;
+      background: rgba(100, 116, 139, 0.35);
+    }
+
+    .purityAudioDecision.ok {
+      color: #dcfce7;
+      background: rgba(22, 163, 74, 0.38);
+    }
+
+    .purityAudioDecision.nok {
+      color: #fee2e2;
+      background: rgba(185, 28, 28, 0.38);
+    }
+
+    .purityAudioLabel {
+      margin-top: 8px;
+      color: #f8fafc;
+      font-size: 18px;
+      font-weight: 800;
+      word-break: break-word;
+    }
+
+    .purityAudioMeta {
+      margin-top: 4px;
+      color: #94a3b8;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .purityAudioProbabilities {
+      display: grid;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .purityAudioProbRow {
+      color: #cbd5e1;
+      font-size: 12px;
+    }
+
+    .purityAudioProbName {
+      min-width: 132px;
+      max-width: 48%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .purityAudioProbTrack {
+      flex: 1;
+      height: 7px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(148, 163, 184, 0.16);
+    }
+
+    .purityAudioProbFill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #0891b2, #22c55e);
+      transition: width 0.2s ease;
+    }
+
+    .purityAudioProbValue {
+      width: 48px;
+      text-align: right;
+      color: #e2e8f0;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+
+  <script>
+    const refs = {
+      hiddenLiveImage: document.getElementById("hiddenLiveImage"),
+      previewCanvas: document.getElementById("previewCanvas"),
+      fileMainImage: document.getElementById("fileMainImage"),
+      fileSideImage: document.getElementById("fileSideImage"),
+      btnCaptureFrame: document.getElementById("btnCaptureFrame"),
+      btnCaptureMainImage: document.getElementById("btnCaptureMainImage"),
+      btnUseLiveNow: document.getElementById("btnUseLiveNow"),
+      btnResetUi: document.getElementById("btnResetUi"),
+      btnDrawProcessingRoi: document.getElementById("btnDrawProcessingRoi"),
+      btnDrawArucoRoi: document.getElementById("btnDrawArucoRoi"),
+      btnDrawScaleLine: document.getElementById("btnDrawScaleLine"),
+      btnDrawPendantBox: document.getElementById("btnDrawPendantBox"),
+      btnDrawTasselBox: document.getElementById("btnDrawTasselBox"),
+      btnShowSourceView: document.getElementById("btnShowSourceView"),
+      btnClearCurrentDraw: document.getElementById("btnClearCurrentDraw"),
+      btnClearRois: document.getElementById("btnClearRois"),
+      stoneSaturation: document.getElementById("stoneSaturation"),
+      stoneSaturationValue: document.getElementById("stoneSaturationValue"),
+      stoneContrast: document.getElementById("stoneContrast"),
+      stoneContrastValue: document.getElementById("stoneContrastValue"),
+      stoneBrightness: document.getElementById("stoneBrightness"),
+      stoneBrightnessValue: document.getElementById("stoneBrightnessValue"),
+      stoneColorBoost: document.getElementById("stoneColorBoost"),
+      stoneColorBoostValue: document.getElementById("stoneColorBoostValue"),
+      greenRecovery: document.getElementById("greenRecovery"),
+      greenRecoveryValue: document.getElementById("greenRecoveryValue"),
+      darkGreenRecovery: document.getElementById("darkGreenRecovery"),
+      darkGreenRecoveryValue: document.getElementById("darkGreenRecoveryValue"),
+      stoneSuperResolution: document.getElementById("stoneSuperResolution"),
+      stoneSuperResolutionStatus: document.getElementById("stoneSuperResolutionStatus"),
+      btnSetStoneBackground: document.getElementById("btnSetStoneBackground"),
+      btnClearStoneBackground: document.getElementById("btnClearStoneBackground"),
+      stoneBackgroundStatus: document.getElementById("stoneBackgroundStatus"),
+      learnStoneColor: document.getElementById("learnStoneColor"),
+      learnStoneLabel: document.getElementById("learnStoneLabel"),
+      learnStoneRadius: document.getElementById("learnStoneRadius"),
+      btnLearnStoneColor: document.getElementById("btnLearnStoneColor"),
+      btnClearLearnedStoneColors: document.getElementById("btnClearLearnedStoneColors"),
+      learnedStoneStatus: document.getElementById("learnedStoneStatus"),
+      ttsOutputSelect: document.getElementById("ttsOutputSelect"),
+      ttsOutputStatus: document.getElementById("ttsOutputStatus"),
+      audioOkThreshold: document.getElementById("audioOkThreshold"),
+      audioOkThresholdValue: document.getElementById("audioOkThresholdValue"),
+      audioOkThresholdNumber: document.getElementById("audioOkThresholdNumber"),
+      btnApplyAudioThreshold: document.getElementById("btnApplyAudioThreshold"),
+      audioOkThresholdStatus: document.getElementById("audioOkThresholdStatus"),
+      setupMarkerId: document.getElementById("setupMarkerId"),
+      setupMarkerSide: document.getElementById("setupMarkerSide"),
+      cameraToBed: document.getElementById("cameraToBed"),
+      nominalStoneHeight: document.getElementById("nominalStoneHeight"),
+      cameraCalibrationFile: document.getElementById("cameraCalibrationFile"),
+      cameraCalibrationStatus: document.getElementById("cameraCalibrationStatus"),
+      fourMarkerEnabled: document.getElementById("fourMarkerEnabled"),
+      fourMarkerIds: document.getElementById("fourMarkerIds"),
+      markerCenterWidth: document.getElementById("markerCenterWidth"),
+      markerCenterHeight: document.getElementById("markerCenterHeight"),
+      btnSaveCalibrationSetup: document.getElementById("btnSaveCalibrationSetup"),
+      previewModePill: document.getElementById("previewModePill"),
+      annotationModePill: document.getElementById("annotationModePill"),
+      previewHint: document.getElementById("previewHint"),
+      workflowStage: document.getElementById("workflowStage"),
+      workflowBranch: document.getElementById("workflowBranch"),
+      workflowSource: document.getElementById("workflowSource"),
+      workflowSize: document.getElementById("workflowSize"),
+      btnRunClassification: document.getElementById("btnRunClassification"),
+      classificationValue: document.getElementById("classificationValue"),
+      classificationSub: document.getElementById("classificationSub"),
+      classificationActions: document.getElementById("classificationActions"),
+      btnClassYes: document.getElementById("btnClassYes"),
+      btnClassNo: document.getElementById("btnClassNo"),
+      btnClassificationNext: document.getElementById("btnClassificationNext"),
+      overrideArea: document.getElementById("overrideArea"),
+      overrideClassSelect: document.getElementById("overrideClassSelect"),
+      btnApplyOverride: document.getElementById("btnApplyOverride"),
+      classificationTable: document.getElementById("classificationTable"),
+      classificationTableBody: document.getElementById("classificationTableBody"),
+      classificationPanel: document.getElementById("classificationPanel"),
+      dimensionPanel: document.getElementById("dimensionPanel"),
+      calibrationMethod: document.getElementById("calibrationMethod"),
+      arucoDict: document.getElementById("arucoDict"),
+      markerLength: document.getElementById("markerLength"),
+      markerBreadth: document.getElementById("markerBreadth"),
+      knownDistance: document.getElementById("knownDistance"),
+      manualScale: document.getElementById("manualScale"),
+      arucoFields: document.getElementById("arucoFields"),
+      lineFields: document.getElementById("lineFields"),
+      manualScaleFields: document.getElementById("manualScaleFields"),
+      btnEnableScaleLine: document.getElementById("btnEnableScaleLine"),
+      btnRunDimension: document.getElementById("btnRunDimension"),
+      btnDimensionNext: document.getElementById("btnDimensionNext"),
+      btnDimensionPrev: document.getElementById("btnDimensionPrev"),
+      dimensionValue: document.getElementById("dimensionValue"),
+      dimensionSub: document.getElementById("dimensionSub"),
+      dimensionArtifacts: document.getElementById("dimensionArtifacts"),
+      sidePanel: document.getElementById("sidePanel"),
+      btnCaptureSideLive: document.getElementById("btnCaptureSideLive"),
+      btnRunSidePipeline: document.getElementById("btnRunSidePipeline"),
+      btnShowFinalFromSide: document.getElementById("btnShowFinalFromSide"),
+      btnSidePrev: document.getElementById("btnSidePrev"),
+      sideStoneValue: document.getElementById("sideStoneValue"),
+      sideStoneSub: document.getElementById("sideStoneSub"),
+      sideStoneTable: document.getElementById("sideStoneTable"),
+      sideStoneTableBody: document.getElementById("sideStoneTableBody"),
+      sideArtifacts: document.getElementById("sideArtifacts"),
+      sideJewelWeight: document.getElementById("sideJewelWeight"),
+      segmentationPanel: document.getElementById("segmentationPanel"),
+      btnRunSegmentation: document.getElementById("btnRunSegmentation"),
+      btnNoPendant: document.getElementById("btnNoPendant"),
+      btnNoTassel: document.getElementById("btnNoTassel"),
+      btnStartPendantCorrection: document.getElementById("btnStartPendantCorrection"),
+      btnApplyPendantCorrection: document.getElementById("btnApplyPendantCorrection"),
+      btnStartTasselCorrection: document.getElementById("btnStartTasselCorrection"),
+      btnApplyTasselCorrection: document.getElementById("btnApplyTasselCorrection"),
+      btnSegmentationNext: document.getElementById("btnSegmentationNext"),
+      btnSegmentationPrev: document.getElementById("btnSegmentationPrev"),
+      segmentationValue: document.getElementById("segmentationValue"),
+      segmentationSub: document.getElementById("segmentationSub"),
+      segmentationArtifacts: document.getElementById("segmentationArtifacts"),
+      mainStonePanel: document.getElementById("mainStonePanel"),
+      mainStoneTitle: document.getElementById("mainStoneTitle"),
+      mainStoneTag: document.getElementById("mainStoneTag"),
+      btnRunMainStoneDetection: document.getElementById("btnRunMainStoneDetection"),
+      btnShowFinalFromMain: document.getElementById("btnShowFinalFromMain"),
+      btnMainStonePrev: document.getElementById("btnMainStonePrev"),
+      mainStoneValue: document.getElementById("mainStoneValue"),
+      mainStoneSub: document.getElementById("mainStoneSub"),
+      mainStoneTable: document.getElementById("mainStoneTable"),
+      mainStoneTableBody: document.getElementById("mainStoneTableBody"),
+      mainStoneArtifacts: document.getElementById("mainStoneArtifacts"),
+      mainJewelWeight: document.getElementById("mainJewelWeight"),
+      purityPanel: document.getElementById("purityPanel"),
+      purityTitle: document.getElementById("purityTitle"),
+      purityTag: document.getElementById("purityTag"),
+      purityMicSelect: document.getElementById("purityMicSelect"),
+      purityAudioStatus: document.getElementById("purityAudioStatus"),
+      btnRefreshPurityAudio: document.getElementById("btnRefreshPurityAudio"),
+      btnStartPurityTest: document.getElementById("btnStartPurityTest"),
+      btnStopPurityTest: document.getElementById("btnStopPurityTest"),
+      btnSkipPurityTest: document.getElementById("btnSkipPurityTest"),
+      btnPurityPrev: document.getElementById("btnPurityPrev"),
+      btnNextJewelFromPurity: document.getElementById("btnNextJewelFromPurity"),
+      btnShowFinalFromPurity: document.getElementById("btnShowFinalFromPurity"),
+      purityValue: document.getElementById("purityValue"),
+      puritySub: document.getElementById("puritySub"),
+      purityAudioDecision: document.getElementById("purityAudioDecision"),
+      purityAudioLabel: document.getElementById("purityAudioLabel"),
+      purityAudioMeta: document.getElementById("purityAudioMeta"),
+      purityAudioProbabilities: document.getElementById("purityAudioProbabilities"),
+      purityProgress: document.getElementById("purityProgress"),
+      purityArtifacts: document.getElementById("purityArtifacts"),
+      finalPanel: document.getElementById("finalPanel"),
+      finalTitle: document.getElementById("finalTitle"),
+      finalHeadline: document.getElementById("finalHeadline"),
+      finalLines: document.getElementById("finalLines"),
+      finalArtifacts: document.getElementById("finalArtifacts"),
+      pledgeClosurePanel: document.getElementById("pledgeClosurePanel"),
+      btnCaptureFinalJewelCount: document.getElementById("btnCaptureFinalJewelCount"),
+      countCaptureValue: document.getElementById("countCaptureValue"),
+      countCaptureSub: document.getElementById("countCaptureSub"),
+      countCaptureArtifacts: document.getElementById("countCaptureArtifacts"),
+      btnOpenPacketSealing: document.getElementById("btnOpenPacketSealing"),
+      packetSealingControls: document.getElementById("packetSealingControls"),
+      btnStartPacketSealing: document.getElementById("btnStartPacketSealing"),
+      btnStopPacketSealing: document.getElementById("btnStopPacketSealing"),
+      packetSealingValue: document.getElementById("packetSealingValue"),
+      packetSealingSub: document.getElementById("packetSealingSub"),
+      packetVideoLink: document.getElementById("packetVideoLink"),
+      btnFinalPrev: document.getElementById("btnFinalPrev"),
+      btnNextJewelFromFinal: document.getElementById("btnNextJewelFromFinal"),
+      btnGeneratePdf: document.getElementById("btnGeneratePdf"),
+      statusValue: document.getElementById("statusValue"),
+      drawStatus: document.getElementById("drawStatus"),
+      inputPledgeId: document.getElementById("inputPledgeId"),
+      btnSetPledge: document.getElementById("btnSetPledge"),
+      pledgeStatus: document.getElementById("pledgeStatus"),
+      inputJewelCount: document.getElementById("inputJewelCount"),
+      btnSaveJewelCount: document.getElementById("btnSaveJewelCount"),
+      btnClearJewelCount: document.getElementById("btnClearJewelCount"),
+      btnPledgeSetupNext: document.getElementById("btnPledgeSetupNext"),
+      jewelCountStatus: document.getElementById("jewelCountStatus"),
+    };
+
+    const ctx = refs.previewCanvas.getContext("2d");
+    const config = {
+      class_labels: [],
+      aruco_dicts: [],
+      stone_settings: {
+        color_correction: { saturation: 1.0, contrast: 1.05, brightness: 0 },
+        analysis_normalization: { color_boost: 1.0, green_recovery: 1.15, dark_green_recovery: 1.20 },
+        background_calibration: null,
+        learned_stone_profiles: [],
+        stone_super_resolution: { enabled: false, scale: 2, model: "real_esrgan_x2" },
+        calibration_config: {},
+      },
+      audio_settings: {
+        ok_confidence_threshold: 0.90,
+      },
+    };
+
+    let backendState = null;
+    let animationHandle = 0;
+    let dragging = false;
+    let liveFrameInterval = 0;
+    let statePollInterval = 0;
+    let audioDevicePollInterval = 0;
+    let stateMutationVersion = 0;
+    let stateMutationsInFlight = 0;
+    let overrideActive = false;
+    let purityMicSelectActive = false;
+    let ttsOutputSelectActive = false;
+    let stoneSettingsSaveTimer = 0;
+    let cameraCalibrationData = null;
+
+    const previewState = {
+      drawMode: null,
+      context: "source",
+      displayRect: null,
+      dragStart: null,
+      dragCurrent: null,
+      main: {
+        kind: "live",
+        filename: "camera_capture.png",
+        dataUrl: null,
+        image: new Image(),
+        dirty: true,
+      },
+      side: {
+        filename: "side_capture.png",
+        dataUrl: null,
+        image: new Image(),
+        dirty: true,
+      },
+      segmentationImage: new Image(),
+      rois: {
+        processing: null,
+        aruco: null,
+      },
+      linePoints: [],
+      correctionBoxes: {
+        pendant: null,
+        tassel: null,
+      },
+      backgroundPoint: null,
+      learnedStonePoint: null,
+    };
+
+    const flow = {
+      pledgeSetupComplete: false,
+      classificationConfirmed: false,
+      classificationNext: false,
+      dimensionNext: false,
+      segmentationNext: false,
+      finalVisible: false,
+      packetSealingOpen: false,
+      currentStage: "classification",
+    };
+
+    const stageOrder = {
+      dimension: ["classification", "dimension", "side", "purity", "final"],
+      segmentation: ["classification", "segmentation", "mainStone", "purity", "final"],
+      direct_stone: ["classification", "mainStone", "purity", "final"],
+      none: ["classification", "final"],
+    };
+
+    function getCurrentBranch() {
+      return backendState && backendState.branch ? backendState.branch.key : null;
+    }
+
+    function pledgeCountSaved() {
+      return Boolean(backendState && backendState.pledge_id && backendState.jewel_count_saved);
+    }
+
+    function jewelProgressText() {
+      if (!backendState || !backendState.jewel_count_saved) return "-";
+      const index = backendState.jewel_index || 1;
+      const count = backendState.jewel_count || "-";
+      const completed = backendState.completed_jewels || 0;
+      return `${index} / ${count} (${completed} done)`;
+    }
+
+    function getStageOrder() {
+      const branch = getCurrentBranch();
+      return stageOrder[branch] || stageOrder.direct_stone;
+    }
+
+    function getCurrentStageIndex() {
+      const order = getStageOrder();
+      return order.indexOf(flow.currentStage);
+    }
+
+    function canGoToStage(stage) {
+      const order = getStageOrder();
+      const currentIndex = getCurrentStageIndex();
+      const targetIndex = order.indexOf(stage);
+      return targetIndex !== -1 && targetIndex <= currentIndex + 1;
+    }
+
+    function goToStage(stage) {
+      if (!canGoToStage(stage)) return;
+      flow.currentStage = stage;
+      renderPanels();
+    }
+
+    function goToNextStage() {
+      const order = getStageOrder();
+      const currentIndex = getCurrentStageIndex();
+      if (currentIndex < order.length - 1) {
+        goToStage(order[currentIndex + 1]);
+      }
+    }
+
+    function goToPreviousStage() {
+      const order = getStageOrder();
+      const currentIndex = getCurrentStageIndex();
+      if (currentIndex > 0) {
+        goToStage(order[currentIndex - 1]);
+      }
+    }
+
+    function resetFlow() {
+      flow.pledgeSetupComplete = false;
+      flow.classificationConfirmed = false;
+      flow.classificationNext = false;
+      flow.dimensionNext = false;
+      flow.segmentationNext = false;
+      flow.finalVisible = false;
+      flow.packetSealingOpen = false;
+      flow.currentStage = "classification";
+      overrideActive = false;
+    }
+
+    function setStatus(text) {
+      const statusElement = document.getElementById('statusValue');
+      if (statusElement) {
+        setStatusWithIndicator(text, 'info');
+      }
+    }
+
+    function setDrawStatus(text) {
+      refs.drawStatus.textContent = text;
+    }
+
+    function isSegmentationContext() {
+      return previewState.context === "segmentation" || previewState.context === "segmentation-result";
+    }
+
+    function correctionConfig(part) {
+      if (part === "tassel") {
+        return {
+          label: "Tassel Box",
+          drawLabel: "correct tassel box",
+          color: "#2563eb",
+          title: "Tassel",
+        };
+      }
+      return {
+        label: "Pendant Box",
+        drawLabel: "correct pendant box",
+        color: "#dc2626",
+        title: "Pendant",
+      };
+    }
+
+    function currentMainSourceKind() {
+      return previewState.main.dataUrl ? previewState.main.kind : "live";
+    }
+
+    function liveImageReady() {
+      return Boolean(
+        refs.hiddenLiveImage &&
+        refs.hiddenLiveImage.complete &&
+        refs.hiddenLiveImage.naturalWidth > 0 &&
+        refs.hiddenLiveImage.naturalHeight > 0
+      );
+    }
+
+    function activeImageForCanvas() {
+      if (isSegmentationContext() && previewState.segmentationImage.src) {
+        return { type: "image", image: previewState.segmentationImage, captured: false };
+      }
+      if (flow.currentStage === "purity" || (backendState && backendState.purity_test && backendState.purity_test.running)) {
+        if (liveImageReady()) {
+          return { type: "image", image: refs.hiddenLiveImage, captured: false };
+        }
+      }
+      if (closureLiveFeedActive()) {
+        if (liveImageReady()) {
+          return { type: "image", image: refs.hiddenLiveImage, captured: false };
+        }
+      }
+      if (flow.currentStage === "side") {
+        if (previewState.side.dataUrl && previewState.side.image.src) {
+          return { type: "image", image: previewState.side.image, captured: true };
+        }
+        if (liveImageReady()) {
+          return { type: "image", image: refs.hiddenLiveImage, captured: false };
+        }
+      }
+      if (previewState.main.dataUrl && previewState.main.image.src) {
+        return { type: "image", image: previewState.main.image, captured: true };
+      }
+      if (liveImageReady()) {
+        return { type: "image", image: refs.hiddenLiveImage, captured: false };
+      }
+      return null;
+    }
+
+    function fitRect(srcWidth, srcHeight, dstWidth, dstHeight) {
+      const scale = Math.min(dstWidth / srcWidth, dstHeight / srcHeight);
+      const w = srcWidth * scale;
+      const h = srcHeight * scale;
+      return {
+        x: (dstWidth - w) / 2,
+        y: (dstHeight - h) / 2,
+        w,
+        h,
+        srcWidth,
+        srcHeight,
+      };
+    }
+
+    function resizeCanvas() {
+      const rect = refs.previewCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.max(1, Math.round(rect.width * dpr));
+      const height = Math.max(1, Math.round(rect.height * dpr));
+      if (refs.previewCanvas.width !== width || refs.previewCanvas.height !== height) {
+        refs.previewCanvas.width = width;
+        refs.previewCanvas.height = height;
+      }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+    }
+
+    function drawRoundedPlaceholder(message) {
+      const rect = refs.previewCanvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = "#111827";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = "rgba(255,255,255,0.88)";
+      ctx.font = "700 22px 'Segoe UI'";
+      ctx.textAlign = "center";
+      ctx.fillText(message, rect.width / 2, rect.height / 2);
+    }
+
+    function drawLabel(text, x, y, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x, Math.max(0, y - 24), 170, 24);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 13px 'Segoe UI'";
+      ctx.textAlign = "left";
+      ctx.fillText(text, x + 8, Math.max(16, y - 8));
+    }
+
+    function drawRectOverlay(rect, color, label) {
+      if (!rect || !previewState.displayRect) return;
+      const { x, y, w, h } = imageRectToCanvasRect(rect);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x, y, w, h);
+      drawLabel(label, x, y, color);
+    }
+
+    function drawLineOverlay(points, color, label) {
+      if (!Array.isArray(points) || points.length === 0 || !previewState.displayRect) return;
+      const p1 = imagePointToCanvasPoint(points[0]);
+      if (!p1) return;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(p1.x, p1.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+      if (points.length === 2) {
+        const p2 = imagePointToCanvasPoint(points[1]);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(p2.x, p2.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        drawLabel(label, Math.min(p1.x, p2.x), Math.min(p1.y, p2.y), color);
+      } else {
+        drawLabel(label, p1.x, p1.y, color);
+      }
+    }
+
+    function imageRectToCanvasRect(rect) {
+      const d = previewState.displayRect;
+      const scaleX = d.w / d.srcWidth;
+      const scaleY = d.h / d.srcHeight;
+      return {
+        x: d.x + rect.x * scaleX,
+        y: d.y + rect.y * scaleY,
+        w: rect.w * scaleX,
+        h: rect.h * scaleY,
+      };
+    }
+
+    function imagePointToCanvasPoint(point) {
+      const d = previewState.displayRect;
+      if (!d) return null;
+      return {
+        x: d.x + point.x * (d.w / d.srcWidth),
+        y: d.y + point.y * (d.h / d.srcHeight),
+      };
+    }
+
+    function eventToImagePoint(event) {
+      const display = previewState.displayRect;
+      if (!display) return null;
+      const rect = refs.previewCanvas.getBoundingClientRect();
+      const localX = event.clientX - rect.left;
+      const localY = event.clientY - rect.top;
+      if (
+        localX < display.x ||
+        localY < display.y ||
+        localX > display.x + display.w ||
+        localY > display.y + display.h
+      ) {
+        return null;
+      }
+      const relX = (localX - display.x) / display.w;
+      const relY = (localY - display.y) / display.h;
+      return {
+        x: Math.max(0, Math.min(display.srcWidth, Math.round(relX * display.srcWidth))),
+        y: Math.max(0, Math.min(display.srcHeight, Math.round(relY * display.srcHeight))),
+      };
+    }
+
+    function normalizeDraggedRect(start, end) {
+      if (!start || !end) return null;
+      const x0 = Math.min(start.x, end.x);
+      const y0 = Math.min(start.y, end.y);
+      const x1 = Math.max(start.x, end.x);
+      const y1 = Math.max(start.y, end.y);
+      if (x1 - x0 < 4 || y1 - y0 < 4) return null;
+      return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    }
+
+    function currentColorCorrection() {
+      return {
+        saturation: Number(refs.stoneSaturation.value),
+        contrast: Number(refs.stoneContrast.value),
+        brightness: Number(refs.stoneBrightness.value),
+      };
+    }
+
+    function currentAnalysisNormalization() {
+      return {
+        white_balance: true,
+        clahe_clip_limit: 1.8,
+        shadow_gamma: 0.92,
+        color_boost: Number(refs.stoneColorBoost.value),
+        green_recovery: Number(refs.greenRecovery.value),
+        dark_green_recovery: Number(refs.darkGreenRecovery.value),
+      };
+    }
+
+    function currentStoneSuperResolution() {
+      return {
+        enabled: Boolean(refs.stoneSuperResolution.checked),
+        scale: 2,
+        model: "real_esrgan_x2",
+      };
+    }
+
+    function updateStoneCorrectionLabels() {
+      const correction = currentColorCorrection();
+      refs.stoneSaturationValue.textContent = `${correction.saturation.toFixed(2)}x`;
+      refs.stoneContrastValue.textContent = `${correction.contrast.toFixed(2)}x`;
+      refs.stoneBrightnessValue.textContent = `${correction.brightness > 0 ? "+" : ""}${correction.brightness.toFixed(0)}`;
+      refs.stoneColorBoostValue.textContent = `${Number(refs.stoneColorBoost.value).toFixed(2)}x`;
+      refs.greenRecoveryValue.textContent = `${Number(refs.greenRecovery.value).toFixed(2)}x`;
+      refs.darkGreenRecoveryValue.textContent = `${Number(refs.darkGreenRecovery.value).toFixed(2)}x`;
+      refs.stoneSuperResolutionStatus.textContent = refs.stoneSuperResolution.checked
+        ? "Stone SR x2 on."
+        : "Stone SR off.";
+    }
+
+    function updateStoneBackgroundStatus() {
+      const calibration = config.stone_settings.background_calibration;
+      if (!calibration || !Array.isArray(calibration.hsv_center)) {
+        refs.stoneBackgroundStatus.textContent = "Background not calibrated.";
+        return;
+      }
+      const [h, s, v] = calibration.hsv_center;
+      refs.stoneBackgroundStatus.textContent =
+        `Background HSV ${Number(h).toFixed(1)}, ${Number(s).toFixed(1)}, ${Number(v).toFixed(1)} (saved)`;
+    }
+
+    function updateLearnedStoneStatus() {
+      const profiles = Array.isArray(config.stone_settings.learned_stone_profiles)
+        ? config.stone_settings.learned_stone_profiles
+        : [];
+      if (!profiles.length) {
+        refs.learnedStoneStatus.textContent = "No learned stone colors.";
+        return;
+      }
+      const latest = profiles[profiles.length - 1];
+      const hsv = Array.isArray(latest.hsv_center) ? latest.hsv_center : [];
+      const hsvText = hsv.length === 3
+        ? ` HSV ${Number(hsv[0]).toFixed(1)}, ${Number(hsv[1]).toFixed(1)}, ${Number(hsv[2]).toFixed(1)}`
+        : "";
+      refs.learnedStoneStatus.textContent =
+        `${profiles.length} saved profile${profiles.length === 1 ? "" : "s"}; latest: ${latest.label} (${latest.color})${hsvText}`;
+    }
+
+    function updateCapturedSetupControls() {
+      const captured = Boolean(previewState.main.dataUrl);
+      refs.stoneSaturation.disabled = !captured;
+      refs.stoneContrast.disabled = !captured;
+      refs.stoneBrightness.disabled = !captured;
+      refs.btnSetStoneBackground.disabled = !captured;
+      refs.btnLearnStoneColor.disabled = !captured;
+      refs.btnCaptureMainImage.disabled = !pledgeCountSaved();
+      refs.btnRunClassification.disabled = !captured && !(backendState && backendState.source && backendState.source.working_image);
+    }
+
+    function stonePreviewFilter() {
+      const correction = currentColorCorrection();
+      const brightnessFactor = Math.max(0.55, 1 + correction.brightness / 255);
+      return `contrast(${correction.contrast}) brightness(${brightnessFactor}) saturate(${correction.saturation})`;
+    }
+
+    async function saveStoneSettings() {
+      try {
+        const data = await postJson("/api/stone-settings", {
+          color_correction: currentColorCorrection(),
+          analysis_normalization: currentAnalysisNormalization(),
+          stone_super_resolution: currentStoneSuperResolution(),
+        });
+        config.stone_settings = data.stone_settings || config.stone_settings;
+        if (data.state) backendState = data.state;
+      } catch (error) {
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    function queueStoneSettingsSave() {
+      updateStoneCorrectionLabels();
+      if (stoneSettingsSaveTimer) clearTimeout(stoneSettingsSaveTimer);
+      stoneSettingsSaveTimer = setTimeout(saveStoneSettings, 180);
+    }
+
+    function normalizeAudioThreshold(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return 0.90;
+      return Math.max(0.50, Math.min(0.99, numeric));
+    }
+
+    function updateAudioThresholdLabel(value) {
+      const threshold = normalizeAudioThreshold(value);
+      refs.audioOkThresholdValue.textContent = `${Math.round(threshold * 100)}%`;
+      refs.audioOkThresholdStatus.textContent = `Audio OK threshold: ${Math.round(threshold * 100)}%.`;
+    }
+
+    function applyAudioSettings(settings) {
+      const threshold = normalizeAudioThreshold(
+        settings && settings.ok_confidence_threshold
+      );
+      config.audio_settings = { ok_confidence_threshold: threshold };
+      refs.audioOkThreshold.value = threshold.toFixed(2);
+      refs.audioOkThresholdNumber.value = threshold.toFixed(2);
+      updateAudioThresholdLabel(threshold);
+    }
+
+    function currentAudioSettings() {
+      return {
+        ok_confidence_threshold: normalizeAudioThreshold(refs.audioOkThresholdNumber.value),
+      };
+    }
+
+    function syncAudioThresholdInputs(source) {
+      const threshold = normalizeAudioThreshold(source.value);
+      refs.audioOkThreshold.value = threshold.toFixed(2);
+      refs.audioOkThresholdNumber.value = threshold.toFixed(2);
+      updateAudioThresholdLabel(threshold);
+    }
+
+    async function applyAudioThreshold() {
+      const settings = currentAudioSettings();
+      const data = await postJson("/api/purity/audio-settings", settings);
+      applyAudioSettings(data.audio_settings || settings);
+      if (data.state) backendState = data.state;
+      renderServerState();
+      const applied = normalizeAudioThreshold(config.audio_settings.ok_confidence_threshold);
+      setStatusWithIndicator(`Audio OK threshold applied at ${Math.round(applied * 100)}%.`, "success");
+    }
+
+    function applyStoneSettings(settings) {
+      config.stone_settings = {
+        color_correction: {
+          saturation: Number(settings && settings.color_correction && settings.color_correction.saturation) || 1.0,
+          contrast: Number(settings && settings.color_correction && settings.color_correction.contrast) || 1.05,
+          brightness: Number(settings && settings.color_correction && settings.color_correction.brightness) || 0,
+        },
+        analysis_normalization: {
+          color_boost: Number(settings && settings.analysis_normalization && settings.analysis_normalization.color_boost) || 1.0,
+          green_recovery: Number(settings && settings.analysis_normalization && settings.analysis_normalization.green_recovery) || 1.15,
+          dark_green_recovery: Number(settings && settings.analysis_normalization && settings.analysis_normalization.dark_green_recovery) || 1.20,
+        },
+        background_calibration: settings ? settings.background_calibration : null,
+        learned_stone_profiles: settings && Array.isArray(settings.learned_stone_profiles)
+          ? settings.learned_stone_profiles
+          : [],
+        stone_super_resolution: {
+          enabled: Boolean(
+            settings &&
+            settings.stone_super_resolution &&
+            settings.stone_super_resolution.enabled
+          ),
+          scale: 2,
+          model: "real_esrgan_x2",
+        },
+        calibration_config: settings ? (settings.calibration_config || {}) : {},
+      };
+      refs.stoneSaturation.value = String(config.stone_settings.color_correction.saturation);
+      refs.stoneContrast.value = String(config.stone_settings.color_correction.contrast);
+      refs.stoneBrightness.value = String(config.stone_settings.color_correction.brightness);
+      refs.stoneColorBoost.value = String(config.stone_settings.analysis_normalization.color_boost);
+      refs.greenRecovery.value = String(config.stone_settings.analysis_normalization.green_recovery);
+      refs.darkGreenRecovery.value = String(config.stone_settings.analysis_normalization.dark_green_recovery);
+      refs.stoneSuperResolution.checked = Boolean(config.stone_settings.stone_super_resolution.enabled);
+      const metric = config.stone_settings.calibration_config || {};
+      refs.setupMarkerId.value = String(metric.marker_id ?? 1);
+      refs.setupMarkerSide.value = String(metric.marker_length_mm ?? 20);
+      refs.markerLength.value = String(metric.marker_length_mm ?? 20);
+      refs.markerBreadth.value = String(metric.marker_breadth_mm ?? metric.marker_length_mm ?? 20);
+      refs.cameraToBed.value = String(metric.camera_to_bed_mm ?? 500);
+      refs.nominalStoneHeight.value = String(metric.nominal_stone_height_mm ?? 0);
+      refs.fourMarkerEnabled.checked = Boolean(metric.four_marker_enabled);
+      refs.fourMarkerIds.value = Array.isArray(metric.four_marker_ids) ? metric.four_marker_ids.join(",") : "0,1,2,3";
+      refs.markerCenterWidth.value = String(metric.marker_center_width_mm ?? 0);
+      refs.markerCenterHeight.value = String(metric.marker_center_height_mm ?? 0);
+      cameraCalibrationData = metric.camera_matrix && metric.dist_coeffs
+        ? { camera_matrix: metric.camera_matrix, dist_coeffs: metric.dist_coeffs }
+        : null;
+      refs.cameraCalibrationStatus.textContent = cameraCalibrationData ? "Loaded and saved." : "Not loaded.";
+      updateStoneCorrectionLabels();
+      updateStoneBackgroundStatus();
+      updateLearnedStoneStatus();
+      updateCapturedSetupControls();
+    }
+
+    function currentCalibrationSetup() {
+      const markerSide = Number(refs.setupMarkerSide.value) || 20;
+      return {
+        aruco_dict: refs.arucoDict.value || "AprilTag_36h11",
+        marker_id: Number(refs.setupMarkerId.value),
+        marker_length_mm: markerSide,
+        marker_breadth_mm: markerSide,
+        camera_to_bed_mm: Number(refs.cameraToBed.value) || 500,
+        nominal_stone_height_mm: Number(refs.nominalStoneHeight.value) || 0,
+        camera_matrix: cameraCalibrationData && cameraCalibrationData.camera_matrix,
+        dist_coeffs: cameraCalibrationData && cameraCalibrationData.dist_coeffs,
+        four_marker_enabled: refs.fourMarkerEnabled.checked,
+        four_marker_ids: refs.fourMarkerIds.value.split(",").map(value => Number(value.trim())),
+        marker_center_width_mm: Number(refs.markerCenterWidth.value) || 0,
+        marker_center_height_mm: Number(refs.markerCenterHeight.value) || 0,
+      };
+    }
+
+    async function saveCalibrationSetup() {
+      const setup = currentCalibrationSetup();
+      if (setup.four_marker_enabled &&
+          (setup.four_marker_ids.length !== 4 ||
+           setup.four_marker_ids.some(value => !Number.isInteger(value)) ||
+           new Set(setup.four_marker_ids).size !== 4 ||
+           setup.marker_center_width_mm <= 0 ||
+           setup.marker_center_height_mm <= 0)) {
+        throw new Error("Four-marker mode needs four unique IDs in TL,TR,BR,BL order and measured center-to-center width/height.");
+      }
+      const data = await postJson("/api/calibration-settings", setup);
+      const saved = data.calibration_config || setup;
+      config.stone_settings.calibration_config = saved;
+      refs.markerLength.value = String(saved.marker_length_mm);
+      refs.markerBreadth.value = String(saved.marker_breadth_mm);
+      if (data.state) backendState = data.state;
+      setStatusWithIndicator("Camera and millimetre calibration setup saved.", "success");
+    }
+
+    function withButtonGuard(btn, fn) {
+      return async function(...args) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        try {
+          await fn(...args);
+        } finally {
+          btn.disabled = false;
+        }
+      };
+    }
+
+    function setDrawMode(mode) {
+      previewState.drawMode = mode;
+      refs.annotationModePill.textContent = `Draw Mode: ${mode || "None"}`;
+      if (!mode) {
+        setDrawStatus("No active drawing mode.");
+      } else if (mode === "processing") {
+        setDrawStatus("Drag on the preview to set the Processing ROI.");
+      } else if (mode === "aruco") {
+        setDrawStatus("Drag on the preview to set the ArUco ROI.");
+      } else if (mode === "line") {
+        setDrawStatus("Click two points on the preview to create the calibration line.");
+      } else if (mode === "background") {
+        setDrawStatus("Click a clean test-bed background area outside the jewel.");
+      } else if (mode === "learn-stone") {
+        setDrawStatus("Click the center of the missed gemstone to learn its HSV/LAB representation.");
+      } else if (mode === "pendant") {
+        setDrawStatus("Drag on the segmentation preprocessed image to draw the correct pendant box.");
+      } else if (mode === "tassel") {
+        setDrawStatus("Drag on the segmentation preprocessed image to draw the correct tassel box.");
+      }
+    }
+
+    function markSourceDirty() {
+      const setupWasComplete = flow.pledgeSetupComplete;
+      previewState.main.dirty = true;
+      previewState.correctionBoxes.pendant = null;
+      previewState.correctionBoxes.tassel = null;
+      resetFlow();
+      flow.pledgeSetupComplete = setupWasComplete && pledgeCountSaved();
+      refs.btnClassificationNext.disabled = true;
+      refs.btnDimensionNext.disabled = true;
+      refs.btnSegmentationNext.disabled = true;
+      refs.btnShowFinalFromMain.disabled = true;
+      refs.btnShowFinalFromSide.disabled = true;
+      refs.btnNoPendant.disabled = true;
+      refs.btnNoTassel.disabled = true;
+      refs.btnApplyPendantCorrection.disabled = true;
+      refs.btnApplyTasselCorrection.disabled = true;
+      renderPanels();
+    }
+
+    function clearCurrentDraw() {
+      let shouldMarkSourceDirty = false;
+      let shouldPersistRois = false;
+      if (previewState.drawMode === "processing") {
+        previewState.rois.processing = null;
+        shouldMarkSourceDirty = true;
+        shouldPersistRois = true;
+      } else if (previewState.drawMode === "aruco") {
+        previewState.rois.aruco = null;
+        shouldMarkSourceDirty = true;
+        shouldPersistRois = true;
+      } else if (previewState.drawMode === "line") {
+        previewState.linePoints = [];
+        shouldMarkSourceDirty = true;
+      } else if (previewState.drawMode === "learn-stone") {
+        previewState.learnedStonePoint = null;
+      } else if (previewState.drawMode === "pendant" || previewState.drawMode === "tassel") {
+        previewState.correctionBoxes[previewState.drawMode] = null;
+        if (previewState.drawMode === "pendant") {
+          refs.btnApplyPendantCorrection.disabled = true;
+        } else {
+          refs.btnApplyTasselCorrection.disabled = true;
+        }
+      }
+      if (shouldPersistRois) {
+        persistRois();
+      }
+      if (shouldMarkSourceDirty) {
+        markSourceDirty();
+      } else {
+        renderPanels();
+      }
+    }
+
+    function clearRois() {
+      previewState.rois.processing = null;
+      previewState.rois.aruco = null;
+      updateRoiSummaryText();
+      persistRois();
+      previewState.linePoints = [];
+      previewState.correctionBoxes.pendant = null;
+      previewState.correctionBoxes.tassel = null;
+      refs.btnApplyPendantCorrection.disabled = true;
+      refs.btnApplyTasselCorrection.disabled = true;
+      markSourceDirty();
+    }
+
+    async function persistRois() {
+      try {
+        await postJson("/api/rois", {
+          processing_roi: previewState.rois.processing,
+          aruco_roi: previewState.rois.aruco,
+        });
+      } catch (error) {
+        console.error("Failed to persist ROIs:", error);
+      }
+    }
+
+    async function postJson(url, payload = {}) {
+      try {
+        stateMutationVersion += 1;
+        stateMutationsInFlight += 1;
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const rawText = await response.text();
+        let data = {};
+        try {
+          data = rawText ? JSON.parse(rawText) : {};
+        } catch (_) {
+          data = {};
+        }
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || rawText || `Request failed: ${response.status}`);
+        }
+        return data;
+      } finally {
+        stateMutationsInFlight = Math.max(0, stateMutationsInFlight - 1);
+      }
+    }
+
+    async function loadConfig() {
+      const response = await fetch("/api/config");
+      const data = await response.json();
+      config.class_labels = data.class_labels || [];
+      config.aruco_dicts = data.aruco_dicts || [];
+
+      if (data.persistent_rois) {
+        previewState.rois.processing = data.persistent_rois.processing_roi;
+        previewState.rois.aruco = data.persistent_rois.aruco_roi;
+        updateRoiSummaryText();
+      }
+      applyStoneSettings(data.stone_settings || {
+        color_correction: data.persistent_rois && data.persistent_rois.color_correction,
+        analysis_normalization: data.persistent_rois && data.persistent_rois.analysis_normalization,
+        background_calibration: data.persistent_rois && data.persistent_rois.background_calibration,
+        stone_super_resolution: data.persistent_rois && data.persistent_rois.stone_super_resolution,
+        calibration_config: data.persistent_rois && data.persistent_rois.calibration_config,
+      });
+      applyAudioSettings(data.audio_settings || (data.persistent_rois && data.persistent_rois.audio_settings) || {
+        ok_confidence_threshold: 0.90,
+      });
+
+      refs.overrideClassSelect.innerHTML = "";
+      config.class_labels.forEach((label) => {
+        const option = document.createElement("option");
+        option.value = label;
+        option.textContent = label;
+        refs.overrideClassSelect.appendChild(option);
+      });
+
+      refs.arucoDict.innerHTML = "";
+      config.aruco_dicts.forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        refs.arucoDict.appendChild(option);
+      });
+    }
+
+    function normalizeDeviceValue(value) {
+      if (value === null || value === undefined || value === "") {
+        return "__AUTO__";
+      }
+      return String(value);
+    }
+
+    function renderPurityProgress(items) {
+      refs.purityProgress.innerHTML = "";
+      (items || []).forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "purityProgressRow";
+        const tone = item.tone || "idle";
+        row.innerHTML = `
+          <div class="purityProgressHead">
+            <span>${item.label || item.key || "Step"}</span>
+            <span>${item.status || "--"}</span>
+          </div>
+          <div class="purityProgressBar">
+            <div class="purityProgressFill purityTone-${tone}" style="width:${Number(item.percent || 0)}%"></div>
+          </div>
+        `;
+        refs.purityProgress.appendChild(row);
+      });
+    }
+
+    function renderPurityAudio(purity) {
+      const label = purity.audio_label || "Waiting...";
+      const decision = purity.audio_decision || purity.sound_status || "Waiting";
+      const confidence = Number(purity.audio_confidence || 0);
+      const threshold = Number(purity.audio_ok_threshold || config.audio_settings.ok_confidence_threshold || 0.90);
+      const inputRate = Number(purity.audio_input_rate || 0);
+      const modelRate = Number(purity.audio_model_rate || 0);
+      const backend = purity.audio_model_backend || "";
+
+      refs.purityAudioLabel.textContent = label;
+      refs.purityAudioDecision.textContent = decision;
+      refs.purityAudioDecision.className = "purityAudioDecision";
+      if (decision === "OK") {
+        refs.purityAudioDecision.classList.add("ok");
+      } else if (decision === "NOK") {
+        refs.purityAudioDecision.classList.add("nok");
+      }
+
+      const rateText = inputRate || modelRate
+        ? `stream ${inputRate || "--"} Hz / model ${modelRate || "--"} Hz`
+        : "sample rate pending";
+      refs.purityAudioMeta.textContent = `${(confidence * 100).toFixed(1)}% confidence | OK >= ${(threshold * 100).toFixed(0)}% | ${rateText}${backend ? ` | ${backend}` : ""}`;
+
+      refs.purityAudioProbabilities.innerHTML = "";
+      const probabilities = Object.entries(purity.audio_probabilities || {})
+        .map(([name, value]) => [name, Number(value || 0)])
+        .sort((left, right) => right[1] - left[1]);
+
+      if (!probabilities.length) {
+        const empty = document.createElement("div");
+        empty.className = "purityAudioMeta";
+        empty.textContent = "Waiting for model probabilities.";
+        refs.purityAudioProbabilities.appendChild(empty);
+        return;
+      }
+
+      probabilities.forEach(([name, value]) => {
+        const row = document.createElement("div");
+        row.className = "purityAudioProbRow";
+
+        const nameEl = document.createElement("span");
+        nameEl.className = "purityAudioProbName";
+        nameEl.textContent = name;
+
+        const track = document.createElement("span");
+        track.className = "purityAudioProbTrack";
+        const fill = document.createElement("span");
+        fill.className = "purityAudioProbFill";
+        fill.style.width = `${Math.max(0, Math.min(100, value * 100))}%`;
+        track.appendChild(fill);
+
+        const valueEl = document.createElement("span");
+        valueEl.className = "purityAudioProbValue";
+        valueEl.textContent = `${(value * 100).toFixed(0)}%`;
+
+        row.appendChild(nameEl);
+        row.appendChild(track);
+        row.appendChild(valueEl);
+        refs.purityAudioProbabilities.appendChild(row);
+      });
+    }
+
+    async function loadPurityAudioDevices(options = {}) {
+      const response = await fetch("/api/purity/audio-devices");
+      const data = await response.json();
+      if (!data.ok) {
+        throw new Error(data.error || "Could not load audio devices.");
+      }
+      const preserveLocal = Boolean(options.preserveLocal);
+      const selectedValue = normalizeDeviceValue(
+        preserveLocal
+          ? refs.purityMicSelect.value
+          : ((backendState && backendState.purity_test && backendState.purity_test.audio_selected_device_value) ??
+            (data.state && data.state.audio_selected_device_value))
+      );
+      refs.purityMicSelect.innerHTML = "";
+
+      const autoOption = document.createElement("option");
+      autoOption.value = "__AUTO__";
+      autoOption.textContent = "Auto (prefer AB13X USB mic)";
+      refs.purityMicSelect.appendChild(autoOption);
+
+      (data.devices || []).forEach((device) => {
+        const option = document.createElement("option");
+        option.value = String(device.id || device.index);
+        option.textContent = `${device.index}: ${device.name} (${device.default_samplerate} Hz, ch=${device.max_input_channels})`;
+        refs.purityMicSelect.appendChild(option);
+      });
+
+      refs.purityMicSelect.value = selectedValue;
+      if (refs.purityMicSelect.value !== selectedValue) {
+        refs.purityMicSelect.value = "__AUTO__";
+      }
+
+      const ttsState = data.tts_output || {};
+      const outputSelectedValue = normalizeDeviceValue(
+        preserveLocal ? refs.ttsOutputSelect.value : (ttsState.selected || "__AUTO__")
+      );
+      refs.ttsOutputSelect.innerHTML = "";
+      const outputAutoOption = document.createElement("option");
+      outputAutoOption.value = "__AUTO__";
+      outputAutoOption.textContent = "Auto (prefer Generalplus USB speaker)";
+      refs.ttsOutputSelect.appendChild(outputAutoOption);
+
+      (data.outputs || []).forEach((device) => {
+        const option = document.createElement("option");
+        option.value = String(device.id || device.alsa_device);
+        const usbText = device.usb_id ? `, USB ${device.usb_id}` : "";
+        option.textContent = `${device.card}:${device.device} ${device.name}${usbText}`;
+        refs.ttsOutputSelect.appendChild(option);
+      });
+
+      refs.ttsOutputSelect.value = outputSelectedValue;
+      if (refs.ttsOutputSelect.value !== outputSelectedValue) {
+        refs.ttsOutputSelect.value = "__AUTO__";
+      }
+      refs.ttsOutputStatus.textContent = ttsState.status || "Preferred USB speaker not connected.";
+    }
+
+    async function pollBackendState() {
+      if (stateMutationsInFlight > 0) return;
+      const pollVersion = stateMutationVersion;
+      try {
+        const response = await fetch("/api/state", { cache: "no-store" });
+        const data = await response.json();
+        if (data.ok && stateMutationsInFlight === 0 && pollVersion === stateMutationVersion) {
+          backendState = data.state;
+          renderServerState();
+        }
+      } catch (error) {
+        console.error("Failed to poll backend state:", error);
+      }
+    }
+
+    function startStatePolling() {
+      if (statePollInterval) {
+        clearInterval(statePollInterval);
+      }
+      statePollInterval = setInterval(pollBackendState, 900);
+    }
+
+    function startAudioDevicePolling() {
+      if (audioDevicePollInterval) {
+        clearInterval(audioDevicePollInterval);
+      }
+      audioDevicePollInterval = setInterval(async () => {
+        try {
+          await loadPurityAudioDevices({
+            preserveLocal: purityMicSelectActive || ttsOutputSelectActive,
+          });
+        } catch (error) {
+          console.error("Failed to refresh audio devices:", error);
+        }
+      }, 2500);
+    }
+
+    function loadImageInto(target, dataUrl) {
+      return new Promise((resolve, reject) => {
+        target.onload = () => resolve();
+        target.onerror = () => reject(new Error("Could not load image."));
+        target.src = dataUrl;
+      });
+    }
+
+    async function setMainImage(dataUrl, filename, kind) {
+      await loadImageInto(previewState.main.image, dataUrl);
+      previewState.main.dataUrl = dataUrl;
+      previewState.main.filename = filename;
+      previewState.main.kind = kind;
+      previewState.backgroundPoint = null;
+      previewState.learnedStonePoint = null;
+      previewState.context = "source";
+      refs.previewModePill.textContent = `Preview: ${kind === "upload" ? "Uploaded Image" : "Captured RPi Frame"}`;
+      setStatus(`Main image ready: ${filename}`);
+      updateCapturedSetupControls();
+      markSourceDirty();
+    }
+
+    async function setSideImage(dataUrl, filename) {
+      await loadImageInto(previewState.side.image, dataUrl);
+      previewState.side.dataUrl = dataUrl;
+      previewState.side.filename = filename;
+      previewState.side.dirty = true;
+      setStatus(`Side image ready: ${filename}`);
+      updateCapturedSetupControls();
+    }
+
+    async function showArtifactInCanvas(url, contextName) {
+      await loadImageInto(previewState.segmentationImage, url);
+      previewState.context = contextName;
+      if (contextName === "segmentation") {
+        refs.previewModePill.textContent = "Preview: Segmentation Input";
+      } else if (contextName === "segmentation-result") {
+        refs.previewModePill.textContent = "Preview: Segmentation Result";
+      }
+    }
+
+    function snapshotLiveFrame() {
+      if (!liveImageReady()) {
+        throw new Error("RPi live camera frame is not ready yet.");
+      }
+      const w = refs.hiddenLiveImage.naturalWidth;
+      const h = refs.hiddenLiveImage.naturalHeight;
+      const offscreen = document.createElement("canvas");
+      offscreen.width = w;
+      offscreen.height = h;
+      const offCtx = offscreen.getContext("2d");
+      offCtx.drawImage(refs.hiddenLiveImage, 0, 0, w, h);
+      return offscreen.toDataURL("image/jpeg", 0.85);
+    }
+
+    async function ensureMainSourceSaved() {
+      if (!previewState.main.dataUrl) {
+        try {
+          const liveDataUrl = snapshotLiveFrame();
+          await setMainImage(liveDataUrl, "camera_capture.png", "camera");
+        } catch (error) {
+          const liveData = await postJson("/api/source", {
+            use_live_frame: true,
+            filename: "camera_capture.png",
+            source_kind: "camera",
+            processing_roi: previewState.rois.processing,
+            aruco_roi: previewState.rois.aruco,
+            ...currentCalibrationSetup(),
+          });
+          backendState = liveData.state;
+          previewState.main.dirty = false;
+          renderServerState();
+          return;
+        }
+      }
+      if (!previewState.main.dirty && backendState && backendState.session_id) {
+        return;
+      }
+
+      const payload = {
+        image_data: previewState.main.dataUrl,
+        filename: previewState.main.filename,
+        source_kind: previewState.main.kind,
+        processing_roi: previewState.rois.processing,
+        aruco_roi: previewState.rois.aruco,
+        ...currentCalibrationSetup(),
+      };
+      const data = await postJson("/api/source", payload);
+      backendState = data.state;
+      previewState.main.dirty = false;
+      renderServerState();
+    }
+
+    async function ensureSideSourceSaved() {
+      if (!previewState.side.dataUrl) {
+        try {
+          const liveDataUrl = snapshotLiveFrame();
+          await setSideImage(liveDataUrl, "side_capture.png");
+        } catch (error) {
+          const liveData = await postJson("/api/side-source", {
+            use_live_frame: true,
+            filename: "side_capture.png",
+            processing_roi: previewState.rois.processing,
+            aruco_roi: previewState.rois.aruco,
+            ...currentCalibrationSetup(),
+          });
+          backendState = liveData.state;
+          previewState.side.dirty = false;
+          // Reload preview from server so we see the crop
+          if (backendState.side_capture && backendState.side_capture.preview) {
+            await setSideImage(backendState.side_capture.preview.url, backendState.side_capture.filename);
+            previewState.side.dirty = false;
+          }
+          renderServerState();
+          return;
+        }
+      }
+      if (!previewState.side.dirty && backendState && backendState.side_capture && backendState.side_capture.original_image) {
+        return;
+      }
+      const data = await postJson("/api/side-source", {
+        image_data: previewState.side.dataUrl,
+        filename: previewState.side.filename,
+        processing_roi: previewState.rois.processing,
+        aruco_roi: previewState.rois.aruco,
+        ...currentCalibrationSetup(),
+      });
+      backendState = data.state;
+      previewState.side.dirty = false;
+      // Reload preview from server so we see the crop
+      if (backendState.side_capture && backendState.side_capture.preview) {
+        await setSideImage(backendState.side_capture.preview.url, backendState.side_capture.filename);
+        previewState.side.dirty = false;
+      }
+      renderServerState();
+    }
+
+    async function captureMainImageForWorkflow() {
+      if (!pledgeCountSaved()) {
+        throw new Error("Save the jewel count before capturing the jewel image.");
+      }
+      const dataUrl = snapshotLiveFrame();
+      await setMainImage(dataUrl, "camera_capture.png", "camera");
+      showLoading("Saving captured jewel image...");
+      await ensureMainSourceSaved();
+      hideLoading();
+      setStatusWithIndicator("Jewel image captured. Adjust color/background settings or run jewel type.", "success");
+    }
+
+    async function calibrateStoneBackground(point) {
+      if (!previewState.main.dataUrl) {
+        throw new Error("Capture the jewel image before setting the background.");
+      }
+      const data = await postJson("/api/stone-settings/background-calibrate", {
+        image_data: previewState.main.dataUrl,
+        filename: previewState.main.filename,
+        point,
+        sample_radius: 8,
+      });
+      config.stone_settings = data.stone_settings || {
+        ...config.stone_settings,
+        background_calibration: data.background_calibration,
+      };
+      previewState.backgroundPoint = point;
+      if (data.state) backendState = data.state;
+      updateStoneBackgroundStatus();
+      setDrawMode(null);
+      setStatusWithIndicator("Background color calibrated and saved.", "success");
+    }
+
+    async function learnStoneColor(point) {
+      if (!previewState.main.dataUrl) {
+        throw new Error("Capture the jewel image before learning a missed stone.");
+      }
+      const expectedColor = refs.learnStoneColor.value;
+      const label = refs.learnStoneLabel.value.trim() || `Learned ${expectedColor}`;
+      const data = await postJson("/api/stone-settings/learn-color", {
+        image_data: previewState.main.dataUrl,
+        filename: previewState.main.filename,
+        point,
+        expected_color: expectedColor,
+        label,
+        sample_radius: Number(refs.learnStoneRadius.value) || 8,
+      });
+      applyStoneSettings(data.stone_settings || config.stone_settings);
+      previewState.learnedStonePoint = point;
+      if (data.state) backendState = data.state;
+      setDrawMode(null);
+      const profile = data.learned_profile || {};
+      const hsv = Array.isArray(profile.hsv_center) ? profile.hsv_center : [];
+      const hsvText = hsv.length === 3
+        ? ` HSV ${Number(hsv[0]).toFixed(1)}, ${Number(hsv[1]).toFixed(1)}, ${Number(hsv[2]).toFixed(1)}.`
+        : "";
+      setStatusWithIndicator(
+        `${profile.label || label} saved as ${profile.color || expectedColor}.${hsvText} Run stone detection again.`,
+        "success"
+      );
+      renderServerState();
+    }
+
+    async function runClassification() {
+      try {
+        if (!pledgeCountSaved()) {
+          setStatus("Save the jewel count before running jewel type.");
+          return;
+        }
+        const backendHasCapture = Boolean(
+          backendState && backendState.source && backendState.source.working_image
+        );
+        if (!previewState.main.dataUrl && !backendHasCapture) {
+          setStatusWithIndicator("Capture the jewel image before running jewel type.", "warning");
+          return;
+        }
+        flow.pledgeSetupComplete = true;
+        showLoading("Saving source image and ROIs...");
+        setStatus("Saving source image and ROIs...");
+        await ensureMainSourceSaved();
+        showLoading("Running jewellery jewel type...");
+        setStatus("Running jewellery jewel type...");
+        const data = await postJson("/api/classify");
+        backendState = data.state;
+        flow.classificationConfirmed = false;
+        flow.classificationNext = false;
+        flow.dimensionNext = false;
+        flow.segmentationNext = false;
+        flow.finalVisible = false;
+        hideLoading();
+        setStatusWithIndicator("Jewel type completed successfully", "success");
+
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function confirmClassification(label) {
+      try {
+        const data = await postJson("/api/classification/confirm", { confirmed_label: label });
+        backendState = data.state;
+        flow.classificationConfirmed = true;
+        flow.classificationNext = false;
+        flow.dimensionNext = false;
+        flow.segmentationNext = false;
+        flow.finalVisible = false;
+        overrideActive = false;
+        // If confirmed as "Not Gold Jewelry", go directly to final result
+        if (label === "Not Gold Jewelry") {
+          flow.currentStage = "final";
+        } else {
+          refs.btnClassificationNext.disabled = false;
+        }
+        renderServerState();
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }
+
+    async function runDimension() {
+      try {
+        showLoading("Running OD / ID measurement...");
+        setStatus("Running OD / ID measurement...");
+        const payload = {
+          calibration_method: refs.calibrationMethod.value,
+          aruco_dict: refs.arucoDict.value,
+          marker_id: Number(refs.setupMarkerId.value),
+          marker_length_mm: Number(refs.markerLength.value),
+          marker_breadth_mm: Number(refs.markerBreadth.value),
+          camera_to_bed_mm: Number(refs.cameraToBed.value),
+          nominal_stone_height_mm: Number(refs.nominalStoneHeight.value),
+          known_distance_mm: Number(refs.knownDistance.value),
+          manual_scale_mm_per_px: Number(refs.manualScale.value),
+          line_points: previewState.linePoints,
+        };
+        const data = await postJson("/api/dimension/run", payload);
+        backendState = data.state;
+        refs.btnDimensionNext.disabled = false;
+        hideLoading();
+        setStatusWithIndicator("Dimension measurement completed", "success");
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function runSegmentation() {
+      try {
+        showLoading("Running necklace segmentation...");
+        setStatus("Running necklace segmentation...");
+        const data = await postJson("/api/segmentation/run");
+        backendState = data.state;
+        previewState.correctionBoxes.pendant = null;
+        previewState.correctionBoxes.tassel = null;
+        refs.btnNoPendant.disabled = false;
+        refs.btnNoTassel.disabled = false;
+        refs.btnStartPendantCorrection.disabled = false;
+        refs.btnStartTasselCorrection.disabled = false;
+        refs.btnApplyPendantCorrection.disabled = true;
+        refs.btnApplyTasselCorrection.disabled = true;
+        refs.btnSegmentationNext.disabled = false;
+        hideLoading();
+        setStatusWithIndicator("Segmentation completed.", "success");
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function startSegmentationCorrection(part) {
+      const partConfig = correctionConfig(part);
+      const segmentation = backendState && backendState.segmentation;
+      if (!segmentation || !segmentation.preprocessed_image) {
+        throw new Error("Run segmentation first.");
+      }
+      await showArtifactInCanvas(segmentation.preprocessed_image.url, "segmentation");
+      previewState.correctionBoxes[part] = null;
+      if (part === "pendant") {
+        refs.btnApplyPendantCorrection.disabled = true;
+      } else {
+        refs.btnApplyTasselCorrection.disabled = true;
+      }
+      setDrawMode(part);
+      renderPanels();
+      setStatus(`Segmentation image loaded. Draw the ${partConfig.drawLabel}.`);
+    }
+
+    async function applySegmentationCorrection(part) {
+      try {
+        const box = previewState.correctionBoxes[part];
+        const partConfig = correctionConfig(part);
+        if (!box) {
+          throw new Error(`Draw a ${part} box on the segmentation image first.`);
+        }
+        setStatus(`Applying ${part} correction...`);
+        const data = await postJson("/api/segmentation/correct", {
+          part,
+          bbox: box,
+        });
+        backendState = data.state;
+        previewState.correctionBoxes[part] = null;
+        setDrawMode(null);
+        if (part === "pendant") {
+          refs.btnApplyPendantCorrection.disabled = true;
+        } else {
+          refs.btnApplyTasselCorrection.disabled = true;
+        }
+        const latestSegmentation = backendState && backendState.segmentation;
+        if (latestSegmentation && latestSegmentation.overlay_image) {
+          await showArtifactInCanvas(latestSegmentation.overlay_image.url, "segmentation-result");
+        }
+        setStatus(`${partConfig.title} correction applied.`);
+        renderServerState();
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }
+
+    async function runMainStoneDetection() {
+      try {
+        await saveStoneSettings();
+        showLoading("Running main image stone detection...");
+        setStatus("Running main image stone detection...");
+        const data = await postJson("/api/stone-detection/main", {
+          entered_jewel_weight_g: Number(refs.mainJewelWeight.value) || null,
+        });
+        backendState = data.state;
+        refs.btnShowFinalFromMain.disabled = false;
+        hideLoading();
+        setStatusWithIndicator("Stone detection completed successfully", "success");
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function runSidePipeline() {
+      try {
+        await saveStoneSettings();
+        showLoading("Saving side image...");
+        setStatus("Saving side image...");
+        await ensureSideSourceSaved();
+        showLoading("Running hand removal and side stone detection...");
+        setStatus("Running hand removal and side stone detection...");
+        const data = await postJson("/api/side-stones/run", {
+          entered_jewel_weight_g: Number(refs.sideJewelWeight.value) || null,
+        });
+        backendState = data.state;
+        refs.btnShowFinalFromSide.disabled = false;
+        hideLoading();
+        setStatusWithIndicator("Side image processing completed", "success");
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function startPurityTest() {
+      try {
+        showLoading("Starting acid test...");
+        setStatus("Starting acid test...");
+        const data = await postJson("/api/purity/start", {
+          audio_device: refs.purityMicSelect.value || "__AUTO__",
+        });
+        backendState = data.state;
+        previewState.context = "purity";
+        setDrawMode(null);
+        startLiveStream();
+        hideLoading();
+        setStatusWithIndicator("Acid test started", "success");
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function stopPurityTest() {
+      try {
+        showLoading("Stopping acid test...");
+        setStatus("Stopping acid test...");
+        const data = await postJson("/api/purity/stop", { reason: "Stopped by user" });
+        backendState = data.state;
+        startLiveStream();
+        hideLoading();
+        setStatusWithIndicator("Acid test stopped", backendState && backendState.final && backendState.final.ready ? "success" : "warning");
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function captureFinalJewelCount() {
+      try {
+        previewState.context = "source";
+        startLiveStream();
+        setStatus("Capturing final jewel count...");
+        const data = await postJson("/api/pledge/jewel-count/capture", {});
+        backendState = data.state;
+        const verification = backendState && backendState.jewel_count_verification;
+        const predicted = verification ? verification.predicted_count : "--";
+        setStatusWithIndicator(`Predicted jewel count: ${predicted}`, "success");
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function startPacketSealing() {
+      try {
+        previewState.context = "source";
+        startLiveStream();
+        setStatus("Starting packet sealing recording...");
+        const data = await postJson("/api/packet-sealing/start", {});
+        backendState = data.state;
+        flow.packetSealingOpen = true;
+        setStatusWithIndicator("Packet sealing recording started", "success");
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function stopPacketSealing() {
+      try {
+        setStatus("Stopping and compressing packet sealing video...");
+        const data = await postJson("/api/packet-sealing/stop", {});
+        backendState = data.state;
+        const packet = backendState && backendState.packet_sealing;
+        setStatusWithIndicator(
+          packet && packet.video ? "Packet sealing video saved" : (packet && packet.error) || "Packet sealing stopped",
+          packet && packet.video ? "success" : "warning"
+        );
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function skipPurityTest() {
+      try {
+        showLoading("Skipping acid test...");
+        setStatus("Skipping acid test...");
+        const data = await postJson("/api/purity/skip", {});
+        backendState = data.state;
+        hideLoading();
+        setStatusWithIndicator("Acid test skipped", "warning");
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function goToNextJewel() {
+      try {
+        const retrySameJewel = Boolean(backendState && backendState.retry_jewel_available);
+        showLoading(retrySameJewel ? "Preparing replacement capture..." : "Preparing next jewel...");
+        const data = await postJson("/api/jewel/next", {});
+        backendState = data.state;
+        previewState.main.dataUrl = null;
+        previewState.main.image.src = "";
+        previewState.main.kind = "live";
+        previewState.main.dirty = true;
+        previewState.side.dataUrl = null;
+        previewState.side.image.src = "";
+        previewState.side.dirty = true;
+        previewState.segmentationImage.src = "";
+        previewState.context = "source";
+        previewState.backgroundPoint = null;
+        previewState.learnedStonePoint = null;
+        refs.previewModePill.textContent = "Preview: RPi Live Camera";
+        resetFlow();
+        flow.pledgeSetupComplete = true;
+        setDrawMode(null);
+        updateCapturedSetupControls();
+        hideLoading();
+        setStatusWithIndicator(
+          retrySameJewel
+            ? `Ready to capture replacement for jewel ${backendState.jewel_index || ""}`
+            : `Ready for jewel ${backendState.jewel_index || ""}`,
+          "success"
+        );
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    function formatPercent(value) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) {
+        return "--";
+      }
+      return `${(Number(value) * 100).toFixed(2)}%`;
+    }
+
+    function renderArtifactStrip(container, items) {
+      container.innerHTML = "";
+      (items || []).filter(Boolean).forEach((artifact) => {
+        const wrapper = document.createElement("div");
+        const label = document.createElement("div");
+        label.className = "tiny";
+        label.textContent = artifact.name || "Artifact";
+        const image = document.createElement("img");
+        image.className = "artifactImage";
+        image.src = artifact.url;
+        image.alt = artifact.name || "artifact";
+        wrapper.appendChild(label);
+        wrapper.appendChild(image);
+        container.appendChild(wrapper);
+      });
+    }
+
+    function renderClassificationTable(scores) {
+      refs.classificationTableBody.innerHTML = "";
+      if (!scores || !scores.length) {
+        refs.classificationTable.classList.add("hidden");
+        return;
+      }
+      refs.classificationTable.classList.remove("hidden");
+      scores.slice(0, 10).forEach((score) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${score.label}</td>
+        `;
+        refs.classificationTableBody.appendChild(row);
+      });
+    }
+
+    function updateRoiSummaryText() {
+      // Intentionally left empty. 
+      // The ROI summary UI element was removed, but this function is still called throughout the code.
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function stoneWeightText(weight) {
+      if (!weight || !weight.success) {
+        return "Metric weight estimate unavailable; check AprilTag calibration.";
+      }
+      const averageG = Number(
+        weight.estimated_total_average_g ??
+        (Number(weight.estimated_total_average_ct || 0) * 0.2)
+      );
+      const minimumG = Number(
+        weight.estimated_total_minimum_g ??
+        (Number(weight.estimated_total_minimum_ct || 0) * 0.2)
+      );
+      const maximumG = Number(
+        weight.estimated_total_maximum_g ??
+        (Number(weight.estimated_total_maximum_ct || 0) * 0.2)
+      );
+      let text = `Estimated stone weight: ${averageG.toFixed(4)} g (${minimumG.toFixed(4)}-${maximumG.toFixed(4)} g).`;
+      if (Number(weight.entered_jewel_weight_g) > 0) {
+        const share = Number(
+          weight.estimated_stone_share_of_jewel_weight_percent ??
+          (averageG / Number(weight.entered_jewel_weight_g) * 100)
+        );
+        text += ` This is ${share.toFixed(2)}% of the entered ${Number(weight.entered_jewel_weight_g).toFixed(3)} g whole-jewel weight.`;
+      }
+      return text;
+    }
+
+    function stoneSuperResolutionText(result) {
+      const sr = result && result.stone_super_resolution;
+      if (!sr || !sr.requested) return "Analysis: native pixels.";
+      if (sr.applied) {
+        const seconds = Number(sr.runtime_seconds || 0);
+        const tileText = Number(sr.tile_count || 0) > 0 ? `, ${Number(sr.tile_count)} tile(s)` : "";
+        return `Analysis: Real-ESRGAN x${Number(sr.scale || 2)}${seconds > 0 ? ` in ${seconds.toFixed(1)}s` : ""}${tileText}.`;
+      }
+      return "Analysis: SR requested but not applied.";
+    }
+
+    function countVerificationDone() {
+      return Boolean(
+        backendState &&
+        backendState.jewel_count_verification &&
+        Number.isFinite(Number(backendState.jewel_count_verification.predicted_count))
+      );
+    }
+
+    function packetSealingDone() {
+      return Boolean(
+        backendState &&
+        backendState.packet_sealing &&
+        backendState.packet_sealing.video
+      );
+    }
+
+    function closureLiveFeedActive() {
+      return Boolean(flow.currentStage === "final" && !packetSealingDone());
+    }
+
+    function renderPledgeClosure() {
+      const pledgeComplete = Boolean(backendState && backendState.pledge_complete);
+      const verification = backendState && backendState.jewel_count_verification;
+      const packet = (backendState && backendState.packet_sealing) || {};
+      const showClosure = pledgeComplete || Boolean(verification) || Boolean(packet.video) || Boolean(packet.recording);
+      const closureComplete = countVerificationDone() && packetSealingDone();
+
+      refs.pledgeClosurePanel.classList.toggle("hidden", !showClosure);
+      refs.btnCaptureFinalJewelCount.disabled = !pledgeComplete || Boolean(packet.recording);
+      refs.finalTitle.textContent = closureComplete ? "OVERALL RESULT" : "PLEDGE CLOSURE";
+      refs.finalHeadline.classList.toggle("hidden", !closureComplete);
+      refs.finalLines.classList.toggle("hidden", !closureComplete);
+      refs.finalArtifacts.classList.toggle("hidden", !closureComplete);
+
+      if (verification) {
+        const predicted = Number(verification.predicted_count || 0);
+        const entered = verification.user_entered_count ?? backendState.jewel_count ?? "-";
+        refs.countCaptureValue.textContent = `Predicted jewel count: ${predicted}`;
+        refs.countCaptureSub.textContent = verification.match === false
+          ? `User entered ${entered}; predicted ${predicted}. Check the count image before sealing.`
+          : `User entered ${entered}; count capture completed.`;
+        renderArtifactStrip(refs.countCaptureArtifacts, [
+          verification.result_image,
+        ]);
+      } else {
+        refs.countCaptureValue.textContent = "--";
+        refs.countCaptureSub.textContent = pledgeComplete
+          ? "Place all jewels on the test bed and capture the final count."
+          : "Complete every jewel before final count capture.";
+        refs.countCaptureArtifacts.innerHTML = "";
+      }
+
+      refs.btnOpenPacketSealing.disabled = !countVerificationDone();
+      refs.packetSealingControls.classList.toggle("hidden", !flow.packetSealingOpen && !packet.recording);
+      refs.btnStartPacketSealing.disabled = !countVerificationDone() || Boolean(packet.recording);
+      refs.btnStopPacketSealing.disabled = !packet.recording;
+
+      if (packet.recording) {
+        refs.packetSealingValue.textContent = "Recording";
+        refs.packetSealingSub.textContent = packet.started_at
+          ? `Started at ${packet.started_at}. Stop after the packet is sealed.`
+          : "Recording packet sealing. Stop after the packet is sealed.";
+      } else if (packet.video) {
+        const av1 = packet.av1 || {};
+        refs.packetSealingValue.textContent = "Video saved";
+        refs.packetSealingSub.textContent = av1.applied
+          ? `AV1 compressed with ${av1.encoder || "encoder"}; ready for final report.`
+          : (packet.error || "Video saved; AV1 fallback kept the MP4.");
+      } else {
+        refs.packetSealingValue.textContent = "--";
+        refs.packetSealingSub.textContent = countVerificationDone()
+          ? "Click Packet Sealing, then Start before placing jewels into the packet."
+          : "Capture the final jewel count before packet sealing.";
+      }
+
+      if (packet.video && packet.video.url) {
+        refs.packetVideoLink.href = packet.video.url;
+        refs.packetVideoLink.textContent = packet.video.name || "Download Sealing Video";
+        refs.packetVideoLink.classList.remove("hidden");
+      } else {
+        refs.packetVideoLink.removeAttribute("href");
+        refs.packetVideoLink.classList.add("hidden");
+      }
+    }
+
+    function renderServerState() {
+      if (!backendState) {
+        refs.workflowStage.textContent = "Waiting";
+        refs.workflowBranch.textContent = "-";
+        refs.workflowSource.textContent = currentMainSourceKind() === "live" ? "RPi live camera" : previewState.main.kind;
+        refs.workflowSize.textContent = "-";
+        refs.jewelCountStatus.textContent = "Set a Pledge ID, then save jewel count.";
+        refs.btnPledgeSetupNext.disabled = true;
+        updateRoiSummaryText();
+
+        // Reset sub-elements
+        refs.classificationValue.textContent = "--";
+        refs.classificationSub.textContent = "Capture or load the main jewellery image, then run jewel type.";
+        refs.classificationActions.classList.add("hidden");
+        refs.overrideArea.classList.add("hidden");
+        refs.classificationTable.classList.add("hidden");
+
+        refs.dimensionValue.textContent = "--";
+        refs.dimensionSub.textContent = "Run OD/ID measurement after jewel type is confirmed.";
+        refs.dimensionArtifacts.innerHTML = "";
+
+        refs.segmentationValue.textContent = "--";
+        refs.segmentationSub.textContent = "Run segmentation after jewel type is confirmed.";
+        refs.segmentationArtifacts.innerHTML = "";
+
+        refs.mainStoneValue.textContent = "--";
+        refs.mainStoneSub.textContent = "Run stone detection for the confirmed workflow branch.";
+        refs.mainStoneArtifacts.innerHTML = "";
+
+        refs.sideStoneValue.textContent = "--";
+        refs.sideStoneSub.textContent = "Awaiting side image.";
+        refs.sideArtifacts.innerHTML = "";
+
+        refs.purityValue.textContent = "--";
+        refs.puritySub.textContent = "Start or skip the acid test after stone detection completes.";
+        refs.purityAudioStatus.textContent = "Waiting for microphone selection.";
+        renderPurityAudio({});
+        refs.purityProgress.innerHTML = "";
+        refs.purityArtifacts.innerHTML = "";
+
+        refs.finalHeadline.textContent = "--";
+        refs.finalLines.innerHTML = "";
+        refs.finalArtifacts.innerHTML = "";
+        refs.pledgeClosurePanel.classList.add("hidden");
+        refs.countCaptureValue.textContent = "--";
+        refs.countCaptureSub.textContent = "Place all jewels on the test bed and capture the final count.";
+        refs.countCaptureArtifacts.innerHTML = "";
+        refs.packetSealingControls.classList.add("hidden");
+        refs.packetSealingValue.textContent = "--";
+        refs.packetSealingSub.textContent = "Record the appraiser placing all jewels into the packet and sealing it.";
+        refs.packetVideoLink.classList.add("hidden");
+
+        renderPanels();
+        return;
+      }
+
+      const source = backendState.source || {};
+      const classification = backendState.classification || {};
+      const dimension = backendState.dimension || {};
+      const segmentation = backendState.segmentation || {};
+      const mainStone = (backendState.stone_detection || {}).main;
+      const sideStone = (backendState.stone_detection || {}).side;
+      const purity = backendState.purity_test || {};
+      const finalState = backendState.final || {};
+
+      flow.classificationConfirmed = Boolean(classification.confirmed);
+      if (!flow.classificationConfirmed) {
+        flow.classificationNext = false;
+        flow.dimensionNext = false;
+        flow.segmentationNext = false;
+        flow.currentStage = "classification";
+      }
+
+      refs.workflowStage.textContent = backendState.status || "Ready";
+      refs.workflowBranch.textContent = (backendState.branch && backendState.branch.label) || "-";
+      refs.workflowSource.textContent = `${source.kind || currentMainSourceKind()}${source.four_marker_rectified ? " · four-marker rectified" : ""}`;
+      refs.workflowSize.textContent = jewelProgressText();
+
+      if (backendState.pledge_id) {
+        refs.pledgeStatus.textContent = `Active Pledge: ${backendState.pledge_id}`;
+      } else {
+        refs.pledgeStatus.textContent = "";
+      }
+      if (backendState.jewel_count_saved) {
+        refs.jewelCountStatus.textContent = `Saved count: ${backendState.jewel_count}. Current jewel: ${backendState.jewel_index || 1}.`;
+        refs.inputJewelCount.value = backendState.jewel_count || "";
+        refs.btnPledgeSetupNext.disabled = false;
+        if (backendState.session_id) {
+          flow.pledgeSetupComplete = true;
+        }
+      } else {
+        refs.jewelCountStatus.textContent = backendState.pledge_id
+          ? "Enter jewel count, then Save before Next."
+          : "Set a Pledge ID, then save jewel count.";
+        refs.btnPledgeSetupNext.disabled = true;
+      }
+
+      updateRoiSummaryText();
+
+      const notGold = classification.predicted_label && classification.is_gold_jewelry === false;
+      const displayedClassification = classification.confirmed
+        ? classification.confirmed_label
+        : classification.predicted_label;
+      refs.classificationValue.textContent = notGold ? "⛔ Not Gold Jewelry" : (displayedClassification || "--");
+      if (notGold) {
+        if (classification.confirmed) {
+          refs.classificationSub.textContent = "Confirmed as Not Gold Jewelry. This item is not counted; capture another item for the same jewel number.";
+          refs.classificationActions.classList.remove("hidden");
+          refs.btnClassYes.classList.add("hidden");
+          refs.btnClassNo.classList.add("hidden");
+          refs.btnClassificationNext.textContent = "Continue";
+          refs.btnClassificationNext.classList.remove("hidden");
+          refs.overrideArea.classList.add("hidden");
+        } else {
+          refs.classificationSub.textContent = "It does not look like gold jewelry. Confirm below or click No to override.";
+          refs.classificationActions.classList.remove("hidden");
+          refs.btnClassYes.classList.remove("hidden");
+          refs.btnClassNo.classList.remove("hidden");
+          refs.btnClassificationNext.classList.add("hidden");
+        }
+      } else {
+        refs.classificationSub.textContent = classification.predicted_label
+          ? "Jewel type completed."
+          : "Capture or load the main jewellery image, then run jewel type.";
+        refs.classificationActions.classList.toggle("hidden", !classification.predicted_label);
+        if (!classification.predicted_label) {
+          refs.btnClassYes.classList.remove("hidden");
+          refs.btnClassNo.classList.remove("hidden");
+        }
+        refs.btnClassificationNext.textContent = "Next";
+      }
+      if (!overrideActive) {
+        refs.overrideArea.classList.add("hidden");
+      }
+      refs.classificationTable.classList.add("hidden");
+      refs.classificationTableBody.innerHTML = "";
+
+      // Keep the detailed notGold message above; only overwrite for gold items
+      if (classification.confirmed && !notGold) {
+        refs.classificationSub.textContent = `Confirmed jewel type: ${classification.confirmed_label}`;
+      }
+
+      if (dimension.done) {
+        if (dimension.od_mm !== null && dimension.od_mm !== undefined) {
+          refs.dimensionValue.textContent = `OD ${dimension.od_mm.toFixed(2)} mm | ID ${dimension.id_mm.toFixed(2)} mm`;
+          refs.dimensionSub.textContent = `Wall ${dimension.wall_thickness_mm.toFixed(2)} mm | AprilTag calibrated`;
+        } else {
+          refs.dimensionValue.textContent = "Metric measurement unavailable";
+          refs.dimensionSub.textContent = "Check the AprilTag calibration and run measurement again.";
+        }
+        renderArtifactStrip(refs.dimensionArtifacts, [dimension.result_image, dimension.measurement_input]);
+      } else {
+        refs.dimensionValue.textContent = "--";
+        refs.dimensionSub.textContent = "Run OD/ID measurement after jewel type is confirmed.";
+        refs.dimensionArtifacts.innerHTML = "";
+      }
+
+        if (segmentation.done) {
+          const parts = segmentation.part_summary || {};
+          const pendant = parts.pendant ? parts.pendant.area : 0;
+          const chain = parts.chain ? parts.chain.area : 0;
+          const tassel = parts.tassel ? parts.tassel.area : 0;
+          const beadRiskHigh = segmentation.bead_risk_high || segmentation.bead_risk === "High" ||
+            (segmentation.bead_analysis && segmentation.bead_analysis.beads_detected);
+          const correctedParts = [];
+          if (segmentation.debug && segmentation.debug.pendant_feedback_applied) correctedParts.push("Pendant");
+          if (segmentation.debug && segmentation.debug.tassel_feedback_applied) correctedParts.push("Tassel");
+          const excludedParts = [];
+          if (segmentation.no_pendant || (segmentation.debug && segmentation.debug.no_pendant)) excludedParts.push("Pendant");
+          if (segmentation.no_tassel || (segmentation.debug && segmentation.debug.no_tassel)) excludedParts.push("Tassel");
+        const feedbackMatchType = segmentation.debug && segmentation.debug.feedback_match_type;
+        let feedbackSourceText = "";
+        if (feedbackMatchType === "similar_signature") {
+          feedbackSourceText = " from similar saved feedback";
+        } else if (feedbackMatchType === "exact_signature" || feedbackMatchType === "legacy_path") {
+          feedbackSourceText = " from saved feedback";
+        }
+          refs.segmentationValue.textContent = "Segmentation completed";
+          if (beadRiskHigh) {
+            refs.segmentationSub.textContent = "RISK JEWEL: Round beads/decorative elements detected in chain.";
+          } else {
+            refs.segmentationSub.textContent = excludedParts.length
+              ? `${excludedParts.join(" and ")} excluded; merged into chain.`
+              : correctedParts.length
+                ? `${correctedParts.join(" and ")} correction applied${feedbackSourceText}.`
+                : "";
+          }
+        renderArtifactStrip(refs.segmentationArtifacts, [
+          segmentation.composite_layout,
+          segmentation.bead_analysis_image,
+          segmentation.overlay_image,
+          segmentation.preprocessed_image,
+        ]);
+        refs.btnStartPendantCorrection.disabled = false;
+        refs.btnStartTasselCorrection.disabled = false;
+        refs.btnNoPendant.disabled = false;
+        refs.btnNoTassel.disabled = false;
+        refs.btnSegmentationNext.disabled = false;
+      } else {
+        refs.segmentationValue.textContent = "--";
+        refs.segmentationSub.textContent = classification.confirmed && getCurrentBranch() === "segmentation"
+          ? `Jewel type confirmed as ${classification.confirmed_label}. Click Run Segmentation.`
+          : "Confirm a necklace-type jewel before running segmentation.";
+        refs.segmentationArtifacts.innerHTML = "";
+        refs.btnNoPendant.disabled = true;
+        refs.btnNoTassel.disabled = true;
+        refs.btnStartPendantCorrection.disabled = true;
+        refs.btnStartTasselCorrection.disabled = true;
+        refs.btnApplyPendantCorrection.disabled = true;
+        refs.btnApplyTasselCorrection.disabled = true;
+      }
+
+      if (mainStone) {
+        const mainStats = mainStone.stone_area_statistics;
+        const mainWeight = mainStone.weight_estimate || {};
+        const mainWeightText = stoneWeightText(mainWeight);
+        if (mainStats && mainStats.success) {
+          refs.mainStoneValue.textContent = `Stone Percentage: ${mainStats.stone_percentage.toFixed(2)}%`;
+          refs.mainStoneSub.textContent = (mainStone.reflection_risk || mainStone.reflection_flagged)
+            ? `RISK JEWEL — ${mainStone.reflection_summary} Visible Metal: ${mainStats.metal_percentage.toFixed(2)}%`
+            : `Visible Metal: ${mainStats.metal_percentage.toFixed(2)}%`;
+        } else {
+          refs.mainStoneValue.textContent = mainStone.summary_text || "--";
+          refs.mainStoneSub.textContent = (mainStone.reflection_risk || mainStone.reflection_flagged)
+            ? `RISK JEWEL — ${mainStone.reflection_summary}`
+            : "Stone detection completed. No dense reflection risk.";
+        }
+        refs.mainStoneSub.textContent = `${refs.mainStoneSub.textContent} ${mainWeightText} ${stoneSuperResolutionText(mainStone)}`;
+        const mainSr = mainStone.stone_super_resolution || {};
+        renderArtifactStrip(refs.mainStoneArtifacts, [
+          mainStone.gallery,
+          mainSr.analysis_image,
+          mainSr.analysis_mask,
+        ]);
+
+        refs.mainStoneTableBody.innerHTML = "";
+        const mainColors = mainStats && mainStats.success ? mainStats.colors : null;
+        if (mainColors && Object.keys(mainColors).length > 0) {
+          refs.mainStoneTable.classList.remove("hidden");
+          Object.entries(mainColors)
+            .sort((a, b) => b[1].area_pixels - a[1].area_pixels)
+            .forEach(([color, cdata]) => {
+              const learnedEntry = (mainStone.summary_entries || []).find(entry => entry.color === color);
+              const learnedLabels = learnedEntry && Array.isArray(learnedEntry.learned_labels)
+                ? learnedEntry.learned_labels
+                : [];
+              const row = document.createElement("tr");
+              row.innerHTML = `
+                <td>${color}${learnedLabels.length ? `<div class="tiny">Learned: ${learnedLabels.map(escapeHtml).join(", ")}</div>` : ""}</td>
+                <td>${cdata.percentage_of_jewel.toFixed(2)}%</td>
+                <td>${cdata.percentage_of_stones.toFixed(2)}%</td>
+              `;
+              refs.mainStoneTableBody.appendChild(row);
+            });
+        } else if (mainStone.summary_entries && mainStone.summary_entries.length > 0) {
+          refs.mainStoneTable.classList.remove("hidden");
+          mainStone.summary_entries.forEach(entry => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${entry.color}${Array.isArray(entry.learned_labels) && entry.learned_labels.length ? `<div class="tiny">Learned: ${entry.learned_labels.map(escapeHtml).join(", ")}</div>` : ""}</td>
+              <td>${entry.stone_percentage.toFixed(2)}%</td>
+              <td>--</td>
+            `;
+            refs.mainStoneTableBody.appendChild(row);
+          });
+        } else {
+          refs.mainStoneTable.classList.add("hidden");
+        }
+      } else {
+        refs.mainStoneValue.textContent = "--";
+        refs.mainStoneSub.textContent = "Run stone detection for the confirmed workflow branch.";
+        refs.mainStoneArtifacts.innerHTML = "";
+        refs.mainStoneTable.classList.add("hidden");
+      }
+
+      if (sideStone) {
+        const sideStats = sideStone.stone_area_statistics;
+        const sideWeight = sideStone.weight_estimate || {};
+        const sideWeightText = stoneWeightText(sideWeight);
+        if (sideStats && sideStats.success) {
+          refs.sideStoneValue.textContent = `Stone Percentage: ${sideStats.stone_percentage.toFixed(2)}%`;
+          refs.sideStoneSub.textContent = (sideStone.reflection_risk || sideStone.reflection_flagged)
+            ? `RISK JEWEL — ${sideStone.reflection_summary} Visible Metal: ${sideStats.metal_percentage.toFixed(2)}%`
+            : `Visible Metal: ${sideStats.metal_percentage.toFixed(2)}%`;
+        } else {
+          refs.sideStoneValue.textContent = sideStone.summary_text || "--";
+          refs.sideStoneSub.textContent = (sideStone.reflection_risk || sideStone.reflection_flagged)
+            ? `RISK JEWEL — ${sideStone.reflection_summary}`
+            : "Side stone detection completed. No dense reflection risk.";
+        }
+        refs.sideStoneSub.textContent = `${refs.sideStoneSub.textContent} ${sideWeightText} ${stoneSuperResolutionText(sideStone)}`;
+        const sideSr = sideStone.stone_super_resolution || {};
+        renderArtifactStrip(refs.sideArtifacts, [
+          sideStone.hand_removed_image,
+          sideStone.gallery,
+          sideSr.analysis_image,
+          sideSr.analysis_mask,
+        ]);
+
+        refs.sideStoneTableBody.innerHTML = "";
+        const sideColors = sideStats && sideStats.success ? sideStats.colors : null;
+        if (sideColors && Object.keys(sideColors).length > 0) {
+          refs.sideStoneTable.classList.remove("hidden");
+          Object.entries(sideColors)
+            .sort((a, b) => b[1].area_pixels - a[1].area_pixels)
+            .forEach(([color, cdata]) => {
+              const learnedEntry = (sideStone.summary_entries || []).find(entry => entry.color === color);
+              const learnedLabels = learnedEntry && Array.isArray(learnedEntry.learned_labels)
+                ? learnedEntry.learned_labels
+                : [];
+              const row = document.createElement("tr");
+              row.innerHTML = `
+                <td>${color}${learnedLabels.length ? `<div class="tiny">Learned: ${learnedLabels.map(escapeHtml).join(", ")}</div>` : ""}</td>
+                <td>${cdata.percentage_of_jewel.toFixed(2)}%</td>
+                <td>${cdata.percentage_of_stones.toFixed(2)}%</td>
+              `;
+              refs.sideStoneTableBody.appendChild(row);
+            });
+        } else if (sideStone.summary_entries && sideStone.summary_entries.length > 0) {
+          refs.sideStoneTable.classList.remove("hidden");
+          sideStone.summary_entries.forEach(entry => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${entry.color}${Array.isArray(entry.learned_labels) && entry.learned_labels.length ? `<div class="tiny">Learned: ${entry.learned_labels.map(escapeHtml).join(", ")}</div>` : ""}</td>
+              <td>${entry.stone_percentage.toFixed(2)}%</td>
+              <td>--</td>
+            `;
+            refs.sideStoneTableBody.appendChild(row);
+          });
+        } else {
+          refs.sideStoneTable.classList.add("hidden");
+        }
+      } else {
+        refs.sideStoneValue.textContent = "--";
+        refs.sideStoneSub.textContent = "Awaiting side image.";
+        refs.sideArtifacts.innerHTML = "";
+        refs.sideStoneTable.classList.add("hidden");
+      }
+
+      refs.purityValue.textContent = purity.skipped
+        ? "Skipped"
+        : purity.acid_ok
+          ? "Acid OK"
+          : purity.running
+            ? purity.stage || "Running"
+            : purity.result || "--";
+      refs.puritySub.textContent = purity.status || "Start or skip the acid test after stone detection completes.";
+      refs.purityAudioStatus.textContent = purity.audio_device_name || purity.audio_selected_device || "Waiting for microphone selection.";
+      renderPurityAudio(purity);
+      renderPurityProgress((purity.ui_progress || {}).items || []);
+      renderArtifactStrip(refs.purityArtifacts, [
+        purity.rubbing_image,
+        purity.rubbing_zoom_image,
+        purity.acid_stage_image,
+        purity.acid_success_image || purity.final_image,
+        purity.acid_zoom_image,
+      ]);
+
+      // DO NOT reset purityMicSelect value on every poll. 
+      // It is only updated explicitly when loadPurityAudioDevices is called, 
+      // preserving the user's local selection until they press Start.
+
+      refs.finalHeadline.textContent = finalState.headline || "--";
+      refs.finalLines.innerHTML = "";
+      (finalState.lines || []).forEach((line) => {
+        const item = document.createElement("li");
+        item.textContent = line;
+        refs.finalLines.appendChild(item);
+      });
+      renderArtifactStrip(refs.finalArtifacts, finalState.artifacts || []);
+      renderPledgeClosure();
+
+      setStatus(backendState.status || "Ready.");
+      renderPanels();
+    }
+
+    function updateCalibrationFields() {
+      const method = refs.calibrationMethod.value;
+      refs.arucoFields.classList.toggle("hidden", method !== "aruco");
+      refs.lineFields.classList.toggle("hidden", method !== "line");
+      refs.manualScaleFields.classList.toggle("hidden", method !== "manual");
+      refs.btnDrawScaleLine.classList.toggle("hidden", method !== "line");
+    }
+
+    function renderPanels() {
+      updateCapturedSetupControls();
+      const branchKey = backendState && backendState.branch ? backendState.branch.key : null;
+      const classificationDone = backendState && backendState.classification && backendState.classification.confirmed;
+
+      updateRoiSummaryText();
+
+      refs.classificationPanel.classList.add("hidden");
+      refs.dimensionPanel.classList.add("hidden");
+      refs.sidePanel.classList.add("hidden");
+      refs.segmentationPanel.classList.add("hidden");
+      refs.mainStonePanel.classList.add("hidden");
+      refs.purityPanel.classList.add("hidden");
+      refs.finalPanel.classList.add("hidden");
+
+      const showMainStone =
+        (branchKey === "direct_stone" && classificationDone) ||
+        (branchKey === "segmentation" && flow.segmentationNext);
+
+      refs.mainStoneTitle.textContent = branchKey === "segmentation" ? "STAGE 3 STONE DETECTION" : "STAGE 2 STONE DETECTION";
+      refs.purityTitle.textContent = branchKey === "dimension" || branchKey === "segmentation" ? "STAGE 4 ACID TEST" : "STAGE 3 ACID TEST";
+
+      const finalReady = backendState && backendState.final && backendState.final.ready;
+      const purityRunning = backendState && backendState.purity_test && backendState.purity_test.running;
+      const puritySkipped = backendState && backendState.purity_test && backendState.purity_test.skipped;
+      const purityAvailable = backendState && backendState.purity_test && backendState.purity_test.available;
+      const purityStartReady = backendState && (
+        (branchKey === "dimension" && backendState.stone_detection && backendState.stone_detection.side) ||
+        (branchKey !== "dimension" && backendState.stone_detection && backendState.stone_detection.main)
+      );
+      const nextJewelAvailable = Boolean(backendState && backendState.next_jewel_available);
+      const retryJewelAvailable = Boolean(backendState && backendState.retry_jewel_available);
+      const advanceCaptureAvailable = nextJewelAvailable || retryJewelAvailable;
+      const pledgeComplete = Boolean(backendState && backendState.pledge_complete);
+      const closureComplete = countVerificationDone() && packetSealingDone();
+
+      refs.btnClassificationNext.disabled = !classificationDone || !pledgeCountSaved();
+      refs.btnRunSegmentation.disabled = !(classificationDone && branchKey === "segmentation");
+      refs.btnDimensionNext.disabled = !(backendState && backendState.dimension && backendState.dimension.done);
+      refs.btnSegmentationNext.disabled = !(backendState && backendState.segmentation && backendState.segmentation.done);
+      refs.btnShowFinalFromMain.disabled = !(backendState && backendState.stone_detection && backendState.stone_detection.main);
+      refs.btnShowFinalFromSide.disabled = !(backendState && backendState.stone_detection && backendState.stone_detection.side);
+      refs.btnStartPurityTest.disabled = !(purityAvailable && purityStartReady) || Boolean(purityRunning) || Boolean(puritySkipped);
+      refs.btnSkipPurityTest.disabled = !purityStartReady || Boolean(purityRunning) || Boolean(finalReady);
+      refs.btnStopPurityTest.disabled = !purityRunning;
+      refs.btnShowFinalFromPurity.disabled = !finalReady || nextJewelAvailable;
+      refs.btnShowFinalFromPurity.textContent = closureComplete ? "Final Result" : "Capture Jewel Count";
+      refs.btnGeneratePdf.disabled = !(pledgeComplete && closureComplete);
+      refs.btnNextJewelFromPurity.classList.toggle("hidden", !nextJewelAvailable);
+      refs.btnShowFinalFromPurity.classList.toggle("hidden", nextJewelAvailable);
+      refs.btnNextJewelFromFinal.textContent = retryJewelAvailable ? "Capture Replacement" : "Next Jewel";
+      refs.btnNextJewelFromFinal.classList.toggle("hidden", !advanceCaptureAvailable);
+      refs.btnGeneratePdf.classList.toggle("hidden", advanceCaptureAvailable || !closureComplete);
+
+      refs.btnDrawPendantBox.classList.toggle("hidden", !isSegmentationContext());
+      refs.btnDrawTasselBox.classList.toggle("hidden", !isSegmentationContext());
+      refs.btnDrawScaleLine.classList.toggle("hidden", refs.calibrationMethod.value !== "line");
+
+      const order = getStageOrder();
+      const currentIndex = getCurrentStageIndex();
+
+      refs.btnDimensionPrev.disabled = currentIndex <= 0;
+      refs.btnSidePrev.disabled = currentIndex <= 0;
+      refs.btnSegmentationPrev.disabled = currentIndex <= 0;
+      refs.btnMainStonePrev.disabled = currentIndex <= 0;
+      refs.btnPurityPrev.disabled = currentIndex <= 0;
+      refs.btnFinalPrev.disabled = currentIndex <= 0;
+
+      if (!backendState) {
+        const progressContainer = document.getElementById("stageProgressFlow");
+        if (progressContainer) {
+          progressContainer.classList.add("hidden");
+        }
+        refs.previewHint.textContent = "Wait for the Raspberry Pi live stream or load an image, then draw the Processing ROI and ArUco ROI before jewel type.";
+        return;
+      }
+
+      if (!pledgeCountSaved() || !flow.pledgeSetupComplete) {
+        const progressContainer = document.getElementById("stageProgressFlow");
+        if (progressContainer) {
+          progressContainer.classList.add("hidden");
+        }
+        refs.previewHint.textContent = pledgeCountSaved()
+          ? "Click Next after the saved jewel count to start Jewel 1."
+          : "Set the Pledge ID, enter jewel count, and save it before starting the workflow.";
+        return;
+      }
+
+      if (branchKey === "dimension" && flow.classificationNext && !flow.dimensionNext) {
+        refs.previewHint.textContent = "For manual line calibration, click Draw Calibration Line and set two points on the source image.";
+      } else if (previewState.context === "segmentation") {
+        refs.previewHint.textContent = "You are viewing the segmentation preprocessed image. Draw the correct pendant or tassel box, apply it, and then check the refreshed result.";
+      } else if (previewState.context === "segmentation-result") {
+        refs.previewHint.textContent = "You are viewing the refreshed segmentation result. If another correction is needed, reopen the segmentation input and draw a new pendant or tassel box.";
+      } else if (closureLiveFeedActive()) {
+        refs.previewHint.textContent = "Live camera stays active for final count capture and packet sealing. Keep all jewels visible inside the Processing ROI.";
+      } else if (flow.currentStage === "purity") {
+        refs.previewHint.textContent = "Only the marked Processing ROI is analyzed by the stone, gold, and acid models. Keep the rubbing stone, jewelry, and acid inside it.";
+      } else {
+        refs.previewHint.textContent = "Draw the blue Processing ROI to limit the workflow area. Draw the green ArUco ROI over the base marker.";
+      }
+
+      showCurrentStage();
+    }
+
+    function showCurrentStage() {
+      refs.classificationPanel.classList.add("hidden");
+      refs.dimensionPanel.classList.add("hidden");
+      refs.sidePanel.classList.add("hidden");
+      refs.segmentationPanel.classList.add("hidden");
+      refs.mainStonePanel.classList.add("hidden");
+      refs.purityPanel.classList.add("hidden");
+      refs.finalPanel.classList.add("hidden");
+
+      const branchKey = getCurrentBranch();
+      const classificationDone = backendState && backendState.classification && backendState.classification.confirmed;
+      const order = getStageOrder();
+      const currentIndex = getCurrentStageIndex();
+
+      const showMainStone =
+        (branchKey === "direct_stone" && classificationDone) ||
+        (branchKey === "segmentation" && flow.segmentationNext);
+      const showPurity =
+        (branchKey === "dimension" && backendState && backendState.stone_detection && backendState.stone_detection.side) ||
+        (branchKey !== "dimension" && backendState && backendState.stone_detection && backendState.stone_detection.main);
+
+      if (flow.currentStage !== "purity" && previewState.context === "purity") {
+        previewState.context = "source";
+        refs.previewModePill.textContent = previewState.main.dataUrl
+          ? `Preview: ${previewState.main.kind === "upload" ? "Uploaded Image" : "Captured RPi Frame"}`
+          : "Preview: RPi Live Camera";
+      }
+
+      if (currentIndex >= 0 && currentIndex < order.length) {
+        const currentStage = order[currentIndex];
+        switch (currentStage) {
+          case "classification":
+            refs.classificationPanel.classList.remove("hidden");
+            break;
+          case "dimension":
+            if (branchKey === "dimension" && flow.classificationNext) {
+              refs.dimensionPanel.classList.remove("hidden");
+            } else {
+              // Fallback if somehow at wrong stage
+              refs.classificationPanel.classList.remove("hidden");
+            }
+            break;
+          case "side":
+            if (branchKey === "dimension" && flow.dimensionNext) {
+              refs.sidePanel.classList.remove("hidden");
+            } else {
+              refs.classificationPanel.classList.remove("hidden");
+            }
+            break;
+          case "segmentation":
+            if (branchKey === "segmentation" && flow.classificationNext) {
+              refs.segmentationPanel.classList.remove("hidden");
+            } else {
+              refs.classificationPanel.classList.remove("hidden");
+            }
+            break;
+          case "mainStone":
+            if (showMainStone) {
+              refs.mainStonePanel.classList.remove("hidden");
+            } else {
+              refs.classificationPanel.classList.remove("hidden");
+            }
+            break;
+          case "purity":
+            if (showPurity) {
+              previewState.context = "purity";
+              refs.previewModePill.textContent = "Preview: Acid Test Live View";
+              refs.purityPanel.classList.remove("hidden");
+            } else {
+              refs.classificationPanel.classList.remove("hidden");
+            }
+            break;
+          case "final":
+            if (backendState && backendState.final && backendState.final.ready) {
+              if (!packetSealingDone()) {
+                previewState.context = "source";
+                refs.previewModePill.textContent = "Preview: Final Count Live View";
+              }
+              refs.finalPanel.classList.remove("hidden");
+            } else if (showPurity) {
+              flow.currentStage = "purity";
+              refs.purityPanel.classList.remove("hidden");
+            } else {
+              refs.classificationPanel.classList.remove("hidden");
+            }
+            break;
+        }
+      } else {
+        // Default fallback
+        refs.classificationPanel.classList.remove("hidden");
+      }
+
+      renderStageProgress();
+    }
+
+    function renderStageProgress() {
+      const order = getStageOrder();
+      const currentIndex = getCurrentStageIndex();
+
+      const container = document.getElementById("stageProgressFlow");
+      if (!container) return;
+      container.innerHTML = "";
+      container.classList.remove("hidden");
+
+      for (let idx = 0; idx <= currentIndex && idx < order.length; idx++) {
+        const stageKey = order[idx];
+        const isPast = idx < currentIndex;
+
+        const pill = document.createElement("div");
+        pill.style.padding = "6px 14px";
+        pill.style.borderRadius = "999px";
+        pill.style.fontSize = "11px";
+        pill.style.fontWeight = "800";
+        pill.style.textTransform = "uppercase";
+        pill.style.letterSpacing = "0.05em";
+        pill.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)";
+
+        const label = stageKey === "final" ? (packetSealingDone() ? "FINAL" : "COUNT") : `STAGE ${idx + 1}`;
+        pill.textContent = label;
+
+        if (isPast) {
+          pill.style.background = "linear-gradient(180deg, #22c55e, #16a34a)";
+          pill.style.color = "#ffffff";
+          pill.style.border = "1px solid #15803d";
+        } else {
+          pill.style.background = "linear-gradient(180deg, #3b82f6, #2563eb)";
+          pill.style.color = "#ffffff";
+          pill.style.border = "1px solid #1d4ed8";
+        }
+
+        container.appendChild(pill);
+
+        if (idx < currentIndex) {
+          const arrow = document.createElement("div");
+          arrow.textContent = "→";
+          arrow.style.color = "#16a34a";
+          arrow.style.fontWeight = "900";
+          arrow.style.fontSize = "14px";
+          container.appendChild(arrow);
+        }
+      }
+    }
+
+    function renderPreview() {
+      resizeCanvas();
+      const canvasRect = refs.previewCanvas.getBoundingClientRect();
+      const source = activeImageForCanvas();
+      ctx.clearRect(0, 0, canvasRect.width, canvasRect.height);
+
+      if (!source) {
+        previewState.displayRect = null;
+        drawRoundedPlaceholder("Loading Raspberry Pi camera...");
+        animationHandle = requestAnimationFrame(renderPreview);
+        return;
+      }
+
+      let srcWidth = 1;
+      let srcHeight = 1;
+      srcWidth = source.image.naturalWidth || 1;
+      srcHeight = source.image.naturalHeight || 1;
+
+      const display = fitRect(srcWidth, srcHeight, canvasRect.width, canvasRect.height);
+      previewState.displayRect = display;
+
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(0, 0, canvasRect.width, canvasRect.height);
+      ctx.save();
+      if (source.captured && !isSegmentationContext()) {
+        ctx.filter = stonePreviewFilter();
+      }
+      ctx.drawImage(source.image, display.x, display.y, display.w, display.h);
+      ctx.restore();
+
+      if (previewState.context === "source") {
+        drawRectOverlay(previewState.rois.processing, "#2563eb", "Processing ROI");
+        drawRectOverlay(previewState.rois.aruco, "#16a34a", "Aruco ROI");
+        drawLineOverlay(previewState.linePoints, "#f59e0b", "Calibration Line");
+        if (previewState.backgroundPoint) {
+          const point = imagePointToCanvasPoint(previewState.backgroundPoint);
+          if (point) {
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 8, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffffff";
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "#dc2626";
+            ctx.stroke();
+            drawLabel("Background Sample", point.x + 10, point.y, "#dc2626");
+          }
+        }
+        if (previewState.learnedStonePoint) {
+          const point = imagePointToCanvasPoint(previewState.learnedStonePoint);
+          if (point) {
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 8, 0, Math.PI * 2);
+            ctx.fillStyle = "#fef3c7";
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "#7c3aed";
+            ctx.stroke();
+            drawLabel("Learned Stone Sample", point.x + 10, point.y, "#7c3aed");
+          }
+        }
+      } else if (isSegmentationContext()) {
+        drawRectOverlay(previewState.correctionBoxes.pendant, correctionConfig("pendant").color, correctionConfig("pendant").label);
+        drawRectOverlay(previewState.correctionBoxes.tassel, correctionConfig("tassel").color, correctionConfig("tassel").label);
+      }
+
+      if (dragging && previewState.dragStart && previewState.dragCurrent) {
+        const draft = normalizeDraggedRect(previewState.dragStart, previewState.dragCurrent);
+        if (draft) {
+          const draftConfig = correctionConfig(previewState.drawMode);
+          const color = previewState.drawMode === "processing"
+            ? "#2563eb"
+            : previewState.drawMode === "aruco"
+              ? "#16a34a"
+              : draftConfig.color;
+          const label = previewState.drawMode === "processing"
+            ? "Processing ROI"
+            : previewState.drawMode === "aruco"
+              ? "Aruco ROI"
+              : draftConfig.label;
+          drawRectOverlay(draft, color, label);
+        }
+      }
+
+      animationHandle = requestAnimationFrame(renderPreview);
+    }
+
+    refs.previewCanvas.addEventListener("mousedown", (event) => {
+      if (!["processing", "aruco", "pendant", "tassel"].includes(previewState.drawMode)) return;
+      const point = eventToImagePoint(event);
+      if (!point) return;
+      dragging = true;
+      previewState.dragStart = point;
+      previewState.dragCurrent = point;
+    });
+
+    refs.previewCanvas.addEventListener("mousemove", (event) => {
+      if (!dragging) return;
+      const point = eventToImagePoint(event);
+      if (!point) return;
+      previewState.dragCurrent = point;
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (!dragging) return;
+      dragging = false;
+      const rect = normalizeDraggedRect(previewState.dragStart, previewState.dragCurrent);
+      if (rect) {
+        if (previewState.drawMode === "processing") {
+          previewState.rois.processing = rect;
+          updateRoiSummaryText();
+          persistRois();
+          markSourceDirty();
+        } else if (previewState.drawMode === "aruco") {
+          previewState.rois.aruco = rect;
+          updateRoiSummaryText();
+          persistRois();
+          markSourceDirty();
+        } else if (previewState.drawMode === "pendant" || previewState.drawMode === "tassel") {
+          previewState.correctionBoxes[previewState.drawMode] = rect;
+          if (previewState.drawMode === "pendant") {
+            refs.btnApplyPendantCorrection.disabled = false;
+          } else {
+            refs.btnApplyTasselCorrection.disabled = false;
+          }
+        }
+      }
+      previewState.dragStart = null;
+      previewState.dragCurrent = null;
+    });
+
+    refs.previewCanvas.addEventListener("click", async (event) => {
+      if (previewState.context !== "source") return;
+      const point = eventToImagePoint(event);
+      if (!point) return;
+      if (previewState.drawMode === "background") {
+        try {
+          await calibrateStoneBackground(point);
+        } catch (error) {
+          setStatusWithIndicator(error.message, "error");
+        }
+        return;
+      }
+      if (previewState.drawMode === "learn-stone") {
+        try {
+          await learnStoneColor(point);
+        } catch (error) {
+          setStatusWithIndicator(error.message, "error");
+        }
+        return;
+      }
+      if (previewState.drawMode !== "line") return;
+      if (previewState.linePoints.length >= 2) {
+        previewState.linePoints = [];
+      }
+      previewState.linePoints.push(point);
+      markSourceDirty();
+      if (previewState.linePoints.length === 2) {
+        setStatus("Calibration line captured.");
+      } else {
+        setStatus("First calibration point captured. Click the second point.");
+      }
+    });
+
+    function startLiveStream(forceReconnect = false) {
+      refs.previewModePill.textContent = previewState.main.dataUrl
+        ? `Preview: ${previewState.main.kind === "upload" ? "Uploaded Image" : "Captured RPi Frame"}`
+        : "Preview: RPi Live Camera";
+
+      if (liveFrameInterval) {
+        clearInterval(liveFrameInterval);
+        liveFrameInterval = null;
+      }
+      refs.hiddenLiveImage.crossOrigin = "anonymous";
+      if (!forceReconnect && refs.hiddenLiveImage.getAttribute("src")) {
+        return;
+      }
+      if (forceReconnect) {
+        refs.hiddenLiveImage.removeAttribute("src");
+      }
+      refs.hiddenLiveImage.src = `/api/video_feed?stream=${Date.now()}`;
+      setStatusWithIndicator("Streaming camera frames from the Raspberry Pi.", "success");
+    }
+
+    refs.btnCaptureFrame.addEventListener("click", async () => {
+      try {
+        const dataUrl = snapshotLiveFrame();
+        await setMainImage(dataUrl, "camera_capture.png", "camera");
+      } catch (error) {
+        setStatus(error.message);
+      }
+    });
+
+    refs.btnCaptureMainImage.addEventListener("click", withButtonGuard(refs.btnCaptureMainImage, async () => {
+      try {
+        await captureMainImageForWorkflow();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }));
+
+    refs.btnUseLiveNow.addEventListener("click", async () => {
+      try {
+        try {
+          const dataUrl = snapshotLiveFrame();
+          await setMainImage(dataUrl, "live_frame.png", "camera");
+        } catch (_) {
+        }
+        await ensureMainSourceSaved();
+      } catch (error) {
+        setStatus(error.message);
+      }
+    });
+
+    [
+      refs.stoneSaturation,
+      refs.stoneContrast,
+      refs.stoneBrightness,
+      refs.stoneColorBoost,
+      refs.greenRecovery,
+      refs.darkGreenRecovery,
+    ].forEach((input) => {
+      input.addEventListener("input", queueStoneSettingsSave);
+    });
+    refs.stoneSuperResolution.addEventListener("change", queueStoneSettingsSave);
+
+    refs.setupMarkerSide.addEventListener("input", () => {
+      refs.markerLength.value = refs.setupMarkerSide.value;
+      refs.markerBreadth.value = refs.setupMarkerSide.value;
+    });
+
+    refs.cameraCalibrationFile.addEventListener("change", async (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      try {
+        const parsed = JSON.parse(await file.text());
+        const cameraMatrix = parsed.camera_matrix || parsed.cameraMatrix;
+        const distCoeffs = parsed.dist_coeffs || parsed.distCoeffs || parsed.distortion_coefficients;
+        if (!Array.isArray(cameraMatrix) || cameraMatrix.length !== 3 || !Array.isArray(distCoeffs)) {
+          throw new Error("JSON must contain camera_matrix (3x3) and dist_coeffs.");
+        }
+        cameraCalibrationData = {
+          camera_matrix: cameraMatrix,
+          dist_coeffs: Array.isArray(distCoeffs[0]) ? distCoeffs.flat() : distCoeffs,
+        };
+        refs.cameraCalibrationStatus.textContent = "Loaded; click Save Calibration Setup.";
+      } catch (error) {
+        cameraCalibrationData = null;
+        refs.cameraCalibrationStatus.textContent = "Invalid calibration JSON.";
+        setStatusWithIndicator(error.message, "error");
+      }
+    });
+
+    refs.btnSaveCalibrationSetup.addEventListener(
+      "click",
+      withButtonGuard(refs.btnSaveCalibrationSetup, async () => {
+        try {
+          await saveCalibrationSetup();
+        } catch (error) {
+          setStatusWithIndicator(error.message, "error");
+        }
+      })
+    );
+
+    refs.btnSetStoneBackground.addEventListener("click", () => {
+      if (!previewState.main.dataUrl) {
+        setStatusWithIndicator("Capture the jewel image before setting the background.", "warning");
+        return;
+      }
+      previewState.context = "source";
+      setDrawMode("background");
+    });
+
+    refs.btnLearnStoneColor.addEventListener("click", () => {
+      if (!previewState.main.dataUrl) {
+        setStatusWithIndicator("Capture the jewel image before learning a missed stone.", "warning");
+        return;
+      }
+      previewState.context = "source";
+      setDrawMode("learn-stone");
+    });
+
+    refs.btnClearLearnedStoneColors.addEventListener(
+      "click",
+      withButtonGuard(refs.btnClearLearnedStoneColors, async () => {
+        try {
+          const data = await postJson("/api/stone-settings", {
+            clear_learned_stone_profiles: true,
+          });
+          applyStoneSettings(data.stone_settings || {
+            ...config.stone_settings,
+            learned_stone_profiles: [],
+          });
+          previewState.learnedStonePoint = null;
+          if (data.state) backendState = data.state;
+          setDrawMode(null);
+          setStatusWithIndicator("Learned stone colors cleared.", "success");
+          renderServerState();
+        } catch (error) {
+          setStatusWithIndicator(error.message, "error");
+        }
+      })
+    );
+
+    refs.btnClearStoneBackground.addEventListener("click", withButtonGuard(refs.btnClearStoneBackground, async () => {
+      try {
+        const data = await postJson("/api/stone-settings", { clear_background: true });
+        config.stone_settings = data.stone_settings || {
+          ...config.stone_settings,
+          background_calibration: null,
+        };
+        previewState.backgroundPoint = null;
+        if (data.state) backendState = data.state;
+        updateStoneBackgroundStatus();
+        setDrawMode(null);
+        setStatusWithIndicator("Background calibration cleared.", "success");
+      } catch (error) {
+        setStatusWithIndicator(error.message, "error");
+      }
+    }));
+
+    refs.fileMainImage.addEventListener("change", async (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          await setMainImage(String(reader.result), file.name, "upload");
+        } catch (error) {
+          setStatus(error.message);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    refs.fileSideImage.addEventListener("change", async (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          await setSideImage(String(reader.result), file.name);
+        } catch (error) {
+          setStatus(error.message);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    refs.btnResetUi.addEventListener("click", async () => {
+      let resetState = null;
+      try {
+        const data = await postJson("/api/reset", {});
+        resetState = data.state;
+      } catch (_) {
+      }
+      backendState = resetState;
+      previewState.main.dataUrl = null;
+      previewState.main.image.src = "";
+      previewState.main.kind = "live";
+      previewState.main.dirty = true;
+      previewState.side.dataUrl = null;
+      previewState.side.image.src = "";
+      previewState.side.dirty = true;
+      previewState.segmentationImage.src = "";
+      previewState.context = "source";
+      previewState.backgroundPoint = null;
+      previewState.learnedStonePoint = null;
+      refs.previewModePill.textContent = "Preview: RPi Live Camera";
+      refs.pledgeStatus.textContent = "";
+      refs.inputJewelCount.value = "";
+      refs.jewelCountStatus.textContent = "Set a Pledge ID, then save jewel count.";
+      refs.btnPledgeSetupNext.disabled = true;
+      resetFlow();
+      setDrawMode(null);
+      updateCapturedSetupControls();
+      renderServerState();
+      setStatus("Workflow reset.");
+    });
+
+    refs.btnDrawProcessingRoi.addEventListener("click", () => {
+      previewState.context = "source";
+      setDrawMode("processing");
+    });
+
+    refs.btnDrawArucoRoi.addEventListener("click", () => {
+      previewState.context = "source";
+      setDrawMode("aruco");
+    });
+
+    refs.btnEnableScaleLine.addEventListener("click", () => {
+      previewState.context = "source";
+      setDrawMode("line");
+      previewState.linePoints = [];
+    });
+
+    refs.btnDrawScaleLine.addEventListener("click", () => {
+      previewState.context = "source";
+      setDrawMode("line");
+      previewState.linePoints = [];
+    });
+
+    refs.btnDrawPendantBox.addEventListener("click", () => {
+      setDrawMode("pendant");
+    });
+
+    refs.btnDrawTasselBox.addEventListener("click", () => {
+      setDrawMode("tassel");
+    });
+
+    refs.btnShowSourceView.addEventListener("click", () => {
+      previewState.context = "source";
+      refs.previewModePill.textContent = previewState.main.dataUrl
+        ? `Preview: ${previewState.main.kind === "upload" ? "Uploaded Image" : "Captured RPi Frame"}`
+        : "Preview: RPi Live Camera";
+      setDrawMode(null);
+      renderPanels();
+    });
+
+    refs.btnClearCurrentDraw.addEventListener("click", clearCurrentDraw);
+    refs.btnClearRois.addEventListener("click", clearRois);
+
+    refs.btnSetPledge.addEventListener("click", withButtonGuard(refs.btnSetPledge, async () => {
+      const pledgeId = refs.inputPledgeId.value.trim();
+      if (!pledgeId) {
+        setStatus("Enter a valid Pledge ID.");
+        return;
+      }
+      try {
+        const data = await postJson("/api/pledge", { pledge_id: pledgeId });
+        backendState = data.state;
+        refs.pledgeStatus.textContent = `Active Pledge: ${pledgeId}`;
+        refs.inputPledgeId.value = "";
+        renderServerState();
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }));
+
+    refs.inputPledgeId.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        refs.btnSetPledge.click();
+      }
+    });
+
+    refs.btnSaveJewelCount.addEventListener("click", withButtonGuard(refs.btnSaveJewelCount, async () => {
+      const count = Number(refs.inputJewelCount.value);
+      if (!Number.isInteger(count) || count <= 0) {
+        setStatus("Enter a valid jewel count.");
+        return;
+      }
+      try {
+        const data = await postJson("/api/pledge/count", { jewel_count: count });
+        backendState = data.state;
+        refs.jewelCountStatus.textContent = `Saved count: ${count}.`;
+        refs.btnPledgeSetupNext.disabled = false;
+        flow.pledgeSetupComplete = false;
+        renderServerState();
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }));
+
+    refs.btnClearJewelCount.addEventListener("click", withButtonGuard(refs.btnClearJewelCount, async () => {
+      try {
+        const data = await postJson("/api/pledge/count", { clear: true });
+        backendState = data.state;
+        refs.inputJewelCount.value = "";
+        refs.jewelCountStatus.textContent = "Jewel count cleared.";
+        flow.pledgeSetupComplete = false;
+        renderServerState();
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }));
+
+    refs.btnPledgeSetupNext.addEventListener("click", () => {
+      if (!pledgeCountSaved()) {
+        setStatus("Save the jewel count before continuing.");
+        return;
+      }
+      flow.pledgeSetupComplete = true;
+      flow.currentStage = "classification";
+      renderPanels();
+    });
+
+    refs.btnRunClassification.addEventListener("click", withButtonGuard(refs.btnRunClassification, runClassification));
+    refs.btnClassYes.addEventListener("click", withButtonGuard(refs.btnClassYes, async () => {
+      const label = backendState && backendState.classification && backendState.classification.predicted_label;
+      if (label) await confirmClassification(label);
+    }));
+
+    refs.btnClassNo.addEventListener("click", () => {
+      overrideActive = true;
+      refs.overrideArea.classList.remove("hidden");
+      if (backendState && backendState.classification && backendState.classification.predicted_label) {
+        refs.overrideClassSelect.value = backendState.classification.predicted_label;
+      }
+    });
+
+    refs.btnApplyOverride.addEventListener("click", withButtonGuard(refs.btnApplyOverride, async () => {
+      if (refs.overrideClassSelect.value) await confirmClassification(refs.overrideClassSelect.value);
+    }));
+
+    refs.btnClassificationNext.addEventListener("click", () => {
+      flow.classificationNext = true;
+      flow.dimensionNext = false;
+      flow.segmentationNext = false;
+      flow.finalVisible = false;
+      goToNextStage();
+    });
+
+    refs.calibrationMethod.addEventListener("change", updateCalibrationFields);
+    refs.btnRunDimension.addEventListener("click", withButtonGuard(refs.btnRunDimension, runDimension));
+    refs.btnDimensionNext.addEventListener("click", () => {
+      flow.dimensionNext = true;
+      flow.finalVisible = false;
+      goToNextStage();
+    });
+    refs.btnDimensionPrev.addEventListener("click", () => {
+      goToPreviousStage();
+    });
+
+    refs.btnCaptureSideLive.addEventListener("click", withButtonGuard(refs.btnCaptureSideLive, async () => {
+      try {
+        const dataUrl = snapshotLiveFrame();
+        await setSideImage(dataUrl, "side_live_capture.png");
+        // Immediately save it to backend so the ROI crop and ArUco mask are applied and shown
+        showLoading("Applying ROI to side image...");
+        await ensureSideSourceSaved();
+        hideLoading();
+        setStatusWithIndicator("Side image captured and ROI applied.", "success");
+      } catch (error) {
+        hideLoading();
+        setStatus(error.message);
+      }
+    }));
+
+    refs.btnRunSidePipeline.addEventListener("click", withButtonGuard(refs.btnRunSidePipeline, runSidePipeline));
+    refs.btnShowFinalFromSide.addEventListener("click", () => {
+      previewState.context = "purity";
+      goToNextStage();
+    });
+    refs.btnSidePrev.addEventListener("click", () => {
+      goToPreviousStage();
+    });
+
+    refs.btnRunSegmentation.addEventListener("click", withButtonGuard(refs.btnRunSegmentation, runSegmentation));
+    refs.btnStartPendantCorrection.addEventListener("click", async () => {
+      try {
+        await startSegmentationCorrection("pendant");
+      } catch (error) {
+        setStatus(error.message);
+      }
+    });
+
+    refs.btnStartTasselCorrection.addEventListener("click", async () => {
+      try {
+        await startSegmentationCorrection("tassel");
+      } catch (error) {
+        setStatus(error.message);
+      }
+    });
+
+    refs.btnApplyPendantCorrection.addEventListener("click", () => applySegmentationCorrection("pendant"));
+    refs.btnApplyTasselCorrection.addEventListener("click", () => applySegmentationCorrection("tassel"));
+
+    refs.btnNoPendant.addEventListener("click", withButtonGuard(refs.btnNoPendant, async () => {
+      try {
+        showLoading("Excluding pendant region...");
+        setStatus("Excluding pendant; region will merge into chain.");
+        const data = await postJson("/api/segmentation/no-pendant");
+        backendState = data.state;
+        hideLoading();
+        setStatusWithIndicator("Pendant excluded and merged into chain. Segmentation rerun.", "success");
+        const latestSegmentation = backendState && backendState.segmentation;
+        if (latestSegmentation && latestSegmentation.overlay_image) {
+          await showArtifactInCanvas(latestSegmentation.overlay_image.url, "segmentation-result");
+        }
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }));
+
+    refs.btnNoTassel.addEventListener("click", withButtonGuard(refs.btnNoTassel, async () => {
+      try {
+        showLoading("Excluding tassel region...");
+        setStatus("Excluding tassel; region will merge into chain.");
+        const data = await postJson("/api/segmentation/no-tassel");
+        backendState = data.state;
+        hideLoading();
+        setStatusWithIndicator("Tassel excluded and merged into chain. Segmentation rerun.", "success");
+        const latestSegmentation = backendState && backendState.segmentation;
+        if (latestSegmentation && latestSegmentation.overlay_image) {
+          await showArtifactInCanvas(latestSegmentation.overlay_image.url, "segmentation-result");
+        }
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      }
+    }));
+
+    refs.purityMicSelect.addEventListener("focus", () => { purityMicSelectActive = true; });
+    refs.purityMicSelect.addEventListener("blur", () => { purityMicSelectActive = false; });
+    refs.purityMicSelect.addEventListener("change", () => { purityMicSelectActive = false; });
+    refs.ttsOutputSelect.addEventListener("focus", () => { ttsOutputSelectActive = true; });
+    refs.ttsOutputSelect.addEventListener("blur", () => { ttsOutputSelectActive = false; });
+    refs.ttsOutputSelect.addEventListener("change", async () => {
+      ttsOutputSelectActive = false;
+      try {
+        const data = await postJson("/api/purity/audio-output", {
+          output_device: refs.ttsOutputSelect.value || "__AUTO__",
+        });
+        refs.ttsOutputStatus.textContent = (data.tts_output && data.tts_output.status) || "Speaker selection saved.";
+        setStatusWithIndicator("TTS speaker selection saved", "success");
+      } catch (error) {
+        setStatusWithIndicator(error.message, "error");
+      }
+    });
+    refs.audioOkThreshold.addEventListener("input", () => syncAudioThresholdInputs(refs.audioOkThreshold));
+    refs.audioOkThresholdNumber.addEventListener("input", () => syncAudioThresholdInputs(refs.audioOkThresholdNumber));
+    refs.btnApplyAudioThreshold.addEventListener(
+      "click",
+      withButtonGuard(refs.btnApplyAudioThreshold, async () => {
+        try {
+          await applyAudioThreshold();
+        } catch (error) {
+          setStatusWithIndicator(error.message, "error");
+        }
+      })
+    );
+
+    refs.btnSegmentationNext.addEventListener("click", () => {
+      flow.segmentationNext = true;
+      flow.finalVisible = false;
+      previewState.context = "source";
+      setDrawMode(null);
+      goToNextStage();
+    });
+    refs.btnSegmentationPrev.addEventListener("click", () => {
+      goToPreviousStage();
+    });
+
+    refs.btnRunMainStoneDetection.addEventListener("click", withButtonGuard(refs.btnRunMainStoneDetection, runMainStoneDetection));
+    refs.btnShowFinalFromMain.addEventListener("click", () => {
+      previewState.context = "purity";
+      goToNextStage();
+    });
+    refs.btnMainStonePrev.addEventListener("click", () => {
+      goToPreviousStage();
+    });
+
+    refs.btnRefreshPurityAudio.addEventListener("click", withButtonGuard(refs.btnRefreshPurityAudio, async () => {
+      try {
+        await loadPurityAudioDevices();
+        setStatusWithIndicator("Audio device list refreshed", "success");
+      } catch (error) {
+        setStatusWithIndicator(error.message, "error");
+      }
+    }));
+    refs.btnStartPurityTest.addEventListener("click", withButtonGuard(refs.btnStartPurityTest, startPurityTest));
+    refs.btnSkipPurityTest.addEventListener("click", withButtonGuard(refs.btnSkipPurityTest, skipPurityTest));
+    refs.btnStopPurityTest.addEventListener("click", withButtonGuard(refs.btnStopPurityTest, stopPurityTest));
+    refs.btnPurityPrev.addEventListener("click", () => {
+      previewState.context = "source";
+      goToPreviousStage();
+    });
+    refs.btnShowFinalFromPurity.addEventListener("click", () => {
+      flow.finalVisible = true;
+      previewState.context = "source";
+      startLiveStream();
+      goToStage("final");
+    });
+    refs.btnNextJewelFromPurity.addEventListener("click", withButtonGuard(refs.btnNextJewelFromPurity, goToNextJewel));
+
+    refs.btnFinalPrev.addEventListener("click", () => {
+      goToPreviousStage();
+    });
+    refs.btnNextJewelFromFinal.addEventListener("click", withButtonGuard(refs.btnNextJewelFromFinal, goToNextJewel));
+    refs.btnCaptureFinalJewelCount.addEventListener("click", withButtonGuard(refs.btnCaptureFinalJewelCount, captureFinalJewelCount));
+    refs.btnOpenPacketSealing.addEventListener("click", () => {
+      flow.packetSealingOpen = !flow.packetSealingOpen;
+      renderPledgeClosure();
+    });
+    refs.btnStartPacketSealing.addEventListener("click", withButtonGuard(refs.btnStartPacketSealing, startPacketSealing));
+    refs.btnStopPacketSealing.addEventListener("click", withButtonGuard(refs.btnStopPacketSealing, stopPacketSealing));
+
+    refs.btnGeneratePdf.addEventListener("click", () => {
+      window.open("/api/report/pdf", "_blank");
+    });
+
+    async function initialize() {
+      updateCalibrationFields();
+      await loadConfig();
+      try {
+        await loadPurityAudioDevices();
+      } catch (error) {
+        console.error("Failed to load purity audio devices:", error);
+        refs.purityAudioStatus.textContent = error.message || "Could not load microphone list.";
+      }
+      renderServerState();
+      cancelAnimationFrame(animationHandle);
+      renderPreview();
+      startLiveStream();
+      startStatePolling();
+      startAudioDevicePolling();
+    }
+
+    initialize().catch((error) => {
+      setStatusWithIndicator(error.message, "error");
+    });
+
+    // Show loading overlay
+    function showLoading(message = "Processing...") {
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) {
+        overlay.classList.remove('hidden');
+        const loadingText = overlay.querySelector('.loading-text');
+        if (loadingText) {
+          loadingText.textContent = message;
+        }
+      }
+    }
+
+    // Hide loading overlay
+    function hideLoading() {
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) {
+        overlay.classList.add('hidden');
+      }
+    }
+
+    // Enhanced status setting with visual indicators
+    function setStatusWithIndicator(message, type = 'info') {
+      const statusElement = document.getElementById('statusValue');
+      if (statusElement) {
+        // Add status indicator
+        let indicator = '';
+        switch (type) {
+          case 'success':
+            indicator = '● '; // Green dot
+            break;
+          case 'error':
+            indicator = '● '; // Red dot
+            break;
+          case 'warning':
+            indicator = '● '; // Yellow dot
+            break;
+          default:
+            indicator = '● '; // Blue dot for info
+        }
+        statusElement.innerHTML = `<span class="status-indicator status-${type}"></span>${message}`;
+      }
+    }
+  </script>
+</body>
+
+</html>

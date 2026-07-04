@@ -1,0 +1,112 @@
+{
+  "processing_roi": {
+    "x": 597,
+    "y": 27,
+    "w": 1307,
+    "h": 1055
+  },
+  "aruco_roi": {
+    "x": 654,
+    "y": 56,
+    "w": 187,
+    "h": 174
+  },
+  "color_correction": {
+    "saturation": 1.35,
+    "contrast": 1.1,
+    "brightness": 16.0
+  },
+  "analysis_normalization": {
+    "white_balance": true,
+    "clahe_clip_limit": 1.8,
+    "shadow_gamma": 0.92,
+    "color_boost": 1.3,
+    "green_recovery": 1.15,
+    "dark_green_recovery": 1.2
+  },
+  "background_calibration": {
+    "point": {
+      "x": 1225,
+      "y": 433
+    },
+    "sample_radius": 8,
+    "sample_count": 289,
+    "hsv_center": [
+      114.95,
+      7.0,
+      232.0
+    ],
+    "hsv_tolerance": [
+      4.0,
+      14.0,
+      14.0
+    ],
+    "lab_center": [
+      230.0,
+      129.0,
+      125.0
+    ],
+    "lab_tolerance": [
+      11.0,
+      10.0,
+      10.0
+    ],
+    "bgr_center": [
+      232.0,
+      227.0,
+      226.0
+    ],
+    "low_saturation": true,
+    "sampled_at": "2026-06-18 18:25:41"
+  },
+  "learned_stone_profiles": [],
+  "stone_super_resolution": {
+    "enabled": false,
+    "scale": 2,
+    "model": "real_esrgan_x2"
+  },
+  "audio_settings": {
+    "ok_confidence_threshold": 0.9
+  },
+  "calibration_config": {
+    "aruco_dict": "AprilTag_36h11",
+    "marker_id": 1,
+    "marker_length_mm": 20.0,
+    "marker_breadth_mm": 20.0,
+    "camera_to_bed_mm": 515.0,
+    "nominal_stone_height_mm": 0.0,
+    "camera_matrix": [
+      [
+        3161.733970700914,
+        0,
+        1243.744942989912
+      ],
+      [
+        0,
+        3178.6657652241774,
+        708.2189313304135
+      ],
+      [
+        0,
+        0,
+        1
+      ]
+    ],
+    "dist_coeffs": [
+      -0.1280175300438905,
+      14.492336668044311,
+      0.012001012991118967,
+      -0.014689227503456371,
+      -148.48276212117787
+    ],
+    "four_marker_enabled": false,
+    "four_marker_ids": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "marker_center_width_mm": 0.0,
+    "marker_center_height_mm": 0.0
+  }
+}

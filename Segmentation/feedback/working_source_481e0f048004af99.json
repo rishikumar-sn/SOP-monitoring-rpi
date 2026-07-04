@@ -1,0 +1,27 @@
+{
+  "image_path": "E:\\Projects\\MainApp-Jewelry\\runtime_sessions\\20260509_114819_db2cdd48\\source\\working_source.png",
+  "pendant_bbox": [
+    118,
+    846,
+    367,
+    1033
+  ],
+  "working_size": [
+    1073,
+    1073
+  ],
+  "tassel_bbox": [
+    443,
+    571,
+    703,
+    899
+  ],
+  "signature": {
+    "exact_hash": "481e0f048004af99d8cfd5b362428cdd283d289e",
+    "image_dhash": "fbf7e5cd878b2fbf",
+    "mask_dhash": "fdfcfaf2f8e5d1df",
+    "object_aspect_ratio": 0.84858,
+    "object_fill_ratio": 0.114761
+  },
+  "updated_at": "2026-05-11T15:42:42"
+}

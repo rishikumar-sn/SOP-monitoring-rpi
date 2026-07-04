@@ -1,0 +1,13 @@
+{
+  "image_path": "E:\\Projects\\jewel-segmentation\\captures\\roi_20260502_110204.jpg",
+  "pendant_bbox": [
+    125,
+    827,
+    378,
+    1073
+  ],
+  "working_size": [
+    1112,
+    1112
+  ]
+}

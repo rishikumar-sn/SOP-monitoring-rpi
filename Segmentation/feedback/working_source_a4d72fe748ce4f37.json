@@ -1,0 +1,51 @@
+{
+  "image_path": "/home/pi/Desktop/EMBSYS-AI/runtime_sessions/18-06-2026_20260618_145433_c5468988/source/working_source.png",
+  "updated_at": "2026-06-18T14:59:39",
+  "signature": {
+    "exact_hash": "a4d72fe748ce4f37a20f1076f635fd21c0fe2b31",
+    "image_dhash": "ffb33bb3978fe7ff",
+    "mask_dhash": "ffecccececf1fbfb",
+    "object_aspect_ratio": 0.82243,
+    "object_fill_ratio": 0.047607,
+    "object_density": 0.374761,
+    "edge_dhash": "fdfcccececf1fbff",
+    "color_histogram": [
+      0.693203,
+      0.167789,
+      0.007348,
+      0.085119,
+      0.0,
+      0.0,
+      0.003674,
+      0.0,
+      0.0,
+      0.000612,
+      0.0,
+      0.0,
+      0.003062,
+      0.0,
+      0.0,
+      0.001225,
+      0.0,
+      0.0,
+      0.007961,
+      0.0,
+      0.0,
+      0.030006,
+      0.0,
+      0.0
+    ]
+  },
+  "feedback_version": 3,
+  "object_bbox": [
+    448,
+    286,
+    799,
+    713
+  ],
+  "no_tassel": true,
+  "working_size": [
+    948,
+    1251
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "classes": [
+    "JEWEL_RUB_OK",
+    "NAIL_RUB_NOK",
+    "FINGER_RUB_NOK",
+    "STONE_TAP_HANDLING_NOK",
+    "EXTERNAL_NOISE_NOK",
+    "NO_RUB_NOK",
+    "WEAK_RUB_NOK"
+  ],
+  "sample_rate": 48000,
+  "duration": 1.0,
+  "n_mels": 64,
+  "n_fft": 512,
+  "hop_length": 160,
+  "win_length": 400,
+  "confidence_threshold": 0.9,
+  "normalization_mean": -44.59016799926758,
+  "normalization_std": 23.649555206298828
+}
