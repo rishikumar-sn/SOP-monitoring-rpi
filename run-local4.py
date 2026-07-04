@@ -74,7 +74,7 @@ def resolve_model_path(*candidates: str) -> str:
             return p
     return os.path.join(BASE_DIR, candidates[0])
 
-MODEL_GOLD_PATH = resolve_model_path("models/gold_seg.hef")
+MODEL_GOLD_PATH = resolve_model_path("models/gold.hef")
 MODEL_STONE_PATH = resolve_model_path("models/yolov8s_seg.hef")
 MODEL_ACID_PATH = resolve_model_path("models/bestnewacid.hef")
 SOUND_MODEL_DIR = resolve_model_path("new_audio_rubbing/models")
