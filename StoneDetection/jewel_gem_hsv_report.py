@@ -183,7 +183,7 @@ STONE_REGION_GROW_COLOR_MAX_JEWEL_FRACTION = 0.06
 STONE_REGION_GROW_BLACK_MAX_SEED_MULTIPLIER = 24.0
 STONE_REGION_GROW_COLOR_MAX_SEED_MULTIPLIER = 12.0
 STONE_REGION_GROW_COLOR_MAX_RADIUS_PX = 18
-STONE_REGION_GROW_COLOR_MIN_SEED_AREA_PX = 8
+STONE_REGION_GROW_COLOR_MIN_SEED_AREA_PX = 12
 STONE_REGION_GROW_COLOR_MAX_GOLD_OVERLAP_SHARE = 0.60
 STONE_REGION_GROW_MIN_AREA_GAIN = 1.08
 STONE_REGION_GROW_MAX_GOLD_PIXELS = 0
@@ -196,6 +196,20 @@ COLOR_STONE_REGION_GROW_COLORS = {
     "Pink",
     "Multicolor/Color-changing",
 }
+
+# Reflective gold can create many tiny warm-white islands that look like
+# colorless stones after broad-gold subtraction. Suppress only the clustered
+# gold-reflection pattern so a single real white stone is still allowed.
+REFLECTIVE_WHITE_ONLY_MAX_PERCENT = 4.0
+REFLECTIVE_WHITE_ONLY_MIN_REGIONS = 4
+REFLECTIVE_WHITE_ONLY_MAX_LARGEST_REGION_PX = 180
+REFLECTIVE_WHITE_ONLY_MAX_LARGEST_JEWEL_FRACTION = 0.008
+REFLECTIVE_WHITE_WARM_HUE_MIN = 8.0
+REFLECTIVE_WHITE_WARM_HUE_MAX = 45.0
+REFLECTIVE_WHITE_WARM_SAT_MIN = 14.0
+REFLECTIVE_WHITE_WARM_VALUE_MIN = 185.0
+REFLECTIVE_WHITE_WARM_LAB_B_MIN = 5.5
+REFLECTIVE_EDGE_MICRO_AREA_MAX_PX = 12
 
 KERNEL_ELLIPSE_2 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
 KERNEL_ELLIPSE_3 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -1785,6 +1799,21 @@ def mean_hsv_for_mask(hsv_image: np.ndarray, mask: np.ndarray) -> tuple[float, f
     )
 
 
+def mean_lab_ab_for_mask(image_bgr: np.ndarray, mask: np.ndarray) -> tuple[float, float, float]:
+    pixels = mask > 0
+    if not np.any(pixels):
+        return 0.0, 0.0, 0.0
+    lab_pixels = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB)[pixels].astype(np.float32)
+    lab_a = lab_pixels[:, 1] - 128.0
+    lab_b = lab_pixels[:, 2] - 128.0
+    chroma = np.sqrt((lab_a * lab_a) + (lab_b * lab_b))
+    return (
+        float(lab_a.mean()),
+        float(lab_b.mean()),
+        float(chroma.mean()),
+    )
+
+
 def fallback_color_from_mean_hsv(mean_h: float, mean_s: float, mean_v: float) -> str:
     if mean_v < 50:
         return "Black"
@@ -2548,10 +2577,14 @@ def classify_component(
     if dominant_share < 0.45:
         dominant_color = fallback_color
 
-    colorful = [(name, pixels) for name, pixels in breakdown if name not in {"White/Colorless", "Black"}]
-    if len(colorful) >= 2:
-        first_share = colorful[0][1] / area_px
-        second_share = colorful[1][1] / area_px
+    multicolor_drivers = [
+        (name, pixels)
+        for name, pixels in breakdown
+        if name not in {"White/Colorless", "Black", "Yellow/Gold"}
+    ]
+    if len(multicolor_drivers) >= 2:
+        first_share = multicolor_drivers[0][1] / area_px
+        second_share = multicolor_drivers[1][1] / area_px
         if first_share >= 0.18 and second_share >= 0.18 and (first_share + second_share) >= 0.60:
             dominant_color = "Multicolor/Color-changing"
 
@@ -2638,6 +2671,10 @@ def classify_component(
     extent = area_px / max(1, w * h)
     aspect_ratio = max(w, h) / max(1, min(w, h))
     mean_h, mean_s, mean_v = mean_hsv_for_mask(hsv_image, component_mask)
+    mean_lab_a, mean_lab_b, mean_lab_chroma = mean_lab_ab_for_mask(
+        image_bgr,
+        component_mask,
+    )
     overlaps = {
         color_name: int(
             cv2.countNonZero(cv2.bitwise_and(component_mask, color_mask))
@@ -2715,6 +2752,8 @@ def classify_component(
         "bbox": [int(x), int(y), int(w), int(h)],
         "center": [int(center_x), int(center_y)],
         "mean_hsv": [round(mean_h, 1), round(mean_s, 1), round(mean_v, 1)],
+        "mean_lab_ab": [round(mean_lab_a, 1), round(mean_lab_b, 1)],
+        "lab_chroma_mean": round(mean_lab_chroma, 1),
         "gold_overlap_percent": round(final_gold_share * 100.0, 1),
         "color_mix_percent": color_mix,
         "dominant_share_percent": round(dominant_share * 100.0, 1),
@@ -3797,6 +3836,124 @@ def mark_repeated_micro_stone_groups(
     return regions
 
 
+def is_warm_white_reflection_signature(region: dict) -> bool:
+    if region.get("color") != "White/Colorless":
+        return False
+    mean_hsv = region.get("mean_hsv") or [0.0, 0.0, 0.0]
+    mean_lab_ab = region.get("mean_lab_ab") or [0.0, 0.0]
+    try:
+        mean_h = float(mean_hsv[0])
+        mean_s = float(mean_hsv[1])
+        mean_v = float(mean_hsv[2])
+        mean_b = float(mean_lab_ab[1])
+    except (TypeError, ValueError, IndexError):
+        return False
+
+    warm_hue = REFLECTIVE_WHITE_WARM_HUE_MIN <= mean_h <= REFLECTIVE_WHITE_WARM_HUE_MAX
+    yellow_cast = mean_b >= REFLECTIVE_WHITE_WARM_LAB_B_MIN
+    return bool(
+        mean_v >= REFLECTIVE_WHITE_WARM_VALUE_MIN
+        and yellow_cast
+        and (warm_hue or mean_b >= REFLECTIVE_WHITE_WARM_LAB_B_MIN + 3.0)
+        and mean_s >= REFLECTIVE_WHITE_WARM_SAT_MIN
+    )
+
+
+def is_low_confidence_edge_white(region: dict) -> bool:
+    if region.get("color") != "White/Colorless":
+        return False
+    if int(region.get("area_px", 0)) > REFLECTIVE_EDGE_MICRO_AREA_MAX_PX:
+        return False
+    return bool(
+        float(region.get("boundary_share", 0.0)) >= 0.70
+        and float(region.get("max_boundary_depth_px", 999.0)) <= 2.0
+        and not bool(region.get("learned_matches"))
+    )
+
+
+def is_yellow_gold_driven_multicolor(region: dict) -> bool:
+    if region.get("color") != "Multicolor/Color-changing":
+        return False
+    if region.get("learned_matches"):
+        return False
+    color_mix = region.get("color_mix_percent") or {}
+    try:
+        yellow_share = float(color_mix.get("Yellow/Gold", 0.0))
+    except (TypeError, ValueError):
+        yellow_share = 0.0
+    return yellow_share >= 55.0
+
+
+def suppress_reflective_artifact_regions(
+    regions: list[dict],
+    jewel_area: int,
+) -> list[dict]:
+    if not regions:
+        return regions
+
+    filtered: list[dict] = []
+    for region in regions:
+        if is_low_confidence_edge_white(region):
+            continue
+        if is_yellow_gold_driven_multicolor(region):
+            continue
+        if (
+            region.get("color") in COLOR_STONE_REGION_GROW_COLORS
+            and int(region.get("seed_area_px", region.get("area_px", 0)))
+            < STONE_REGION_GROW_COLOR_MIN_SEED_AREA_PX
+            and not bool(region.get("micro_stone_supported"))
+            and not bool(region.get("learned_matches"))
+        ):
+            continue
+        filtered.append(region)
+
+    if not filtered:
+        return filtered
+
+    non_white_regions = [
+        region
+        for region in filtered
+        if region.get("color") != "White/Colorless"
+    ]
+    white_regions = [
+        region
+        for region in filtered
+        if region.get("color") == "White/Colorless"
+        and not bool(region.get("learned_matches"))
+    ]
+    if non_white_regions or len(white_regions) < REFLECTIVE_WHITE_ONLY_MIN_REGIONS:
+        return filtered
+
+    total_white_area = sum(int(region.get("area_px", 0)) for region in white_regions)
+    if total_white_area <= 0 or jewel_area <= 0:
+        return filtered
+
+    white_percent = total_white_area / float(jewel_area) * 100.0
+    largest_white = max(int(region.get("area_px", 0)) for region in white_regions)
+    largest_limit = max(
+        REFLECTIVE_WHITE_ONLY_MAX_LARGEST_REGION_PX,
+        int(round(jewel_area * REFLECTIVE_WHITE_ONLY_MAX_LARGEST_JEWEL_FRACTION)),
+    )
+    warm_count = sum(
+        1 for region in white_regions if is_warm_white_reflection_signature(region)
+    )
+    warm_share = warm_count / float(max(1, len(white_regions)))
+
+    if (
+        white_percent <= REFLECTIVE_WHITE_ONLY_MAX_PERCENT
+        and largest_white <= largest_limit
+        and warm_share >= 0.55
+    ):
+        return [
+            region
+            for region in filtered
+            if region.get("color") != "White/Colorless"
+            or bool(region.get("learned_matches"))
+        ]
+
+    return filtered
+
+
 def serialize_regions(regions: list[dict]) -> list[dict]:
     serialized_regions = []
     for region in regions:
@@ -4367,6 +4524,8 @@ def analyze_jewel_candidate(
                     for region in regions
                     if region["color"] != neutral_color
                 ]
+
+    regions = suppress_reflective_artifact_regions(regions, jewel_area)
 
     # Calculate accurate stone-area statistics from filled masks BEFORE
     # visualization so contour lines and overlays do not affect pixel counts.

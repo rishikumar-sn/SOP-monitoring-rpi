@@ -1,0 +1,52 @@
+{
+  "image_path": "/home/pi/Desktop/EMBSYS-AI/runtime_sessions/pra_20260706_123931_75219dc8/source/working_source.png",
+  "updated_at": "2026-07-06T12:40:11",
+  "jewel_type": "Haram",
+  "signature": {
+    "exact_hash": "6cf8fc4ee411a2c816c82e2f1e2075606682ab7e",
+    "image_dhash": "ff9731594f6f9fff",
+    "mask_dhash": "ffe9ceaeb393e7ff",
+    "object_aspect_ratio": 1.321364,
+    "object_fill_ratio": 0.05019,
+    "object_density": 0.171832,
+    "edge_dhash": "fff1ccaeb393e7ff",
+    "color_histogram": [
+      0.445906,
+      0.247076,
+      0.004386,
+      0.023392,
+      0.019006,
+      0.0,
+      0.005848,
+      0.008772,
+      0.0,
+      0.0,
+      0.001462,
+      0.0,
+      0.002924,
+      0.0,
+      0.0,
+      0.001462,
+      0.0,
+      0.0,
+      0.005848,
+      0.0,
+      0.0,
+      0.115497,
+      0.109649,
+      0.008772
+    ]
+  },
+  "feedback_version": 3,
+  "object_bbox": [
+    417,
+    287,
+    1152,
+    843
+  ],
+  "no_pendant": true,
+  "working_size": [
+    1088,
+    1290
+  ]
+}

@@ -1237,7 +1237,7 @@ class PurityTestManager:
                     0.0,
                 )
             )
-            self.speak("Purity test has been started, keep the Rubbing stone inside the camera feed.")
+            self.speak("Acid test has been started, keep the rubbing stone inside the camera feed.")
             self._set_status("Purity test started.")
             self._thread = threading.Thread(
                 target=self._run_loop,

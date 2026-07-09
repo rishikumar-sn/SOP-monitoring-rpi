@@ -382,7 +382,7 @@ def tts_output_state() -> dict[str, Any]:
 TTS_PHRASES = {
     "Processing started": "processing_started.wav",
     "Jewel type complete": "jewel_type_complete.wav",
-    "Acid test started.": "acid_test_started.wav",
+    "Acid test has been started, keep the rubbing stone inside the camera feed.": "acid_test_started_keep_rubbing_stone.wav",
     "Acid test skipped.": "acid_test_skipped.wav",
     "Enter the Pledge ID": "enter_pledge_id.wav",
     "Enter the jewel count for this pledge.": "enter_jewel_count.wav",
@@ -427,7 +427,7 @@ TTS_WORKFLOW_PHRASES = {
     "Packet sealing recording started. Put all jewels into the packet and seal it.",
     "Packet sealing stopped. Video is still compressing.",
     "Packet sealing video saved. Final report is ready.",
-    "Purity test has been started, keep the Rubbing stone inside the camera feed.",
+    "Acid test has been started, keep the rubbing stone inside the camera feed.",
     "Now Rubbing stone is detected, use the jewelry to run on it",
     "Jewelry is now inside the stone region, now start rubbing for acid test",
     "Visual and audio synchronization is okay. Now, apply the acid to complete the purity test.",
@@ -6681,8 +6681,6 @@ def api_purity_start():
             state["status"] = state["purity_test"].get("status") or "Acid test running"
             state["updated_at"] = now_stamp()
             build_final_summary(state)
-
-            speak("Acid test started.")
         except Exception as exc:  # noqa: BLE001
             return fail(str(exc))
 
