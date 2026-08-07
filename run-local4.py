@@ -13,6 +13,8 @@ import threading
 import queue
 import time
 import logging
+import re
+import subprocess
 from collections import deque
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
@@ -127,7 +129,7 @@ try:
 except (TypeError, ValueError):
     GOLD_FULL_FRAME_FALLBACK_EVERY = 6
 
-ACID_CONF_THRESH = 0.90
+ACID_CONF_THRESH = 0.70
 ACID_IOU_THRESH = 0.45
 ACID_MIN_AREA_PX = 140
 ACID_CONFIRM_FRAMES = 3
@@ -135,7 +137,7 @@ ACID_CONFIRM_FRAMES = 3
 # ====================== IMPROVED AUDIO & SYNC ======================
 AUDIO_WINDOW_SEC = 1.0
 AUDIO_HOP_RATIO = 0.3
-AUDIO_CONF_THRESH = 0.90
+AUDIO_CONF_THRESH = 0.70
 AUDIO_OK_STREAK_REQUIRED = 1
 AUDIO_NOK_STREAK_REQUIRED = 1
 AUDIO_SYNC_WINDOW_SEC = 1.5
@@ -1701,6 +1703,153 @@ def audio_device_stable_id(index: int, name: str) -> str:
     return f"{AUDIO_DEVICE_NAME_PREFIX}{_normalize_audio_device_name(name)}"
 
 
+def _alsa_card_from_audio_device(device_index: Optional[int]) -> Tuple[Optional[int], str]:
+    if not SOUNDDEVICE_AVAILABLE:
+        return None, "sounddevice unavailable"
+
+    resolved_index = device_index
+    if resolved_index is None:
+        try:
+            resolved_index = int(sd.default.device[0])
+        except Exception:
+            return None, "default input device has no ALSA card"
+
+    try:
+        device = sd.query_devices(int(resolved_index))
+    except Exception as exc:
+        return None, f"device query failed: {exc}"
+
+    name = str(device.get("name", ""))
+    for marker in ("(hw:", "hw:"):
+        marker_index = name.find(marker)
+        if marker_index < 0:
+            continue
+        start = marker_index + len(marker)
+        card_text = name[start:].split(",", 1)[0].split(")", 1)[0].strip()
+        try:
+            return int(card_text), name
+        except ValueError:
+            break
+    return None, f"no ALSA hw card in device name: {name}"
+
+
+def _amixer(args: List[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["amixer", *args],
+        capture_output=True,
+        text=True,
+        timeout=2,
+    )
+
+
+def query_audio_capture_gain(device_index: Optional[int]) -> Dict[str, Any]:
+    card, device_name = _alsa_card_from_audio_device(device_index)
+    snapshot: Dict[str, Any] = {
+        "card": card,
+        "device_name": device_name,
+        "control": "Mic Capture Volume",
+        "capture_on": None,
+        "gain_percent": None,
+        "gain_db": "",
+        "gain_value": None,
+        "gain_min": None,
+        "gain_max": None,
+        "gain_text": "unknown",
+        "error": "",
+    }
+    if card is None:
+        snapshot["error"] = device_name
+        return snapshot
+
+    try:
+        volume = _amixer(["-c", str(card), "cget", "name=Mic Capture Volume"])
+    except Exception as exc:
+        snapshot["error"] = f"amixer failed: {exc}"
+        return snapshot
+
+    if volume.returncode != 0:
+        snapshot["error"] = volume.stderr.strip() or volume.stdout.strip()
+        return snapshot
+
+    output = volume.stdout
+    range_match = re.search(r"min=(-?\d+),max=(-?\d+)", output)
+    value_match = re.search(r": values=(-?\d+)", output)
+    if range_match and value_match:
+        gain_min = int(range_match.group(1))
+        gain_max = int(range_match.group(2))
+        gain_value = int(value_match.group(1))
+        denominator = max(1, gain_max - gain_min)
+        gain_percent = max(0.0, min(100.0, (gain_value - gain_min) * 100.0 / denominator))
+        snapshot.update(
+            {
+                "gain_min": gain_min,
+                "gain_max": gain_max,
+                "gain_value": gain_value,
+                "gain_percent": gain_percent,
+            }
+        )
+
+    try:
+        switch = _amixer(["-c", str(card), "cget", "name=Mic Capture Switch"])
+        if switch.returncode == 0:
+            switch_match = re.search(r": values=(on|off)", switch.stdout)
+            if switch_match:
+                snapshot["capture_on"] = switch_match.group(1) == "on"
+    except Exception:
+        pass
+
+    try:
+        simple = _amixer(["-c", str(card), "sget", "Mic"])
+        if simple.returncode == 0:
+            for line in simple.stdout.splitlines():
+                if "Capture" not in line or ("Mono:" not in line and "Front" not in line):
+                    continue
+                capture_text = line[line.rfind("Capture") :]
+                db_match = re.search(r"\[([+-]?\d+(?:\.\d+)?dB)\]", capture_text)
+                if db_match:
+                    snapshot["gain_db"] = db_match.group(1)
+                    break
+    except Exception:
+        pass
+
+    percent = snapshot.get("gain_percent")
+    if percent is not None:
+        db_text = f" {snapshot['gain_db']}" if snapshot.get("gain_db") else ""
+        switch_text = " on" if snapshot.get("capture_on") is True else " off" if snapshot.get("capture_on") is False else ""
+        snapshot["gain_text"] = f"{float(percent):.0f}%{db_text}{switch_text}"
+    return snapshot
+
+
+def ensure_audio_capture_gain_max(device_index: Optional[int]) -> Dict[str, Any]:
+    snapshot = query_audio_capture_gain(device_index)
+    card = snapshot.get("card")
+    gain_value = snapshot.get("gain_value")
+    gain_max = snapshot.get("gain_max")
+    if card is None:
+        return snapshot
+
+    changed = False
+    try:
+        if isinstance(gain_value, int) and isinstance(gain_max, int) and gain_value < gain_max:
+            result = _amixer(["-c", str(card), "cset", "name=Mic Capture Volume", str(gain_max)])
+            changed = result.returncode == 0
+        if snapshot.get("capture_on") is False:
+            result = _amixer(["-c", str(card), "cset", "name=Mic Capture Switch", "on"])
+            changed = changed or result.returncode == 0
+    except Exception as exc:
+        snapshot["error"] = f"gain restore failed: {exc}"
+        return snapshot
+
+    refreshed = query_audio_capture_gain(device_index)
+    if changed:
+        logger.info(
+            "[Audio] Restored capture gain on card %s to %s",
+            refreshed.get("card"),
+            refreshed.get("gain_text"),
+        )
+    return refreshed
+
+
 class AudioWorker:
     def __init__(self, model: Any, device_ctx: Any, sample_rate: Optional[int] = None,
                  window_sec: Optional[float] = None,
@@ -1764,14 +1913,40 @@ class AudioWorker:
             "rms": 0.0,
             "peak": 0.0,
             "active_ratio": 0.0,
+            "capture_gain": "unknown",
+            "capture_gain_percent": None,
+            "capture_gain_db": "",
+            "capture_gain_card": None,
+            "capture_gain_error": "",
             "stream_open": False,
             "last_error": "",
         }
+        self._refresh_capture_gain(force_max=True)
 
     def _update_window_sizes(self) -> None:
         rate = int(self.input_sr or self.model_sr)
         self.win_samples = max(1, int(rate * self.window_sec))
         self.hop_samples = max(1, int(self.win_samples * self.hop_ratio))
+
+    def _refresh_capture_gain(
+        self,
+        force_max: bool = False,
+        device_index: Any = None,
+        use_current: bool = True,
+    ) -> Dict[str, Any]:
+        target_device = self.device if use_current else device_index
+        gain = ensure_audio_capture_gain_max(target_device) if force_max else query_audio_capture_gain(target_device)
+        with self._debug_lock:
+            self._debug.update(
+                {
+                    "capture_gain": gain.get("gain_text", "unknown"),
+                    "capture_gain_percent": gain.get("gain_percent"),
+                    "capture_gain_db": gain.get("gain_db", ""),
+                    "capture_gain_card": gain.get("card"),
+                    "capture_gain_error": gain.get("error", ""),
+                }
+            )
+        return gain
 
     def _audio_callback(self, indata: np.ndarray, frames: int, time_info: Any, status: Any) -> None:
         if status:
@@ -1895,6 +2070,7 @@ class AudioWorker:
     def _open_stream(self, device: Any, sample_rate: int, label: str) -> None:
         self.input_sr = int(sample_rate)
         self._update_window_sizes()
+        gain = self._refresh_capture_gain(force_max=True, device_index=device, use_current=False)
         self._stream = sd.InputStream(
             samplerate=self.input_sr,
             channels=1,
@@ -1912,11 +2088,21 @@ class AudioWorker:
                     "selected_device_name": get_audio_device_name(device),
                     "input_sr": self.input_sr,
                     "model_sr": self.model_sr,
+                    "capture_gain": gain.get("gain_text", "unknown"),
+                    "capture_gain_percent": gain.get("gain_percent"),
+                    "capture_gain_db": gain.get("gain_db", ""),
+                    "capture_gain_card": gain.get("card"),
+                    "capture_gain_error": gain.get("error", ""),
                     "stream_open": True,
                     "last_error": "",
                 }
             )
-        logger.info("[Audio] Microphone stream started on %s at %sHz", label, self.input_sr)
+        logger.info(
+            "[Audio] Microphone stream started on %s at %sHz; capture gain=%s",
+            label,
+            self.input_sr,
+            gain.get("gain_text", "unknown"),
+        )
 
     def _try_open(self, device: Any, sample_rate: int, label: str) -> Optional[Exception]:
         try:
@@ -2848,6 +3034,7 @@ class GoldTestingWindow(QtWidgets.QMainWindow):
             f"{probability_text} | "
             f"rms={float(debug.get('rms', 0.0)):.4f} | "
             f"peak={float(debug.get('peak', 0.0)):.4f} | "
+            f"gain={debug.get('capture_gain', 'unknown')} | "
             f"active={float(debug.get('active_ratio', 0.0)):.3f} | "
             f"stream={'open' if bool(debug.get('stream_open', False)) else 'closed'} | "
             f"sr={int(debug.get('input_sr', 0) or 0)}/{int(debug.get('model_sr', 0) or 0)} | "

@@ -62,7 +62,7 @@ class PuritySessionSummary:
     audio_label: str = "Waiting..."
     audio_decision: str = "Waiting..."
     audio_confidence: float = 0.0
-    audio_ok_threshold: float = 0.90
+    audio_ok_threshold: float = 0.70
     audio_probabilities: dict[str, float] = field(default_factory=dict)
     audio_input_rate: int = 0
     audio_model_rate: int = 0
@@ -378,7 +378,7 @@ class PurityTestManager:
         self._models_loaded = False
         self._availability_error = ""
         self._selected_audio_device: str | int | None = "__AUTO__"
-        self._audio_ok_confidence_threshold = 0.90
+        self._audio_ok_confidence_threshold = 0.70
         self._session_root: Path | None = None
         self._session_resources_active = False
         self._last_error = ""
@@ -861,6 +861,7 @@ class PurityTestManager:
             f"{probability_text} | "
             f"rms={float(debug.get('rms', 0.0) or 0.0):.4f} | "
             f"peak={float(debug.get('peak', 0.0) or 0.0):.4f} | "
+            f"gain={debug.get('capture_gain', 'unknown') or 'unknown'} | "
             f"active={float(debug.get('active_ratio', 0.0) or 0.0):.3f} | "
             f"sr={int(debug.get('input_sr', 0) or 0)}/{int(debug.get('model_sr', 0) or 0)} | "
             f"backend={debug.get('model_backend', '') or 'unknown'} | "
@@ -888,6 +889,10 @@ class PurityTestManager:
     def is_running(self) -> bool:
         with self._state_lock:
             return bool(self._session.running)
+
+    def worker_is_active(self) -> bool:
+        thread = self._thread
+        return bool(thread is not None and thread.is_alive())
 
     def build_live_preview(self, frame: np.ndarray) -> np.ndarray:
         """Decorate a fresh camera frame while synchronous inference is busy."""
@@ -1264,9 +1269,18 @@ class PurityTestManager:
                 self._session.inference_status = "Stopping"
         thread = self._thread
         if thread is not None and thread.is_alive() and thread is not threading.current_thread():
-            thread.join(timeout=0.25)
+            thread.join(
+                timeout=max(
+                    1.0,
+                    PURITY_HAILO_INFERENCE_TIMEOUT_MS / 1000.0 + 1.0,
+                )
+            )
         if thread is None or not thread.is_alive():
             self._release_session_resources()
+        else:
+            logger.error(
+                "Purity worker did not stop before its Hailo inference timeout."
+            )
         return self.snapshot()
 
     def _run_loop(self) -> None:
@@ -1514,6 +1528,10 @@ class PurityTestManager:
     def reset(self, stop_running: bool = True) -> None:
         if stop_running:
             self.stop("Reset")
+            if self.worker_is_active():
+                raise RuntimeError(
+                    "Purity test is still stopping; wait before resetting the workflow."
+                )
         with self._state_lock:
             self._session = PuritySessionSummary(
                 available=self._available and not bool(self._availability_error),

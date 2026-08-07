@@ -14,7 +14,7 @@
   "n_fft": 512,
   "hop_length": 160,
   "win_length": 400,
-  "confidence_threshold": 0.9,
+  "confidence_threshold": 0.7,
   "normalization_mean": -44.59016799926758,
   "normalization_std": 23.649555206298828
 }

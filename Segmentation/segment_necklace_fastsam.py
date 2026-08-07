@@ -34,8 +34,9 @@ MAX_SIMILAR_FEEDBACK_SCORE = 32.0
 MAX_NEGATIVE_FEEDBACK_SCORE = 8.0
 PENDANT_AUTO_MIN_SCORE = 7.25
 TASSEL_AUTO_MIN_SCORE_HARAM = 9.0
+TASSEL_AUTO_MIN_SCORE_NECKLACE = 9.0
 TASSEL_AUTO_MIN_SCORE_OTHER = 11.5
-TASSEL_AUTO_DISABLED_TYPES = frozenset({"necklace", "dollar chain", "dollar"})
+TASSEL_AUTO_DISABLED_TYPES = frozenset({"dollar chain", "dollar"})
 
 # FastSAM is class-agnostic, so these prompts are also the explicit policy used
 # by the geometric/color evidence gates below and are exposed in debug output.
@@ -47,10 +48,9 @@ PART_DETECTION_PROMPTS = {
         "compact hanging ornament."
     ),
     "tassel": (
-        "Tassel/thread: automatic detection is disabled for Necklace and "
-        "Dollar chain. Haram uses conservative detection, while other jewel "
-        "types require very strong terminal textile-strand evidence. Manual "
-        "correction remains authoritative."
+        "Tassel/thread: detect a sparse terminal bundle with repeated strand "
+        "evidence for Necklace and Haram, including colorful or pale thread. "
+        "Dollar chain remains disabled. Manual correction remains authoritative."
     ),
 }
 
@@ -2509,6 +2509,8 @@ def _tassel_auto_policy(jewel_type: str | None) -> str:
         return "disabled"
     if normalized_type == "haram":
         return "haram"
+    if normalized_type == "necklace":
+        return "necklace"
     return "very_low"
 
 
@@ -2584,6 +2586,12 @@ def pendant_candidate_evidence(
         necklace_mask.astype(np.uint8)
         & (1 - mask.astype(np.uint8))
     )
+    outside_y = np.where(outside_candidate > 0)[0]
+    bottom_prominence = (
+        (float(y2) - float(np.percentile(outside_y, 99.0))) / range_y
+        if outside_y.size
+        else -1.0
+    )
     contact_shell = dilate(mask.astype(np.uint8), 5) & outside_candidate
     shell_y, shell_x = np.where(contact_shell > 0)
     top_center_contacts = 0
@@ -2645,6 +2653,12 @@ def pendant_candidate_evidence(
         score += 1.0
     elif bottom_reach >= 0.78:
         score += 0.45
+    if bottom_prominence >= 0.12:
+        score += 1.0
+    elif bottom_prominence >= 0.08:
+        score += 0.5
+    elif bottom_prominence < 0.03:
+        score -= 2.0
 
     if center_offset <= 0.16:
         score += 1.35
@@ -2686,6 +2700,7 @@ def pendant_candidate_evidence(
         and jewelry_ratio >= 0.18
         and y_fraction >= 0.55
         and bottom_reach >= 0.76
+        and bottom_prominence >= 0.08
         and center_offset <= 0.34
         and 0.34 <= aspect <= 2.20
         and fill_ratio >= 0.18
@@ -2702,6 +2717,8 @@ def pendant_candidate_evidence(
         reason = "Compact jewelry ornament attached near the bottom middle."
     elif center_offset > 0.34 or bottom_reach < 0.76:
         reason = "Candidate is not in the bottom-middle pendant zone."
+    elif bottom_prominence < 0.08:
+        reason = "Candidate does not hang distinctly below the surrounding necklace region."
     elif (
         compact_votes < 3
         or fill_ratio < 0.18
@@ -2731,6 +2748,7 @@ def pendant_candidate_evidence(
             "x_center_fraction": round(float(x_fraction), 3),
             "y_center_fraction": round(float(y_fraction), 3),
             "bottom_reach": round(float(bottom_reach), 3),
+            "bottom_prominence": round(float(bottom_prominence), 3),
             "top_attachment_pixels": top_center_contacts,
             "thickness_ratio": round(float(thickness_ratio), 3),
         }
@@ -2857,6 +2875,26 @@ def tassel_candidate_evidence(
     skeleton_ratio = float(skeleton.sum()) / float(max(1, area))
     endpoint_count = _skeleton_endpoint_count(mask)
     long_line_count, line_concentration = _parallel_line_metrics(mask, image)
+    pale_thread_bundle = bool(
+        area_ratio >= 0.12
+        and saturated_ratio <= 0.34
+        and fill_ratio <= 0.30
+        and solidity <= 0.56
+        and skeleton_ratio >= 0.04
+        and endpoint_count >= 12
+        and long_line_count >= 8
+        and edge_ratio >= 0.18
+    )
+    pale_fan_shape = bool(
+        0.04 <= area_ratio <= 0.20
+        and saturated_ratio <= 0.38
+        and 0.85 <= aspect_ratio <= 2.40
+        and 0.35 <= fill_ratio <= 0.62
+        and 0.55 <= solidity <= 0.82
+        and endpoint_count >= 20
+        and long_line_count >= 35
+        and edge_ratio >= 0.18
+    )
 
     score = 0.0
 
@@ -2908,6 +2946,8 @@ def tassel_candidate_evidence(
         score += 0.7
     elif edge_ratio >= 0.12:
         score += 0.35
+    if pale_thread_bundle:
+        score += 4.0
 
     necklace_x1, necklace_y1, necklace_x2, necklace_y2 = bounding_box(necklace_mask)
     range_x = max(1.0, float(necklace_x2 - necklace_x1))
@@ -2922,6 +2962,9 @@ def tassel_candidate_evidence(
         y_fraction,
         1.0 - y_fraction,
     )
+    pale_fan_bundle = pale_fan_shape and terminal_distance <= 0.10
+    if pale_fan_bundle:
+        score += 7.0
     if terminal_distance <= 0.16:
         score += 1.15
     elif terminal_distance <= 0.28:
@@ -2931,6 +2974,8 @@ def tassel_candidate_evidence(
     if auto_policy == "haram":
         score += 0.25
         threshold = TASSEL_AUTO_MIN_SCORE_HARAM
+    elif auto_policy == "necklace":
+        threshold = TASSEL_AUTO_MIN_SCORE_NECKLACE
     elif auto_policy == "disabled":
         score -= 2.0
         threshold = 999.0
@@ -2938,7 +2983,12 @@ def tassel_candidate_evidence(
         score -= 1.5
         threshold = TASSEL_AUTO_MIN_SCORE_OTHER
 
-    if gold_ratio > 0.55 and textile_ratio < 0.16:
+    if (
+        gold_ratio > 0.55
+        and textile_ratio < 0.16
+        and not pale_thread_bundle
+        and not pale_fan_bundle
+    ):
         score -= 3.0
     if fill_ratio > 0.58 or solidity > 0.82:
         score -= 2.0
@@ -2958,6 +3008,21 @@ def tassel_candidate_evidence(
         sparse_bundle = fill_ratio <= 0.45 and solidity <= 0.70
         terminal_region = terminal_distance <= 0.22
         max_area_ratio = 0.45
+        material_bundle = colorful_threads
+    elif auto_policy == "necklace":
+        colorful_threads = textile_ratio >= 0.22 and saturated_ratio >= 0.34
+        filament_bundle = (
+            long_line_count >= 4
+            and line_concentration >= 0.30
+            and (skeleton_ratio >= 0.04 or endpoint_count >= 8)
+        )
+        sparse_bundle = (
+            (fill_ratio <= 0.48 and solidity <= 0.72)
+            or pale_fan_bundle
+        )
+        terminal_region = terminal_distance <= 0.28
+        max_area_ratio = 0.40
+        material_bundle = colorful_threads or pale_thread_bundle or pale_fan_bundle
     else:
         colorful_threads = textile_ratio >= 0.16 and saturated_ratio >= 0.30
         filament_bundle = (
@@ -2965,13 +3030,17 @@ def tassel_candidate_evidence(
             and line_concentration >= 0.38
             and (skeleton_ratio >= 0.045 or endpoint_count >= 4)
         )
-        sparse_bundle = fill_ratio <= 0.52 and solidity <= 0.78
+        sparse_bundle = (
+            (fill_ratio <= 0.52 and solidity <= 0.78)
+            or pale_fan_bundle
+        )
         terminal_region = terminal_distance <= 0.30
         max_area_ratio = 0.62
+        material_bundle = colorful_threads or pale_thread_bundle or pale_fan_bundle
     accepted = bool(
         auto_policy != "disabled"
         and 0.012 <= area_ratio <= max_area_ratio
-        and colorful_threads
+        and material_bundle
         and filament_bundle
         and sparse_bundle
         and terminal_region
@@ -2984,9 +3053,9 @@ def tassel_candidate_evidence(
             "use a manual correction when a tassel is present."
         )
     elif accepted:
-        reason = "Colorful terminal bundle with multiple aligned thread-like strands."
-    elif not colorful_threads:
-        reason = "No strong colorful textile-thread evidence."
+        reason = "Terminal bundle with multiple aligned thread-like strands."
+    elif not material_bundle:
+        reason = "No strong colorful or pale textile-thread evidence."
     elif not filament_bundle:
         reason = "Region lacks multiple elongated, aligned strand features."
     elif not terminal_region:
@@ -3013,6 +3082,8 @@ def tassel_candidate_evidence(
             "textile_ratio": round(float(textile_ratio), 3),
             "saturated_ratio": round(float(saturated_ratio), 3),
             "hue_diversity": hue_diversity,
+            "pale_thread_bundle": pale_thread_bundle,
+            "pale_fan_bundle": pale_fan_bundle,
             "edge_ratio": round(float(edge_ratio), 3),
             "skeleton_ratio": round(float(skeleton_ratio), 4),
             "skeleton_endpoints": endpoint_count,
@@ -3380,15 +3451,15 @@ def detect_tassel_seed(
             if candidate.any():
                 candidates.append(candidate)
 
-    # False positives are more costly than misses. Texture proposals are enabled
-    # only when colorful textile pixels already exist; monochrome/gold thread
-    # can still be supplied by manual feedback.
+    # Texture proposals are also needed for pale/cream tassels that have little
+    # saturated colour. The evidence gate below still requires a sparse,
+    # terminal, strand-like bundle before accepting one.
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     edges = (cv2.Canny(gray, 45, 135) > 0).astype(np.float32)
     density_sigma = max(3.0, min(h, w) / 70.0)
     edge_density = cv2.GaussianBlur(edges, (0, 0), density_sigma)
     necklace_values = edge_density[necklace_mask > 0]
-    if necklace_values.size and color_components.any():
+    if necklace_values.size:
         density_threshold = float(np.percentile(necklace_values, 72.0))
         x1, y1, x2, y2 = bounding_box(necklace_mask)
         yy, xx = np.ogrid[:h, :w]
@@ -3768,10 +3839,17 @@ def build_layout(image: np.ndarray, parts: Dict[str, np.ndarray], bead_result: D
             cv2.LINE_AA,
         )
 
-        detail_text = (
-            f"Thickness Peaks: {thickness_peaks} | Blobs: {blob_count} | "
-            f"Width Var: {variation:.2f} | Avg Width: {mean_w:.1f}px"
-        )
+        if bead_result.get("model"):
+            detail_text = (
+                f"Detected Beads: {int(bead_result.get('bead_count', 0))} | "
+                f"Full image HEF input: {int(bead_result.get('model_input_size', 640))}x"
+                f"{int(bead_result.get('model_input_size', 640))}"
+            )
+        else:
+            detail_text = (
+                f"Thickness Peaks: {thickness_peaks} | Blobs: {blob_count} | "
+                f"Width Var: {variation:.2f} | Avg Width: {mean_w:.1f}px"
+            )
         cv2.putText(
             canvas,
             detail_text,
@@ -4440,6 +4518,8 @@ def segment_necklace(
         "part_detection_prompts": PART_DETECTION_PROMPTS,
         "pendant_detected": bool(parts["pendant"].any()),
         "tassel_detected": bool(parts["tassel"].any()),
+        "pendant_absent": not bool(parts["pendant"].any()),
+        "tassel_absent": not bool(parts["tassel"].any()),
         "pendant_evidence": pendant_evidence,
         "tassel_evidence": tassel_evidence,
         "detections": len(detections),
@@ -4527,6 +4607,7 @@ def run_segmentation(
     args: argparse.Namespace,
     preprocessed_image: np.ndarray | None = None,
     preprocessed_mask: np.ndarray | None = None,
+    bead_analysis_override: Dict[str, object] | None = None,
 ) -> Tuple[Path, Dict[str, object]]:
     if preprocessed_image is not None:
         if preprocessed_mask is None:
@@ -4565,6 +4646,12 @@ def run_segmentation(
         args,
         manual_feedback=feedback,
     )
+    if bead_analysis_override is not None:
+        existing_bead_analysis = debug.get("bead_analysis") or {}
+        bead_visualization = existing_bead_analysis.get("visualization")
+        debug["bead_analysis"] = dict(bead_analysis_override)
+        if bead_visualization is not None:
+            debug["bead_analysis"]["visualization"] = bead_visualization
     save_outputs(prepared.working_image, parts, debug, output_dir, prepared.working_mask)
     return output_dir, debug
 

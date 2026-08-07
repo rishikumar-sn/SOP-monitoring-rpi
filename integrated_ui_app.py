@@ -15,6 +15,7 @@ import threading
 import time
 import tempfile
 import uuid
+import wave
 import subprocess
 from collections import defaultdict
 from datetime import datetime
@@ -85,18 +86,6 @@ from super_resolution.real_esrgan_hailo import (
 )
 from purity_test_manager import PurityTestManager
 from shutterspeedset_robust import align_to_powerline, denominator_to_exposure_absolute  # noqa: E402
-
-# GPIO trigger for classification
-try:
-    import RPi.GPIO as RPI_GPIO
-    GPIO_AVAILABLE = True
-except ImportError:
-    RPI_GPIO = None
-    GPIO_AVAILABLE = False
-    print("⚠️  RPi.GPIO not available – GPIO trigger disabled.")
-
-TRIGGER_GPIO_PIN = int(os.environ.get("TRIGGER_GPIO", "6"))
-TRIGGER_BOUNCE_MS = int(os.environ.get("TRIGGER_BOUNCE_MS", "350"))
 
 
 # 16x2 I2C LCD display (PCF8574 backpack, default address 0x27)
@@ -216,7 +205,10 @@ ESPEAK_DATA = (
     else "/usr/lib/aarch64-linux-gnu/espeak-ng-data"  # system fallback
 )
 
-TTS_CACHE_DIR = BASE_DIR / "piper" / "cache"
+# Version the cache so every workflow phrase is regenerated with the same
+# full-volume normalization instead of mixing older, quieter WAV files with
+# newly generated prompts.
+TTS_CACHE_DIR = BASE_DIR / "piper" / "cache" / "full_volume_v1"
 TTS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 TTS_OUTPUT_AUTO = "__AUTO__"
 TTS_OUTPUT_USB_ID_PREFIX = "alsa_usb:"
@@ -405,11 +397,12 @@ TTS_WORKFLOW_PHRASES = {
     "Jewel image is captured. Running jewel type.",
     "This does not look like gold jewelry. Click Yes if correct, or No to override.",
     "Jewel type confirmed. Click next for Dimension analysis.",
-    "Jewel type confirmed. Click next for Segmentation.",
+    "Jewel type confirmed. Click next for Jewellery Analysis.",
     "Jewel type confirmed. Click next for Stone Detection.",
-    "Side image captured. Click next for Side Stone Detection.",
-    "Side stones detected. Click next for Acid Test.",
-    "Segmentation completed. Click next for Stone Detection.",
+    "Side image captured. Click Start Stone Analysis.",
+    "Stone analysis completed. Click next for Acid Test.",
+    "Jewellery analysis completed. Click next for Stone Detection.",
+    "Jewelry risk analysis initiated.",
     "Stone detection completed. Click next for Acid Test.",
     "Current jewel completed. Click Next Jewel to continue.",
     "All jewels are completed. Capture the final jewel count.",
@@ -427,6 +420,9 @@ TTS_WORKFLOW_PHRASES = {
     "Packet sealing recording started. Put all jewels into the packet and seal it.",
     "Packet sealing stopped. Video is still compressing.",
     "Packet sealing video saved. Final report is ready.",
+    "Remove the packet strip, then press Hand Clear.",
+    "Packet sealed.",
+    "Packet not sealed.",
     "Acid test has been started, keep the rubbing stone inside the camera feed.",
     "Now Rubbing stone is detected, use the jewelry to run on it",
     "Jewelry is now inside the stone region, now start rubbing for acid test",
@@ -471,6 +467,28 @@ def _piper_environment() -> dict[str, str]:
         new_ld = os.pathsep.join(existing_lib_dirs)
         env["LD_LIBRARY_PATH"] = f"{new_ld}{os.pathsep}{current_ld}" if current_ld else new_ld
     return env
+
+
+def _normalize_pcm_wav(source_path: Path, output_path: Path) -> bool:
+    """Peak-normalize Piper PCM16 output when SoX is unavailable."""
+    try:
+        with wave.open(str(source_path), "rb") as source:
+            params = source.getparams()
+            frames = source.readframes(source.getnframes())
+        if params.sampwidth != 2 or not frames:
+            return False
+        samples = np.frombuffer(frames, dtype="<i2").astype(np.float32)
+        peak = float(np.max(np.abs(samples))) if samples.size else 0.0
+        if peak <= 0:
+            return False
+        normalized = np.clip(samples * (0.95 * 32767.0 / peak), -32768, 32767).astype("<i2")
+        with wave.open(str(output_path), "wb") as output:
+            output.setparams(params)
+            output.writeframes(normalized.tobytes())
+        return True
+    except Exception as exc:
+        print(f"Voice PCM normalization failed: {exc}")
+        return False
 
 
 def _ensure_tts_cached(text: str) -> Path | None:
@@ -518,7 +536,7 @@ def _ensure_tts_cached(text: str) -> Path | None:
             sox_bin = shutil.which("sox")
             if sox_bin:
                 sox_result = subprocess.run(
-                    [sox_bin, str(raw_path), str(processed_path), "gain", "10"],
+                    [sox_bin, str(raw_path), str(processed_path), "gain", "-n", "-1"],
                     capture_output=True,
                     timeout=10,
                 )
@@ -529,6 +547,8 @@ def _ensure_tts_cached(text: str) -> Path | None:
                         f"Voice volume boost failed for {text!r}; using unboosted audio: "
                         f"{sox_result.stderr.decode(errors='replace').strip()}"
                     )
+            if source_path == raw_path and _normalize_pcm_wav(raw_path, processed_path):
+                source_path = processed_path
 
             os.replace(source_path, cache_path)
             print(f"Cached TTS: {text!r} -> {cache_path.name}")
@@ -651,6 +671,17 @@ def _speak_sync(text: str) -> None:
 
 
 APP_PORT = 5050
+ESTIMATED_TASSEL_WEIGHT_G = 1.5
+
+STAGE_DISPLAY_NAMES = {
+    "dimension": "Dimension Analysis",
+    "side_stone": "Stone Detection",
+    "jewellery_analysis": "Jewellery Analysis",
+    "stone_detection": "Stone Detection",
+    "acid_test": "Acid Test",
+    "final_count": "Final Jewel Count",
+    "packet_sealing": "Packet Sealing Video",
+}
 
 def find_working_camera():
     """Automatically find the first working camera index."""
@@ -829,6 +860,7 @@ except Exception:
 CLASS_PROMPT_PATH = CLASSIFICATION_DIR / DEFAULT_PROMPT_FILE
 SEG_MODEL_PATH = SEGMENTATION_DIR / "fast_sam_s.hef"
 HAND_MODEL_PATH = HANDREMOVER_DIR / "handremover.hef"
+BEAD_MODEL_PATH = BASE_DIR / "models" / "bead_finder.hef"
 CLASS_MODEL_PATH = CLASSIFICATION_DIR / "siglip2-base-patch32-256_vision_encoder.sim.onnx"
 SEGMENTATION_FEEDBACK_DIR = SEGMENTATION_DIR / "feedback"
 SEGMENTATION_FEEDBACK_DIR.mkdir(parents=True, exist_ok=True)
@@ -923,6 +955,9 @@ PACKET_TARGET_SIZE_BYTES = int(os.environ.get("PACKET_TARGET_SIZE_BYTES", "20000
 PACKET_TARGET_SIZE_MARGIN = float(os.environ.get("PACKET_TARGET_SIZE_MARGIN", "0.90"))
 PACKET_TARGET_MIN_VIDEO_KBPS = int(os.environ.get("PACKET_TARGET_MIN_VIDEO_KBPS", "160"))
 PACKET_TARGET_MAX_VIDEO_KBPS = int(os.environ.get("PACKET_TARGET_MAX_VIDEO_KBPS", "1800"))
+STRIPING_PROCESS_DIR = BASE_DIR / "jewel_tracka_rpi"
+STRIPING_BAG_HEF_PATH = STRIPING_PROCESS_DIR / "bag.hef"
+STRIPING_HEF_PATH = STRIPING_PROCESS_DIR / "strip-m.hef"
 
 PROMPT_CONFIG = json.loads(CLASS_PROMPT_PATH.read_text(encoding="utf-8"))
 MODEL_LABELS = list(PROMPT_CONFIG["classes"].keys())
@@ -979,10 +1014,12 @@ TTS_DEDUP_SECONDS: float = 60.0
 _TTS_LAST_BY_TEXT: dict[str, float] = {}
 CLASSIFIER: JewelryZeroShotClassifier | None = None
 SEGMENTER: necklace_segmentation.FastSamOnnx | None = None
+BEAD_MODEL: Any | None = None
 SUPER_RESOLUTION_RUNNER: RealESRGANHailoX2 | None = None
 CURRENT_STATE: dict[str, Any] = {}
 PURITY_MANAGER: PurityTestManager | None = None
 PACKET_RECORDER: "PacketSealingRecorder | None" = None
+PACKET_STRIP_HAILO_MODELS: dict[str, Any] | None = None
 LCD_DISPLAY: I2CLcd16x2 | None = None
 LCD_INIT_ATTEMPTED = False
 
@@ -993,7 +1030,7 @@ DEFAULT_STONE_SUPER_RESOLUTION = {
 }
 
 DEFAULT_PURITY_AUDIO_SETTINGS = {
-    "ok_confidence_threshold": 0.90,
+    "ok_confidence_threshold": 0.70,
 }
 
 PERSISTENT_ROIS = {
@@ -2524,6 +2561,58 @@ def now_stamp() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+try:
+    STORAGE_CLEANUP_THRESHOLD_PERCENT = max(
+        1.0,
+        min(99.0, float(os.environ.get("STORAGE_CLEANUP_THRESHOLD_PERCENT", "90"))),
+    )
+except ValueError:
+    STORAGE_CLEANUP_THRESHOLD_PERCENT = 90.0
+try:
+    STORAGE_CLEANUP_INTERVAL_SECONDS = max(
+        30,
+        int(os.environ.get("STORAGE_CLEANUP_INTERVAL_SECONDS", "300")),
+    )
+except ValueError:
+    STORAGE_CLEANUP_INTERVAL_SECONDS = 300
+
+
+def cleanup_old_runtime_sessions() -> list[str]:
+    """Delete oldest inactive session directories until disk use is safe."""
+    deleted: list[str] = []
+    try:
+        active_session_id = str(CURRENT_STATE.get("session_id") or "")
+        candidates = [
+            path
+            for path in RUNTIME_DIR.iterdir()
+            if path.is_dir()
+            and path.name != PLEDGE_DIR.name
+            and path.name != active_session_id
+        ]
+        candidates.sort(key=lambda path: path.stat().st_mtime)
+
+        for session_path in candidates:
+            usage = shutil.disk_usage(RUNTIME_DIR)
+            used_percent = usage.used * 100.0 / usage.total
+            if used_percent <= STORAGE_CLEANUP_THRESHOLD_PERCENT:
+                break
+            shutil.rmtree(session_path)
+            deleted.append(session_path.name)
+            print(
+                f"Storage cleanup: deleted oldest inactive session {session_path.name} "
+                f"(disk was {used_percent:.1f}% used)."
+            )
+    except Exception as exc:
+        print(f"Storage cleanup failed safely: {exc}")
+    return deleted
+
+
+def storage_cleanup_worker() -> None:
+    while True:
+        cleanup_old_runtime_sessions()
+        time.sleep(STORAGE_CLEANUP_INTERVAL_SECONDS)
+
+
 def new_session_id(pledge_id: str | None = None) -> str:
     prefix = f"{pledge_id}_" if pledge_id else ""
     return f"{prefix}{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
@@ -2554,6 +2643,11 @@ def build_empty_state() -> dict[str, Any]:
         "packet_sealing": _default_packet_sealing_state(),
         "updated_at": now_stamp(),
         "branch": None,
+        "stage_skips": {},
+        "weight_details": {
+            "jewel_weight_g": None,
+            "appraiser_stone_weight_g": None,
+        },
         "source": {
             "kind": None,
             "filename": None,
@@ -2594,6 +2688,8 @@ def build_empty_state() -> dict[str, Any]:
             "bead_analysis": None,
             "no_pendant": False,
             "no_tassel": False,
+            "pendant_absent": False,
+            "tassel_absent": False,
         },
         "stone_detection": {
             "main": None,
@@ -2616,6 +2712,50 @@ def build_empty_state() -> dict[str, Any]:
             "artifacts": [],
         },
     }
+
+
+def normalize_positive_weight(value: Any, field_name: str, *, required: bool) -> float | None:
+    if value is None or str(value).strip() == "":
+        if required:
+            raise ValueError(f"{field_name} is required.")
+        return None
+    try:
+        weight = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field_name} must be a valid number in grams.") from exc
+    if not math.isfinite(weight) or weight <= 0:
+        raise ValueError(f"{field_name} must be greater than 0 grams.")
+    return round(weight, 4)
+
+
+def stage_is_skipped(state: dict[str, Any], stage_key: str) -> bool:
+    return bool((state.get("stage_skips") or {}).get(stage_key))
+
+
+def mark_stage_skipped(state: dict[str, Any], stage_key: str) -> dict[str, str]:
+    if stage_key not in STAGE_DISPLAY_NAMES:
+        raise ValueError("Choose a valid optional workflow stage.")
+    skipped = {
+        "status": "skipped",
+        "skipped_at": now_stamp(),
+        "display_name": STAGE_DISPLAY_NAMES[stage_key],
+    }
+    state.setdefault("stage_skips", {})[stage_key] = skipped
+    return skipped
+
+
+def clear_stage_skip(state: dict[str, Any], stage_key: str) -> None:
+    (state.get("stage_skips") or {}).pop(stage_key, None)
+
+
+def tassel_weight_for_state(state: dict[str, Any]) -> float:
+    segmentation = state.get("segmentation") or {}
+    part_summary = segmentation.get("part_summary") or {}
+    tassel_area = int((part_summary.get("tassel") or {}).get("area", 0) or 0)
+    detected = bool(segmentation.get("tassel_detected") or tassel_area > 0)
+    if segmentation.get("no_tassel") or stage_is_skipped(state, "jewellery_analysis"):
+        detected = False
+    return ESTIMATED_TASSEL_WEIGHT_G if detected else 0.0
 
 
 def ensure_state() -> dict[str, Any]:
@@ -2718,6 +2858,14 @@ def _default_packet_sealing_state() -> dict[str, Any]:
         "stopped_at": None,
         "video": None,
         "av1": None,
+        "striping": {
+            "status": "idle",
+            "sealed": None,
+            "reason": "",
+            "hand_clear_enabled": False,
+            "evidence_image": None,
+            "error": "",
+        },
         "error": "",
     }
 
@@ -3176,6 +3324,597 @@ def _transcode_packet_video_to_av1(raw_path: Path, final_path: Path) -> dict[str
     return result
 
 
+def get_packet_striping_hailo_models(
+    *,
+    create_if_missing: bool = False,
+) -> dict[str, Any]:
+    """Return striping HEFs that were configured during the app startup preload."""
+    global PACKET_STRIP_HAILO_MODELS
+    if PACKET_STRIP_HAILO_MODELS is None:
+        if not create_if_missing:
+            raise RuntimeError(
+                "Packet striping HEFs were not loaded during application startup."
+            )
+        with MODEL_LOCK:
+            if PACKET_STRIP_HAILO_MODELS is None:
+                runtime = get_hailo_runtime()
+                created_models = []
+                try:
+                    bag_model = runtime.create_model(
+                        str(STRIPING_BAG_HEF_PATH),
+                        "PacketStripBag",
+                        timeout_ms=DEFAULT_HAILO_INFERENCE_TIMEOUT_MS,
+                        batch_size=DEFAULT_HAILO_BATCH_SIZE,
+                    )
+                    if bag_model is not None:
+                        created_models.append(bag_model)
+                    strip_model = runtime.create_model(
+                        str(STRIPING_HEF_PATH),
+                        "PacketStrip",
+                        timeout_ms=DEFAULT_HAILO_INFERENCE_TIMEOUT_MS,
+                        batch_size=DEFAULT_HAILO_BATCH_SIZE,
+                    )
+                    if strip_model is not None:
+                        created_models.append(strip_model)
+                    if bag_model is None or strip_model is None:
+                        raise RuntimeError(
+                            runtime.last_model_error
+                            or "Could not load the packet striping HEF models."
+                        )
+                    PACKET_STRIP_HAILO_MODELS = {
+                        "bag": bag_model,
+                        "strip": strip_model,
+                    }
+                except Exception:
+                    for model in created_models:
+                        model.close()
+                        try:
+                            runtime.models.remove(model)
+                        except ValueError:
+                            pass
+                    raise
+    return PACKET_STRIP_HAILO_MODELS
+
+
+def refresh_packet_striping_hailo_models() -> dict[str, Any]:
+    """Reconfigure the startup-loaded packet HEFs before their final-stage use."""
+    global PACKET_STRIP_HAILO_MODELS
+    with MODEL_LOCK:
+        runtime = get_hailo_runtime()
+        for model in (PACKET_STRIP_HAILO_MODELS or {}).values():
+            try:
+                model.close()
+            finally:
+                try:
+                    runtime.models.remove(model)
+                except ValueError:
+                    pass
+        PACKET_STRIP_HAILO_MODELS = None
+        models = get_packet_striping_hailo_models(create_if_missing=True)
+        try:
+            for model in models.values():
+                model.validate_runtime_contract(probe_runs=1)
+        except Exception:
+            for model in models.values():
+                model.close()
+                try:
+                    runtime.models.remove(model)
+                except ValueError:
+                    pass
+            PACKET_STRIP_HAILO_MODELS = None
+            raise
+        print(
+            "[PacketStriping] Refreshed and tested packet HEFs before recording."
+        )
+        return models
+
+
+class PacketStripingVerifier:
+    """Run the existing striping HEFs beside packet video recording."""
+
+    def __init__(
+        self,
+        pledge_id: str,
+        processing_roi: dict[str, int] | None = None,
+    ) -> None:
+        self._lock = threading.RLock()
+        self._pledge_id = pledge_id
+        self._media_dir = pledge_media_dir(pledge_id)
+        self._support = None
+        self._roi = None
+        if processing_roi:
+            x, y, width, height = rect_to_tuple(processing_roi)
+            self._roi = (x, y, x + width, y + height)
+        self._bag_hailo_model = None
+        self._strip_hailo_model = None
+        self._strip_fp_filter = None
+        self._active_model = None
+        self._active_worker = None
+        self._active_kind = None
+        self._status = "idle"
+        self._sealed: bool | None = None
+        self._reason = ""
+        self._error = ""
+        self._evidence_path: Path | None = None
+        self._started_at: str | None = None
+        self._updated_at: str | None = None
+        self._hand_clear_requested = False
+        self._cover_mask = None
+        self._cover_confidence: float | None = None
+        self._rectangularity = 0.0
+        self._target_bag_mask = None
+        self._target_bag_zone = None
+        self._current_strip_mask = None
+        self._strip_appearance_change = 0.0
+        self._strip_confidence: float | None = None
+        self._strip_present = False
+        self._strip_confirm_count = 0
+        self._seal_gone_checks = 0
+        self._verification_strip_misses = 0
+        self._last_frame: np.ndarray | None = None
+
+    def start(self) -> None:
+        with self._lock:
+            self._reset_cycle()
+            self._started_at = now_stamp()
+            self._updated_at = self._started_at
+            try:
+                from jewel_tracka_rpi import striping_process_hef as striping
+
+                self._support = striping
+                models = get_packet_striping_hailo_models()
+                self._bag_hailo_model = models["bag"]
+                self._strip_hailo_model = models["strip"]
+                fp_filter = striping.HSVFPFilter(
+                    str(STRIPING_PROCESS_DIR / striping.DEFAULT_STRIP_FP_MODEL),
+                    striping.DEFAULT_STRIP_FP_CONFIDENCE,
+                )
+                self._strip_fp_filter = fp_filter if fp_filter.enabled else None
+                self._status = "tracking"
+                self._start_model("cover")
+            except Exception as exc:  # noqa: BLE001
+                self._status = "unavailable"
+                self._error = str(exc)
+                self._reason = "Strip verification could not start."
+                self._updated_at = now_stamp()
+
+    def snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            return {
+                "status": self._status,
+                "sealed": self._sealed,
+                "reason": self._reason,
+                "error": self._error,
+                "started_at": self._started_at,
+                "updated_at": self._updated_at,
+                "hand_clear_enabled": self._status == "strip_detected",
+                "evidence_image": pledge_artifact_payload(
+                    self._pledge_id, self._evidence_path
+                ),
+                "overlay": {
+                    "bag": self._mask_overlay(self._cover_mask),
+                    "strip": self._mask_overlay(self._current_strip_mask),
+                    "bag_confidence": self._cover_confidence,
+                    "strip_confidence": self._strip_confidence,
+                    "strip_appearance_change": round(
+                        float(self._strip_appearance_change), 3
+                    ),
+                    "rectangularity": round(float(self._rectangularity), 3),
+                },
+            }
+
+    def annotate_frame(self, frame: np.ndarray) -> np.ndarray:
+        """Draw the current packet masks into the live MJPEG preview."""
+        with self._lock:
+            annotated = frame.copy()
+            bag_label = "PACKET"
+            if self._cover_confidence is not None:
+                bag_label += f" C {self._cover_confidence:.3f}"
+            bag_label += f" R {self._rectangularity:.2f}"
+            strip_label = "PACKET STRIP"
+            if self._strip_confidence is not None:
+                strip_label += f" C {self._strip_confidence:.3f}"
+            masks = (
+                (self._cover_mask, (50, 220, 50), bag_label),
+                (self._current_strip_mask, (0, 140, 255), strip_label),
+            )
+            for mask, color, label in masks:
+                if mask is None or mask.shape[:2] != annotated.shape[:2]:
+                    continue
+                selected = mask > 0
+                if not np.any(selected):
+                    continue
+                annotated[selected] = (
+                    annotated[selected].astype(np.float32) * 0.68
+                    + np.asarray(color, dtype=np.float32) * 0.32
+                ).astype(np.uint8)
+                contours, _hierarchy = cv2.findContours(
+                    mask,
+                    cv2.RETR_EXTERNAL,
+                    cv2.CHAIN_APPROX_SIMPLE,
+                )
+                if not contours:
+                    continue
+                contour = max(contours, key=cv2.contourArea)
+                cv2.drawContours(annotated, [contour], -1, color, 4, cv2.LINE_AA)
+                x, y, width, _height = cv2.boundingRect(contour)
+                cv2.putText(
+                    annotated,
+                    label,
+                    (x, max(28, y - 10)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    color,
+                    2,
+                    cv2.LINE_AA,
+                )
+            return annotated
+
+    def _mask_overlay(self, mask: np.ndarray | None) -> dict[str, Any] | None:
+        if mask is None or self._support is None:
+            return None
+        contour = self._support.get_largest_contour(mask)
+        if contour is None:
+            return None
+        perimeter = cv2.arcLength(contour, True)
+        simplified = cv2.approxPolyDP(contour, max(2.0, perimeter * 0.003), True)
+        points = [
+            {"x": int(point[0][0]), "y": int(point[0][1])}
+            for point in simplified[:64]
+        ]
+        if len(points) < 3:
+            return None
+        x, y, width, height = cv2.boundingRect(contour)
+        return {
+            "contour": points,
+            "rect": {
+                "x": int(x),
+                "y": int(y),
+                "w": int(width),
+                "h": int(height),
+            },
+        }
+
+    def request_hand_clear(self) -> None:
+        with self._lock:
+            if self._status != "strip_detected":
+                raise ValueError("Wait until the strip is detected before pressing Hand Clear.")
+            self._hand_clear_requested = True
+            self._verification_strip_misses = 0
+            self._strip_appearance_change = 0.0
+            self._reason = "Confirming that the strip is absent inside the packet mask."
+            self._updated_at = now_stamp()
+
+    def restart(self, *, reload_hailo_models: bool = False) -> None:
+        with self._lock:
+            if self._support is None:
+                raise RuntimeError(self._error or "Strip verification is unavailable.")
+            self._reset_cycle()
+            if reload_hailo_models:
+                models = refresh_packet_striping_hailo_models()
+                self._bag_hailo_model = models["bag"]
+                self._strip_hailo_model = models["strip"]
+            self._status = "tracking"
+            self._reason = "Waiting for the packet to lie rectangular."
+            self._updated_at = now_stamp()
+            self._start_model("cover")
+
+    def skip(self) -> None:
+        with self._lock:
+            if self._status in {"sealed", "not_sealed", "skipped"}:
+                return
+            self._sealed = False
+            self._status = "skipped"
+            self._reason = "Strip verification skipped; packet is not verified as sealed."
+            self._updated_at = now_stamp()
+            self._save_evidence(self._last_frame)
+            self._clear_live_overlays()
+            self._stop_active_model()
+
+    def process_frame(self, frame: np.ndarray) -> None:
+        with self._lock:
+            if frame is None or frame.size == 0:
+                return
+            self._last_frame = frame.copy()
+            if self._status not in {"tracking", "strip_mode", "strip_detected", "cover_check"}:
+                return
+            if self._active_worker is None or self._support is None:
+                return
+            if not self._active_worker.is_alive():
+                self._status = "unavailable"
+                self._error = (
+                    str(getattr(self._active_worker, "error", "") or "")
+                    or "Strip verification worker stopped."
+                )
+                self._reason = "Strip verification could not continue."
+                self._updated_at = now_stamp()
+                print(f"[PacketStriping] {self._error}")
+                return
+
+            active_worker = self._active_worker
+            active_worker.submit(self._roi_frame(frame))
+            worker_result = active_worker.get_result()
+            confidence = (
+                float(active_worker.last_confidence)
+                if worker_result is not None
+                and active_worker.last_confidence is not None
+                else None
+            )
+            result = self._offset_result(
+                worker_result, frame.shape[:2]
+            )
+
+            if self._status == "tracking":
+                self._process_cover_result(result, frame.shape[:2], confidence)
+            elif self._status == "cover_check":
+                self._process_cover_check(result, confidence)
+            else:
+                self._process_strip_result(result, confidence)
+
+    def finalize(self, frame: np.ndarray | None = None) -> None:
+        with self._lock:
+            if frame is not None and frame.size:
+                self._last_frame = frame.copy()
+            if self._status not in {"sealed", "not_sealed", "skipped"}:
+                self._sealed = False
+                self._status = "not_sealed"
+                self._reason = (
+                    "Strip verification was unavailable."
+                    if self._error
+                    else "Strip removal was not verified before recording stopped."
+                )
+                self._updated_at = now_stamp()
+                self._save_evidence(self._last_frame)
+            self._clear_live_overlays()
+            self._stop_active_model()
+
+    def _clear_live_overlays(self) -> None:
+        self._cover_mask = None
+        self._cover_confidence = None
+        self._rectangularity = 0.0
+        self._current_strip_mask = None
+        self._strip_confidence = None
+
+    def _reset_cycle(self) -> None:
+        self._stop_active_model()
+        self._status = "idle"
+        self._sealed = None
+        self._reason = ""
+        self._error = ""
+        self._evidence_path = None
+        self._hand_clear_requested = False
+        self._cover_mask = None
+        self._cover_confidence = None
+        self._rectangularity = 0.0
+        self._target_bag_mask = None
+        self._target_bag_zone = None
+        self._current_strip_mask = None
+        self._strip_appearance_change = 0.0
+        self._strip_confidence = None
+        self._strip_present = False
+        self._strip_confirm_count = 0
+        self._seal_gone_checks = 0
+        self._verification_strip_misses = 0
+
+    def _start_model(self, kind: str) -> None:
+        self._stop_active_model()
+        if self._support is None:
+            return
+        is_cover = kind in {"cover", "cover_check"}
+        model = self._support.HailoSegModel(
+            str(STRIPING_BAG_HEF_PATH if is_cover else STRIPING_HEF_PATH),
+            conf=(
+                self._support.COVER_CONF_THRESHOLD
+                if is_cover
+                else self._support.STRIP_CONF_THRESHOLD
+            ),
+            rgb_input=is_cover,
+            label=f"packet-{kind}",
+            hailo_model=self._bag_hailo_model if is_cover else self._strip_hailo_model,
+        )
+        worker = self._support.SegWorker(
+            model,
+            self._strip_fp_filter if not is_cover else None,
+        )
+        worker.start()
+        self._active_model = model
+        self._active_worker = worker
+        self._active_kind = kind
+
+    def _stop_active_model(self) -> None:
+        worker = self._active_worker
+        model = self._active_model
+        self._active_worker = None
+        self._active_model = None
+        self._active_kind = None
+        if worker is not None:
+            worker.stop()
+            worker.join()
+        if model is not None:
+            model.close()
+
+    def _effective_roi(self, frame: np.ndarray):
+        if self._roi is None:
+            return None
+        height, width = frame.shape[:2]
+        x1, y1, x2, y2 = self._roi
+        x1, x2 = max(0, min(x1, width)), max(0, min(x2, width))
+        y1, y2 = max(0, min(y1, height)), max(0, min(y2, height))
+        return (x1, y1, x2, y2) if x2 > x1 and y2 > y1 else None
+
+    def _roi_frame(self, frame: np.ndarray) -> np.ndarray:
+        roi = self._effective_roi(frame)
+        if roi is None:
+            return frame.copy()
+        x1, y1, x2, y2 = roi
+        return frame[y1:y2, x1:x2].copy()
+
+    def _offset_result(self, result, full_shape: tuple[int, int]):
+        if result is None:
+            return None
+        centroid, mask = result
+        roi = self._effective_roi(self._last_frame)
+        if roi is None:
+            return centroid, mask
+        x1, y1, _x2, _y2 = roi
+        if centroid is not None:
+            centroid = centroid[0] + x1, centroid[1] + y1
+        return centroid, self._support.offset_mask(mask, roi, full_shape)
+
+    def _process_cover_result(
+        self,
+        result,
+        frame_shape: tuple[int, int],
+        confidence: float | None,
+    ) -> None:
+        if result is None:
+            return
+        self._cover_confidence = confidence
+        _centroid, self._cover_mask = result
+        self._rectangularity = (
+            self._support.measure_rectangularity(self._cover_mask)
+            if self._cover_mask is not None
+            else 0.0
+        )
+        if self._cover_mask is None or self._rectangularity < self._support.DEFAULT_RECT_THRESHOLD:
+            return
+        self._target_bag_mask = self._cover_mask.copy()
+        self._target_bag_zone = self._support.make_target_zone(
+            self._cover_mask, frame_shape
+        )
+        if self._target_bag_zone is None:
+            return
+        self._status = "strip_mode"
+        self._reason = "Packet is rectangular. Looking for the strip."
+        self._updated_at = now_stamp()
+        print(
+            f"[PacketStriping] Rectangular packet detected "
+            f"(score={self._rectangularity:.3f}); starting strip HEF."
+        )
+        self._start_model("strip")
+
+    def _process_strip_result(
+        self,
+        result,
+        confidence: float | None,
+    ) -> None:
+        if result is None:
+            return
+
+        self._strip_confidence = None
+        _centroid, mask = result
+        mask = self._support.mask_inside_reference(mask, self._target_bag_mask)
+        strip_detected = (
+            self._support.get_centroid(mask) is not None
+            if mask is not None
+            else False
+        )
+        self._current_strip_mask = mask.copy() if strip_detected else None
+        if strip_detected:
+            self._strip_confidence = confidence
+            self._strip_present = True
+
+        if self._status == "strip_mode":
+            if strip_detected:
+                self._strip_confirm_count += 1
+            else:
+                self._strip_confirm_count = 0
+            if self._strip_confirm_count >= self._support.STRIP_CONFIRM_FRAMES:
+                self._status = "strip_detected"
+                self._reason = "Remove the strip, then press Hand Clear."
+                self._updated_at = now_stamp()
+                print(
+                    "[PacketStriping] Strip confirmed inside packet mask "
+                    f"(pixels={int(np.count_nonzero(self._current_strip_mask))}); "
+                    "live preview overlay active."
+                )
+                speak("Remove the packet strip, then press Hand Clear.")
+            return
+
+        if not self._hand_clear_requested:
+            return
+        if strip_detected:
+            self._verification_strip_misses = 0
+        else:
+            self._verification_strip_misses += 1
+        if self._verification_strip_misses >= self._support.STRIP_DEBOUNCE_FRAMES:
+            self._strip_present = False
+            self._current_strip_mask = None
+            self._strip_confidence = None
+            self._status = "cover_check"
+            self._reason = "Checking that the packet remains in place."
+            self._updated_at = now_stamp()
+            self._start_model("cover_check")
+
+    def _process_cover_check(self, result, confidence: float | None) -> None:
+        if result is None:
+            return
+        self._cover_confidence = confidence
+        _centroid, check_mask = result
+        check_mask = self._support.mask_in_target_zone(check_mask, self._target_bag_zone)
+        bag_present = self._support.mask_matches_reference(
+            self._target_bag_mask,
+            check_mask,
+            self._support.TARGET_BAG_MASK_IOU,
+            self._support.TARGET_BAG_AREA_RATIO,
+        )
+        if not bag_present:
+            self._set_terminal(False, "Packet was removed before sealing was confirmed.")
+            return
+        if not self._strip_present:
+            self._seal_gone_checks += 1
+            if self._seal_gone_checks >= self._support.SEAL_GONE_CHECKS:
+                self._set_terminal(True, "Strip removed and packet remained in place.")
+                return
+        else:
+            self._seal_gone_checks = 0
+
+        self._verification_strip_misses = 0
+        self._status = "strip_detected"
+        self._reason = "Confirming that the strip remains absent inside the packet mask."
+        self._updated_at = now_stamp()
+        self._start_model("strip")
+
+    def _set_terminal(self, sealed: bool, reason: str) -> None:
+        self._sealed = sealed
+        self._current_strip_mask = None
+        self._strip_confidence = None
+        self._status = "sealed" if sealed else "not_sealed"
+        self._reason = reason
+        self._updated_at = now_stamp()
+        self._save_evidence(self._last_frame)
+        self._clear_live_overlays()
+        self._stop_active_model()
+        speak("Packet sealed." if sealed else "Packet not sealed.")
+
+    def _save_evidence(self, frame: np.ndarray | None) -> None:
+        if frame is None or frame.size == 0:
+            return
+        sealed = bool(self._sealed)
+        vis = frame.copy()
+        label = "SEALED" if sealed else "NOT SEALED"
+        color = (50, 220, 50) if sealed else (0, 0, 255)
+        banner_height = max(72, vis.shape[0] // 9)
+        cv2.rectangle(vis, (0, 0), (vis.shape[1], banner_height), (20, 20, 20), cv2.FILLED)
+        cv2.putText(
+            vis,
+            f"STRIP CHECK: {label}",
+            (20, int(banner_height * 0.66)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            max(0.7, vis.shape[1] / 1300.0),
+            color,
+            2,
+            cv2.LINE_AA,
+        )
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = self._media_dir / f"packet_striping_{timestamp}_{'sealed' if sealed else 'not_sealed'}.png"
+        try:
+            save_bgr(path, vis)
+            self._evidence_path = path
+        except Exception as exc:  # noqa: BLE001
+            self._error = str(exc)
+
+
 class PacketSealingRecorder:
     def __init__(self) -> None:
         self._lock = threading.RLock()
@@ -3186,6 +3925,7 @@ class PacketSealingRecorder:
         self._stopped_at: str | None = None
         self._raw_path: Path | None = None
         self._final_path: Path | None = None
+        self._striping: PacketStripingVerifier | None = None
         self._error = ""
         self._av1: dict[str, Any] | None = None
 
@@ -3197,6 +3937,11 @@ class PacketSealingRecorder:
                 if self._pledge_id and self._final_path and self._final_path.exists()
                 else None
             )
+            striping = (
+                self._striping.snapshot()
+                if self._striping is not None
+                else _default_packet_sealing_state()["striping"]
+            )
             return {
                 **_default_packet_sealing_state(),
                 "status": "recording" if running else ("saved" if video else "idle"),
@@ -3205,16 +3950,41 @@ class PacketSealingRecorder:
                 "stopped_at": self._stopped_at,
                 "video": video,
                 "av1": self._av1,
+                "striping": striping,
                 "error": self._error,
             }
 
-    def start(self, pledge_id: str) -> dict[str, Any]:
+    def is_recording(self) -> bool:
+        with self._lock:
+            return bool(self._thread is not None and self._thread.is_alive())
+
+    def annotate_preview(self, frame: np.ndarray) -> np.ndarray:
+        with self._lock:
+            striping = self._striping
+        if striping is None:
+            return frame
+        return striping.annotate_frame(frame)
+
+    def start(
+        self,
+        pledge_id: str,
+        processing_roi: dict[str, int] | None = None,
+    ) -> dict[str, Any]:
         pledge_id = str(pledge_id or "").strip()
         if not pledge_id:
             raise ValueError("Pledge ID is required for packet sealing.")
         with self._lock:
             if self._thread is not None and self._thread.is_alive():
                 raise RuntimeError("Packet sealing recording is already running.")
+            purity = get_purity_manager()
+            if purity.worker_is_active():
+                purity.stop("Preparing packet sealing")
+            if purity.worker_is_active():
+                raise RuntimeError(
+                    "The acid-test Hailo worker is still stopping. "
+                    "Wait a moment before starting packet sealing."
+                )
+            refresh_packet_striping_hailo_models()
             media_dir = pledge_media_dir(pledge_id)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             safe_id = sanitize_filename(pledge_id, "pledge")
@@ -3225,6 +3995,8 @@ class PacketSealingRecorder:
             self._av1 = None
             self._raw_path = media_dir / f"packet_sealing_{safe_id}_{timestamp}.raw.mp4"
             self._final_path = media_dir / f"packet_sealing_{safe_id}_{timestamp}.mp4"
+            self._striping = PacketStripingVerifier(pledge_id, processing_roi)
+            self._striping.start()
             self._stop_event.clear()
             self._thread = threading.Thread(
                 target=self._record_loop,
@@ -3232,6 +4004,27 @@ class PacketSealingRecorder:
                 daemon=True,
             )
             self._thread.start()
+            return self.snapshot()
+
+    def request_striping_hand_clear(self) -> dict[str, Any]:
+        with self._lock:
+            if self._thread is None or not self._thread.is_alive() or self._striping is None:
+                raise RuntimeError("Start packet sealing recording before verifying strip removal.")
+            self._striping.request_hand_clear()
+            return self.snapshot()
+
+    def restart_striping(self) -> dict[str, Any]:
+        with self._lock:
+            if self._thread is None or not self._thread.is_alive() or self._striping is None:
+                raise RuntimeError("Start packet sealing recording before restarting strip verification.")
+            self._striping.restart(reload_hailo_models=True)
+            return self.snapshot()
+
+    def skip_striping(self) -> dict[str, Any]:
+        with self._lock:
+            if self._thread is None or not self._thread.is_alive() or self._striping is None:
+                raise RuntimeError("Start packet sealing recording before skipping strip verification.")
+            self._striping.skip()
             return self.snapshot()
 
     def stop(self, timeout_s: float = 180.0) -> dict[str, Any]:
@@ -3253,6 +4046,7 @@ class PacketSealingRecorder:
         writer: cv2.VideoWriter | None = None
         raw_path: Path | None
         final_path: Path | None
+        last_frame: np.ndarray | None = None
         with self._lock:
             raw_path = self._raw_path
             final_path = self._final_path
@@ -3275,6 +4069,11 @@ class PacketSealingRecorder:
                 if frame is None:
                     time.sleep(0.05)
                     continue
+                last_frame = frame.copy()
+                with self._lock:
+                    striping = self._striping
+                if striping is not None:
+                    striping.process_frame(frame)
 
                 height, width = frame.shape[:2]
                 rec_w, rec_h = _packet_recording_dimensions(width, height)
@@ -3297,6 +4096,10 @@ class PacketSealingRecorder:
         finally:
             if writer is not None:
                 writer.release()
+            with self._lock:
+                striping = self._striping
+            if striping is not None:
+                striping.finalize(last_frame)
             av1_result: dict[str, Any] | None = None
             try:
                 if raw_path and raw_path.exists() and raw_path.stat().st_size > 0 and final_path:
@@ -3509,6 +4312,8 @@ def draw_labeled_rect(
         return
     x, y, w, h = rect_to_tuple(rect)
     cv2.rectangle(image_bgr, (x, y), (x + w, y + h), color, 3)
+    if not label:
+        return
     cv2.rectangle(image_bgr, (x, y - 28), (x + 180, y), color, -1)
     cv2.putText(
         image_bgr,
@@ -3528,8 +4333,8 @@ def build_roi_preview(
     aruco_roi: dict[str, int] | None,
 ) -> np.ndarray:
     preview = source_bgr.copy()
-    draw_labeled_rect(preview, processing_roi, "Processing ROI", (37, 99, 235))
-    draw_labeled_rect(preview, aruco_roi, "Aruco ROI", (22, 163, 74))
+    draw_labeled_rect(preview, processing_roi, "", (37, 99, 235))
+    draw_labeled_rect(preview, aruco_roi, "", (22, 163, 74))
     return preview
 
 
@@ -3642,6 +4447,108 @@ def get_segmenter() -> necklace_segmentation.FastSamOnnx:
     return SEGMENTER
 
 
+def get_bead_model() -> Any:
+    global BEAD_MODEL
+    if BEAD_MODEL is None:
+        with MODEL_LOCK:
+            if BEAD_MODEL is None:
+                runtime = get_hailo_runtime()
+                BEAD_MODEL = runtime.create_model(
+                    str(BEAD_MODEL_PATH),
+                    "BeadFinder",
+                    timeout_ms=DEFAULT_HAILO_INFERENCE_TIMEOUT_MS,
+                    batch_size=DEFAULT_HAILO_BATCH_SIZE,
+                )
+                if BEAD_MODEL is None:
+                    raise RuntimeError(
+                        "Could not create the bead-finder Hailo model. Check the preceding "
+                        "HEF/HailoRT compatibility error in the application log."
+                    )
+    return BEAD_MODEL
+
+
+def run_full_image_bead_detection(
+    image_bgr: np.ndarray,
+) -> tuple[dict[str, Any], np.ndarray]:
+    model = get_bead_model()
+    if (int(model.input_h), int(model.input_w), int(model.input_c)) != (640, 640, 3):
+        raise RuntimeError(
+            f"Bead-finder HEF input must be 640x640x3; received {model.input_shape}."
+        )
+
+    source_h, source_w = image_bgr.shape[:2]
+    scale = min(640.0 / source_w, 640.0 / source_h)
+    resized_w = int(round(source_w * scale))
+    resized_h = int(round(source_h * scale))
+    resized = cv2.resize(image_bgr, (resized_w, resized_h), interpolation=cv2.INTER_LINEAR)
+    left = (640 - resized_w) // 2
+    top = (640 - resized_h) // 2
+    model_image = np.full((640, 640, 3), 114, dtype=np.uint8)
+    model_image[top : top + resized_h, left : left + resized_w] = resized
+    model_input = np.ascontiguousarray(cv2.cvtColor(model_image, cv2.COLOR_BGR2RGB))
+
+    output = np.asarray(model.run_inference(model_input), dtype=np.float32)
+    rows = np.squeeze(output)
+    if rows.size == 0:
+        rows = np.empty((0, 5), dtype=np.float32)
+    elif rows.ndim == 1:
+        rows = rows.reshape(1, -1)
+    elif rows.ndim > 2:
+        rows = rows.reshape(-1, rows.shape[-1])
+    if rows.ndim == 2 and rows.shape[1] != 5 and rows.shape[0] == 5:
+        rows = rows.T
+    if rows.ndim != 2 or rows.shape[1] != 5:
+        raise RuntimeError(f"Unexpected bead-finder output shape: {output.shape}.")
+
+    detections: list[dict[str, Any]] = []
+    annotated = image_bgr.copy()
+    for y1, x1, y2, x2, score in rows:
+        if not np.isfinite([y1, x1, y2, x2, score]).all() or float(score) < 0.80:
+            continue
+        box_x1 = int(round((float(x1) * 640.0 - left) / scale))
+        box_y1 = int(round((float(y1) * 640.0 - top) / scale))
+        box_x2 = int(round((float(x2) * 640.0 - left) / scale))
+        box_y2 = int(round((float(y2) * 640.0 - top) / scale))
+        box_x1 = max(0, min(source_w - 1, box_x1))
+        box_y1 = max(0, min(source_h - 1, box_y1))
+        box_x2 = max(0, min(source_w - 1, box_x2))
+        box_y2 = max(0, min(source_h - 1, box_y2))
+        if box_x2 <= box_x1 or box_y2 <= box_y1:
+            continue
+        detections.append(
+            {
+                "bbox": [box_x1, box_y1, box_x2, box_y2],
+                "score": float(score),
+            }
+        )
+        cv2.rectangle(
+            annotated,
+            (box_x1, box_y1),
+            (box_x2, box_y2),
+            (0, 0, 255),
+            3,
+            cv2.LINE_AA,
+        )
+
+    bead_count = len(detections)
+    result = {
+        "beads_detected": bead_count > 0,
+        "risk": "High" if bead_count > 0 else "Low",
+        "bead_count": bead_count,
+        "candidate_count": bead_count,
+        "model": BEAD_MODEL_PATH.name,
+        "model_input_size": 640,
+        "prediction_source": "full_image",
+        "detections": detections,
+        "decision_reason": (
+            f"{bead_count} bead detection(s) found by the full-image HEF model."
+            if bead_count
+            else "No beads detected by the full-image HEF model."
+        ),
+    }
+    return result, annotated
+
+
 def preload_hef_models() -> None:
     """Load and self-test every HEF once before the web workflow starts."""
     print("=" * 60)
@@ -3650,9 +4557,10 @@ def preload_hef_models() -> None:
     try:
         runtime = get_hailo_runtime()
 
-        print("\n[1/7] Loading Segmentation HEF (FastSAM)...")
+        print("\n[1/8] Loading Jewellery Analysis HEFs (FastSAM and Bead Finder)...")
         segmenter = get_segmenter()
-        print("[1/7] Segmentation HEF loaded")
+        get_bead_model()
+        print("[1/8] Jewellery Analysis HEFs loaded")
         fastsam_model = getattr(segmenter, "hailo_model", None)
         if fastsam_model is None:
             raise RuntimeError("FastSAM did not retain its configured Hailo model.")
@@ -3662,7 +4570,7 @@ def preload_hef_models() -> None:
             f"{baseline['last_inference_ms']:.1f} ms"
         )
 
-        print("\n[2/7] Loading Purity HEFs (Stone, Gold, Acid)...")
+        print("\n[2/8] Loading Purity HEFs (Stone, Gold, Acid)...")
         purity = get_purity_manager()
         readiness = purity.preload(runtime)
         if not readiness.get("available") or not readiness.get("models_loaded"):
@@ -3671,27 +4579,34 @@ def preload_hef_models() -> None:
                 or readiness.get("error")
                 or "Purity models could not be loaded at startup."
             )
-        print("[2/7] Purity HEFs loaded")
+        print("[2/8] Purity HEFs loaded")
 
-        print("\n[3/7] Loading Hand Removal HEF (YOLOv8-seg)...")
+        print("\n[3/8] Loading Hand Removal HEF (YOLOv8-seg)...")
         hand_model = get_hand_model(runtime)
-        print(f"[3/7] Hand Removal HEF loaded: {HAND_MODEL_PATH.name}")
+        print(f"[3/8] Hand Removal HEF loaded: {HAND_MODEL_PATH.name}")
 
-        print("\n[4/7] Loading Super Resolution HEF (Real-ESRGAN x2)...")
+        print("\n[4/8] Loading Super Resolution HEF (Real-ESRGAN x2)...")
         super_resolution = get_super_resolution_runner()
         sr_result = super_resolution.self_test()
         print(
-            f"[4/7] Super Resolution HEF loaded: "
+            f"[4/8] Super Resolution HEF loaded: "
             f"{sr_result['output_shape']} in {sr_result['runtime_seconds']:.3f}s"
         )
 
-        print("\n[5/7] Running startup inference self-test for every core HEF...")
+        print("\n[5/8] Loading Packet Strip HEFs (Bag and Strip)...")
+        get_packet_striping_hailo_models(create_if_missing=True)
+        print("[5/8] Packet Strip HEFs loaded")
+
+        print("\n[6/8] Running startup inference self-test for every core HEF...")
         expected_hailo_models = {
             "FastSAM",
+            "BeadFinder",
             "PurityStone",
             "PurityGold",
             "PurityAcid",
             "HandRemoval",
+            "PacketStripBag",
+            "PacketStrip",
         }
         loaded_hailo_models = {
             str(getattr(model, "name", "unknown")) for model in runtime.models
@@ -3702,6 +4617,14 @@ def preload_hef_models() -> None:
                 "Startup HEF load is incomplete: " + ", ".join(missing_hailo_models)
             )
         for model in runtime.models:
+            if str(getattr(model, "name", "")) == "BeadFinder":
+                bead_probe = np.full(model.input_shape, 114, dtype=model.input_dtype)
+                bead_output = np.asarray(model.run_inference(bead_probe))
+                print(
+                    f"[HAILO SELF-TEST PASS] BeadFinder "
+                    f"{model.last_inference_ms:.1f} ms output={bead_output.shape}"
+                )
+                continue
             result = model.validate_runtime_contract(probe_runs=1)
             print(
                 f"[HAILO SELF-TEST PASS] {result['name']} "
@@ -3709,19 +4632,19 @@ def preload_hef_models() -> None:
             )
         if hand_model not in runtime.models:
             raise RuntimeError("Hand-removal HEF did not retain the shared Hailo runtime.")
-        print("[5/7] ALL CORE HAILO HEF SELF-TESTS PASSED")
+        print("[6/8] ALL CORE HAILO HEF SELF-TESTS PASSED")
 
-        print("\n[6/7] Loading Classification Model (SigLIP2)...")
+        print("\n[7/8] Loading Classification Model (SigLIP2)...")
         get_classifier()
-        print("[6/7] Classification Model loaded")
+        print("[7/8] Classification Model loaded")
         
-        print("\n[7/7] Confirming startup model set...")
+        print("\n[8/8] Confirming startup model set...")
         loaded_models = ", ".join(
             str(getattr(model, "name", "unknown"))
             for model in runtime.models
         )
         print(
-            f"[7/7] Loaded Hailo models: {loaded_models}; "
+            f"[8/8] Loaded Hailo models: {loaded_models}; "
             f"SuperResolution={SUPER_RESOLUTION_HEF_PATH.name}"
         )
         
@@ -3796,7 +4719,7 @@ def branch_for_label(label: str | None) -> dict[str, str] | None:
     if label in DIMENSION_CLASSES:
         return {
             "key": "dimension",
-            "label": "Dimension -> Side Stone Detection",
+            "label": "Dimension -> Stone Detection",
         }
     if label in DIRECT_STONE_CLASSES:
         return {
@@ -3806,7 +4729,7 @@ def branch_for_label(label: str | None) -> dict[str, str] | None:
     if label in SEGMENTATION_CLASSES:
         return {
             "key": "segmentation",
-            "label": "Segmentation -> Stone Detection",
+            "label": "Jewellery Analysis -> Stone Detection",
         }
     return {
         "key": "direct_stone",
@@ -3877,6 +4800,83 @@ def is_appraised_jewel_state(state: dict[str, Any]) -> bool:
     )
 
 
+def weight_summary_for_state(state: dict[str, Any]) -> dict[str, Any]:
+    weights = state.get("weight_details") or {}
+    jewel_weight = weights.get("jewel_weight_g")
+    appraiser_stone_weight = weights.get("appraiser_stone_weight_g")
+    stones = state.get("stone_detection") or {}
+
+    estimated_stone_weight: float | None = None
+    minimum_stone_weight = 0.0
+    maximum_stone_weight = 0.0
+    estimated_parts = 0
+    for stone_key in ("main", "side"):
+        result = stones.get(stone_key)
+        if not isinstance(result, dict):
+            continue
+        estimate = result.get("weight_estimate") or {}
+        if estimate.get("success"):
+            estimated_stone_weight = float(estimated_stone_weight or 0.0) + float(
+                estimate.get(
+                    "estimated_total_average_g",
+                    float(estimate.get("estimated_total_average_ct", 0.0)) * 0.2,
+                )
+            )
+            minimum_stone_weight += float(
+                estimate.get(
+                    "estimated_total_minimum_g",
+                    float(estimate.get("estimated_total_minimum_ct", 0.0)) * 0.2,
+                )
+            )
+            maximum_stone_weight += float(
+                estimate.get(
+                    "estimated_total_maximum_g",
+                    float(estimate.get("estimated_total_maximum_ct", 0.0)) * 0.2,
+                )
+            )
+            estimated_parts += 1
+        elif float(result.get("stone_percentage") or 0.0) <= 0:
+            estimated_stone_weight = float(estimated_stone_weight or 0.0)
+
+    tassel_weight = tassel_weight_for_state(state)
+    estimated_deduction = None
+    estimated_net_weight = None
+    if estimated_stone_weight is not None:
+        estimated_deduction = estimated_stone_weight + tassel_weight
+        if jewel_weight is not None:
+            estimated_net_weight = max(0.0, float(jewel_weight) - estimated_deduction)
+
+    appraiser_deduction = None
+    appraiser_net_weight = None
+    if appraiser_stone_weight is not None:
+        appraiser_deduction = float(appraiser_stone_weight) + tassel_weight
+        if jewel_weight is not None:
+            appraiser_net_weight = max(0.0, float(jewel_weight) - appraiser_deduction)
+
+    return {
+        "jewel_weight_g": round(float(jewel_weight), 4) if jewel_weight is not None else None,
+        "estimated_stone_weight_g": (
+            round(float(estimated_stone_weight), 4)
+            if estimated_stone_weight is not None
+            else None
+        ),
+        "estimated_stone_weight_minimum_g": round(minimum_stone_weight, 4) if estimated_parts else None,
+        "estimated_stone_weight_maximum_g": round(maximum_stone_weight, 4) if estimated_parts else None,
+        "appraiser_stone_weight_g": (
+            round(float(appraiser_stone_weight), 4)
+            if appraiser_stone_weight is not None
+            else None
+        ),
+        "tassel_present": tassel_weight > 0,
+        "estimated_tassel_weight_g": round(tassel_weight, 4),
+        "estimated_total_deduction_g": round(estimated_deduction, 4) if estimated_deduction is not None else None,
+        "estimated_net_weight_g": round(estimated_net_weight, 4) if estimated_net_weight is not None else None,
+        "appraiser_total_deduction_g": round(appraiser_deduction, 4) if appraiser_deduction is not None else None,
+        "appraiser_net_weight_g": round(appraiser_net_weight, 4) if appraiser_net_weight is not None else None,
+        "note": "Stone and tassel weights are estimates; the entered jewel weight is appraiser-provided.",
+    }
+
+
 def build_final_summary(state: dict[str, Any]) -> None:
     classification = state["classification"]
     source = state["source"]
@@ -3926,19 +4926,30 @@ def build_final_summary(state: dict[str, Any]) -> None:
                 artifacts.append(dimension["result_image"])
 
         if stones.get("side"):
-            lines.append(f"Side stones: {stones['side']['summary_text']}")
+            lines.append("Side stone analysis completed.")
             if stones["side"].get("gallery"):
                 artifacts.append(stones["side"]["gallery"])
-            upstream_ready = bool(dimension.get("done"))
+            upstream_ready = True
 
         if stones.get("main"):
-            lines.append(f"Top stones: {stones['main']['summary_text']}")
+            lines.append("Top stone analysis completed.")
             if stones["main"].get("gallery"):
                 artifacts.append(stones["main"]["gallery"])
 
+        if stage_is_skipped(state, "side_stone"):
+            upstream_ready = True
+
     elif branch_key == "segmentation":
         if segmentation.get("done"):
-            lines.append("Segmentation completed.")
+            lines.append("Jewellery analysis completed.")
+            if segmentation.get("no_pendant"):
+                lines.append("Pendant excluded by operator feedback.")
+            elif segmentation.get("pendant_absent"):
+                lines.append("No distinct pendant region detected.")
+            if segmentation.get("no_tassel"):
+                lines.append("Tassel excluded by operator feedback.")
+            elif segmentation.get("tassel_absent"):
+                lines.append("No tassel region detected.")
             bead_risk = segmentation.get("bead_risk")
             if bead_risk_high:
                 lines.append("RISK JEWEL: Round beads/decorative elements detected in chain")
@@ -3949,100 +4960,55 @@ def build_final_summary(state: dict[str, Any]) -> None:
                 artifacts.append(segmentation["composite_layout"])
 
         if stones.get("main"):
-            lines.append(f"Stones: {stones['main']['summary_text']}")
+            lines.append("Stone analysis completed.")
             if stones["main"].get("gallery"):
                 artifacts.append(stones["main"]["gallery"])
+            upstream_ready = True
+        elif stage_is_skipped(state, "stone_detection"):
             upstream_ready = True
 
     else:
         # Direct stone branch
         if stones.get("main"):
-            lines.append(f"Stones: {stones['main']['summary_text']}")
+            lines.append("Stone analysis completed.")
             if stones["main"].get("gallery"):
                 artifacts.append(stones["main"]["gallery"])
+            upstream_ready = True
+        elif stage_is_skipped(state, "stone_detection"):
             upstream_ready = True
         elif not_gold_confirmed:
             # The disposition is complete, but this is not an appraised jewel.
             upstream_ready = True
 
-    combined_weight = {
-        "success": False,
-        "estimated_total_average_g": 0.0,
-        "estimated_total_minimum_g": 0.0,
-        "estimated_total_maximum_g": 0.0,
-        "entered_jewel_weight_g": None,
-        "estimated_stone_share_of_jewel_weight_percent": None,
-    }
-    for stone_key, weight_label in (("main", "Top stone"), ("side", "Side stone")):
-        result = stones.get(stone_key) or {}
-        weight = result.get("weight_estimate") or {}
-        if weight.get("success"):
-            average_g = float(
-                weight.get(
-                    "estimated_total_average_g",
-                    float(weight.get("estimated_total_average_ct", 0.0)) * 0.2,
-                )
-            )
-            minimum_g = float(
-                weight.get(
-                    "estimated_total_minimum_g",
-                    float(weight.get("estimated_total_minimum_ct", 0.0)) * 0.2,
-                )
-            )
-            maximum_g = float(
-                weight.get(
-                    "estimated_total_maximum_g",
-                    float(weight.get("estimated_total_maximum_ct", 0.0)) * 0.2,
-                )
-            )
-            entered_weight_g = weight.get("entered_jewel_weight_g")
-            comparison_text = ""
-            if entered_weight_g:
-                comparison_text = (
-                    f"; {average_g / float(entered_weight_g) * 100.0:.2f}% "
-                    f"of entered {float(entered_weight_g):.3f} g jewel weight"
-                )
-            lines.append(
-                f"{weight_label} estimated average weight: "
-                f"{average_g:.4f} g "
-                f"(range {minimum_g:.4f}-{maximum_g:.4f} g{comparison_text})"
-            )
-            combined_weight["success"] = True
-            combined_weight["estimated_total_average_g"] += average_g
-            combined_weight["estimated_total_minimum_g"] += minimum_g
-            combined_weight["estimated_total_maximum_g"] += maximum_g
-            if combined_weight["entered_jewel_weight_g"] is None and entered_weight_g:
-                combined_weight["entered_jewel_weight_g"] = float(entered_weight_g)
-
-    if combined_weight["success"]:
-        for key in (
-            "estimated_total_average_g",
-            "estimated_total_minimum_g",
-            "estimated_total_maximum_g",
-        ):
-            combined_weight[key] = round(float(combined_weight[key]), 4)
-        entered_weight_g = combined_weight["entered_jewel_weight_g"]
-        overall_comparison = ""
-        if entered_weight_g:
-            combined_weight[
-                "estimated_stone_share_of_jewel_weight_percent"
-            ] = round(
-                combined_weight["estimated_total_average_g"]
-                / float(entered_weight_g)
-                * 100.0,
-                2,
-            )
-            overall_comparison = (
-                f"; {combined_weight['estimated_stone_share_of_jewel_weight_percent']:.2f}% "
-                f"of entered {float(entered_weight_g):.3f} g jewel weight"
-            )
+    weight_summary = weight_summary_for_state(state)
+    if weight_summary["jewel_weight_g"] is not None:
+        lines.append(f"Entered jewel weight: {weight_summary['jewel_weight_g']:.4f} g")
+    if weight_summary["estimated_stone_weight_g"] is not None:
+        lines.append(f"Estimated stone weight: {weight_summary['estimated_stone_weight_g']:.4f} g")
+    if weight_summary["appraiser_stone_weight_g"] is not None:
+        lines.append(f"Appraiser stone weight: {weight_summary['appraiser_stone_weight_g']:.4f} g")
+    if weight_summary["tassel_present"]:
         lines.append(
-            "Overall estimated stone weight: "
-            f"{combined_weight['estimated_total_average_g']:.4f} g "
-            f"(range {combined_weight['estimated_total_minimum_g']:.4f}-"
-            f"{combined_weight['estimated_total_maximum_g']:.4f} g"
-            f"{overall_comparison})"
+            f"Tassel region detected; estimated tassel weight: "
+            f"{weight_summary['estimated_tassel_weight_g']:.4f} g"
         )
+    if weight_summary["estimated_total_deduction_g"] is not None:
+        lines.append(
+            f"Estimated deductions (stone + tassel): {weight_summary['estimated_total_deduction_g']:.4f} g"
+        )
+    if weight_summary["estimated_net_weight_g"] is not None:
+        lines.append(f"Estimated net jewel weight: {weight_summary['estimated_net_weight_g']:.4f} g")
+    if weight_summary["appraiser_net_weight_g"] is not None:
+        lines.append(
+            f"Net weight using appraiser stone weight: {weight_summary['appraiser_net_weight_g']:.4f} g"
+        )
+    if weight_summary["jewel_weight_g"] is not None:
+        lines.append("Stone and tassel deductions are estimated weights.")
+
+    for stage_key, skipped in (state.get("stage_skips") or {}).items():
+        if stage_key in {"acid_test", "final_count", "packet_sealing"}:
+            continue
+        lines.append(f"{skipped.get('display_name') or STAGE_DISPLAY_NAMES.get(stage_key, stage_key)}: Skipped")
 
     if not_gold_confirmed:
         current_index = int(state.get("jewel_index") or 0)
@@ -4052,8 +5018,8 @@ def build_final_summary(state: dict[str, Any]) -> None:
         )
 
     if stone_risk_high:
-        lines.append("RISK JEWEL: Stone coverage exceeds 40%")
-        risk_reasons.append("stone coverage exceeds 40%")
+        lines.append("RISK JEWEL: High stone coverage detected")
+        risk_reasons.append("high stone coverage detected")
     if reflective_surface_flag:
         lines.append(
             "RISK JEWEL: Dense reflection indicates possible additional transparent/colorless gemstones."
@@ -4098,7 +5064,14 @@ def build_final_summary(state: dict[str, Any]) -> None:
         "total_stone_coverage": round(total_stone_coverage, 2),
         "bead_risk_high": bool(bead_risk_high),
         "reflective_surface_flag": bool(reflective_surface_flag),
-        "stone_weight_summary": combined_weight,
+        "weight_summary": weight_summary,
+        "stone_weight_summary": {
+            "success": weight_summary["estimated_stone_weight_g"] is not None,
+            "estimated_total_average_g": weight_summary["estimated_stone_weight_g"] or 0.0,
+            "estimated_total_minimum_g": weight_summary["estimated_stone_weight_minimum_g"] or 0.0,
+            "estimated_total_maximum_g": weight_summary["estimated_stone_weight_maximum_g"] or 0.0,
+            "entered_jewel_weight_g": weight_summary["jewel_weight_g"],
+        },
     }
 
 
@@ -4106,14 +5079,10 @@ def purity_upstream_ready(state: dict[str, Any]) -> bool:
     branch = state.get("branch") or {}
     branch_key = branch.get("key")
     stones = state.get("stone_detection") or {}
-    dimension = state.get("dimension") or {}
-    segmentation = state.get("segmentation") or {}
 
     if branch_key == "dimension":
-        return bool(dimension.get("done") and stones.get("side"))
-    if branch_key == "segmentation":
-        return bool(segmentation.get("done") and stones.get("main"))
-    return bool(stones.get("main"))
+        return bool(stones.get("side") or stage_is_skipped(state, "side_stone"))
+    return bool(stones.get("main") or stage_is_skipped(state, "stone_detection"))
 
 
 def _pdf_image(
@@ -4428,6 +5397,58 @@ def generate_pdf_report(
             
             story.append(Spacer(1, 0.2 * inch))
 
+        weight_summary = weight_summary_for_state(state)
+        story.append(Paragraph("Weight Summary", heading_style))
+        weight_rows = [["Weight Item", "Value", "Basis"]]
+        if weight_summary["jewel_weight_g"] is not None:
+            weight_rows.append(["Current Jewel Weight", f"{weight_summary['jewel_weight_g']:.4f} g", "Appraiser input"])
+        if weight_summary["estimated_stone_weight_g"] is not None:
+            weight_rows.append(["Stone Weight", f"{weight_summary['estimated_stone_weight_g']:.4f} g", "Estimated"])
+        else:
+            weight_rows.append(["Stone Weight", "Unavailable", "Analysis skipped or metric unavailable"])
+        if weight_summary["appraiser_stone_weight_g"] is not None:
+            weight_rows.append(["Appraiser Stone Weight", f"{weight_summary['appraiser_stone_weight_g']:.4f} g", "Appraiser input"])
+        if weight_summary["tassel_present"]:
+            weight_rows.append(["Tassel Region Weight", f"{weight_summary['estimated_tassel_weight_g']:.4f} g", "Estimated"])
+        if weight_summary["estimated_total_deduction_g"] is not None:
+            weight_rows.append(["Total Deduction", f"{weight_summary['estimated_total_deduction_g']:.4f} g", "Estimated stone + tassel"])
+        if weight_summary["estimated_net_weight_g"] is not None:
+            weight_rows.append(["Net Jewel Weight", f"{weight_summary['estimated_net_weight_g']:.4f} g", "Estimated"])
+        if weight_summary["appraiser_net_weight_g"] is not None:
+            weight_rows.append(["Net Weight Using Appraiser Stone Weight", f"{weight_summary['appraiser_net_weight_g']:.4f} g", "Appraiser stone + estimated tassel"])
+        weight_table = Table(weight_rows, colWidths=[2.5 * inch, 1.4 * inch, 2.6 * inch])
+        weight_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), (0.12, 0.29, 0.48)),
+            ("TEXTCOLOR", (0, 0), (-1, 0), (1, 1, 1)),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.5, (0.72, 0.77, 0.82)),
+            ("BACKGROUND", (0, 1), (-1, -1), (0.97, 0.98, 0.99)),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("PADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(weight_table)
+        story.append(Paragraph(
+            "Stone and tassel values are estimated weights and should be reviewed by the appraiser.",
+            normal_style,
+        ))
+        story.append(Spacer(1, 0.2 * inch))
+
+        skipped_stages = {
+            key: value
+            for key, value in (state.get("stage_skips") or {}).items()
+            if key not in {"final_count", "packet_sealing"}
+        }
+        if skipped_stages:
+            story.append(Paragraph("Skipped Stages", heading_style))
+            for stage_key, skipped in skipped_stages.items():
+                stage_name = skipped.get("display_name") or STAGE_DISPLAY_NAMES.get(stage_key, stage_key)
+                story.append(Paragraph(
+                    f"<b>{_pdf_text(stage_name)}:</b> Skipped at {_pdf_text(skipped.get('skipped_at', 'N/A'))}",
+                    normal_style,
+                ))
+            story.append(Spacer(1, 0.2 * inch))
+
         dimension = state.get("dimension", {})
         if dimension.get("done"):
             story.append(PageBreak())
@@ -4466,9 +5487,17 @@ def generate_pdf_report(
         segmentation = state.get("segmentation", {})
         if segmentation.get("done"):
             story.append(PageBreak())
-            story.append(Paragraph("Segmentation Analysis", heading_style))
+            story.append(Paragraph("Jewellery Analysis", heading_style))
             
-            story.append(Paragraph("Segmentation completed.", normal_style))
+            story.append(Paragraph("Jewellery analysis completed.", normal_style))
+            if segmentation.get("no_pendant"):
+                story.append(Paragraph("Pendant excluded by operator feedback.", normal_style))
+            elif segmentation.get("pendant_absent"):
+                story.append(Paragraph("No distinct pendant region detected.", normal_style))
+            if segmentation.get("no_tassel"):
+                story.append(Paragraph("Tassel excluded by operator feedback.", normal_style))
+            elif segmentation.get("tassel_absent"):
+                story.append(Paragraph("No tassel region detected.", normal_style))
             bead_risk = segmentation.get("bead_risk")
             if _segmentation_bead_risk_high(segmentation):
                 story.append(Paragraph(
@@ -4494,9 +5523,8 @@ def generate_pdf_report(
         main_stones = stones.get("main")
         if main_stones:
             story.append(PageBreak())
-            story.append(Paragraph("Stone Detection - Main Image", heading_style))
+            story.append(Paragraph("Stone Analysis - Main Image", heading_style))
             
-            story.append(Paragraph(f"<b>Summary:</b> {_pdf_text(main_stones.get('summary_text', 'N/A'))}", normal_style))
             story.append(Paragraph(f"<b>Total Jewels Detected:</b> {main_stones.get('jewel_count', 0)}", normal_style))
             main_weight = main_stones.get("weight_estimate") or {}
             if main_weight.get("success"):
@@ -4519,18 +5547,11 @@ def generate_pdf_report(
                     )
                 )
                 story.append(Paragraph(
-                    f"<b>Estimated Average Stone Weight:</b> "
+                    f"<b>Estimated Stone Weight:</b> "
                     f"{main_average_g:.4f} g "
                     f"(range {main_minimum_g:.4f}-{main_maximum_g:.4f} g)",
                     normal_style,
                 ))
-                if main_weight.get("entered_jewel_weight_g"):
-                    story.append(Paragraph(
-                        f"<b>Compared With Entered Jewel Weight:</b> "
-                        f"{float(main_weight.get('estimated_stone_share_of_jewel_weight_percent', 0.0)):.2f}% "
-                        f"of {float(main_weight['entered_jewel_weight_g']):.3f} g",
-                        normal_style,
-                    ))
             if main_stones.get("reflection_risk") or main_stones.get("reflection_flagged"):
                 story.append(Paragraph(
                     '<font color="red"><b>RISK JEWEL: Dense reflection indicates possible '
@@ -4548,11 +5569,11 @@ def generate_pdf_report(
                 story.append(Spacer(1, 0.1 * inch))
                 story.append(Paragraph("<b>Stone Details:</b>", normal_style))
                 
-                table_data = [["Color", "Stone %"]]
+                table_data = [["Detected Stone Color", "Detected Regions"]]
                 for entry in summary_entries:
                     table_data.append([
                         entry.get("color", "N/A"),
-                        f"{entry.get('stone_percentage', 0):.2f}%",
+                        str(entry.get("region_count", 0)),
                     ])
                 
                 table = Table(table_data, colWidths=[2.5 * inch, 1.5 * inch])
@@ -4584,9 +5605,8 @@ def generate_pdf_report(
         side_stones = stones.get("side")
         if side_stones:
             story.append(PageBreak())
-            story.append(Paragraph("Stone Detection - Side Image", heading_style))
+            story.append(Paragraph("Stone Analysis - Side Image", heading_style))
             
-            story.append(Paragraph(f"<b>Summary:</b> {_pdf_text(side_stones.get('summary_text', 'N/A'))}", normal_style))
             story.append(Paragraph(f"<b>Total Jewels Detected:</b> {side_stones.get('jewel_count', 0)}", normal_style))
             side_weight = side_stones.get("weight_estimate") or {}
             if side_weight.get("success"):
@@ -4609,18 +5629,11 @@ def generate_pdf_report(
                     )
                 )
                 story.append(Paragraph(
-                    f"<b>Estimated Average Stone Weight:</b> "
+                    f"<b>Estimated Stone Weight:</b> "
                     f"{side_average_g:.4f} g "
                     f"(range {side_minimum_g:.4f}-{side_maximum_g:.4f} g)",
                     normal_style,
                 ))
-                if side_weight.get("entered_jewel_weight_g"):
-                    story.append(Paragraph(
-                        f"<b>Compared With Entered Jewel Weight:</b> "
-                        f"{float(side_weight.get('estimated_stone_share_of_jewel_weight_percent', 0.0)):.2f}% "
-                        f"of {float(side_weight['entered_jewel_weight_g']):.3f} g",
-                        normal_style,
-                    ))
             if side_stones.get("reflection_risk") or side_stones.get("reflection_flagged"):
                 story.append(Paragraph(
                     '<font color="red"><b>RISK JEWEL: Dense reflection indicates possible '
@@ -4638,11 +5651,11 @@ def generate_pdf_report(
                 story.append(Spacer(1, 0.1 * inch))
                 story.append(Paragraph("<b>Stone Details:</b>", normal_style))
                 
-                table_data = [["Color", "Stone %"]]
+                table_data = [["Detected Stone Color", "Detected Regions"]]
                 for entry in summary_entries:
                     table_data.append([
                         entry.get("color", "N/A"),
-                        f"{entry.get('stone_percentage', 0):.2f}%",
+                        str(entry.get("region_count", 0)),
                     ])
                 
                 table = Table(table_data, colWidths=[2.5 * inch, 1.5 * inch])
@@ -4744,39 +5757,52 @@ def generate_pdf_report(
         story.append(Paragraph("Pledge Closure", heading_style))
         if count_verification:
             story.append(Paragraph("Final Jewel Count Capture", heading_style))
-            story.append(Paragraph(
-                f"<b>User Entered Jewel Count:</b> "
-                f"{_pdf_text(count_verification.get('user_entered_count', jewel_count))}",
-                normal_style,
-            ))
-            story.append(Paragraph(
-                f"<b>Predicted Jewel Count:</b> "
-                f"{_pdf_text(count_verification.get('predicted_count', '-'))}",
-                normal_style,
-            ))
-            match = count_verification.get("match")
-            if match is not None:
+            if count_verification.get("skipped"):
+                story.append(Paragraph("<b>Status:</b> Skipped", normal_style))
                 story.append(Paragraph(
-                    f"<b>Count Match:</b> {'Yes' if match else 'No'}",
+                    f"<b>Skipped At:</b> {_pdf_text(count_verification.get('skipped_at', 'N/A'))}",
                     normal_style,
                 ))
-            story.append(Paragraph(
-                f"<b>Captured At:</b> {_pdf_text(count_verification.get('captured_at', 'N/A'))}",
-                normal_style,
-            ))
-            for artifact_key in ("result_image",):
-                artifact = count_verification.get(artifact_key)
-                if not artifact:
-                    continue
-                try:
-                    img_path = Path(artifact["path"])
-                    if img_path.exists():
-                        story.append(_pdf_image(img_path))
-                        story.append(Spacer(1, 0.1 * inch))
-                except Exception:
-                    pass
+            else:
+                story.append(Paragraph(
+                    f"<b>User Entered Jewel Count:</b> "
+                    f"{_pdf_text(count_verification.get('user_entered_count', jewel_count))}",
+                    normal_style,
+                ))
+                story.append(Paragraph(
+                    f"<b>Predicted Jewel Count:</b> "
+                    f"{_pdf_text(count_verification.get('predicted_count', '-'))}",
+                    normal_style,
+                ))
+                match = count_verification.get("match")
+                if match is not None:
+                    story.append(Paragraph(
+                        f"<b>Count Match:</b> {'Yes' if match else 'No'}",
+                        normal_style,
+                    ))
+                story.append(Paragraph(
+                    f"<b>Captured At:</b> {_pdf_text(count_verification.get('captured_at', 'N/A'))}",
+                    normal_style,
+                ))
+                artifact = count_verification.get("result_image")
+                if artifact:
+                    try:
+                        img_path = Path(artifact["path"])
+                        if img_path.exists():
+                            story.append(_pdf_image(img_path))
+                            story.append(Spacer(1, 0.1 * inch))
+                    except Exception:
+                        pass
 
         video = packet_sealing.get("video") if isinstance(packet_sealing, dict) else None
+        if packet_sealing.get("skipped"):
+            story.append(Spacer(1, 0.15 * inch))
+            story.append(Paragraph("Packet Sealing Video", heading_style))
+            story.append(Paragraph("<b>Status:</b> Skipped", normal_style))
+            story.append(Paragraph(
+                f"<b>Skipped At:</b> {_pdf_text(packet_sealing.get('skipped_at', 'N/A'))}",
+                normal_style,
+            ))
         if video:
             story.append(Spacer(1, 0.15 * inch))
             story.append(Paragraph("Packet Sealing", heading_style))
@@ -4800,6 +5826,27 @@ def generate_pdf_report(
                     f"{' (' + _pdf_text(av1.get('encoder')) + ')' if av1.get('encoder') else ''}",
                     normal_style,
                 ))
+            striping = packet_sealing.get("striping") or {}
+            sealed = striping.get("sealed")
+            if sealed is not None:
+                story.append(Paragraph(
+                    f"<b>Strip Removal Seal Status:</b> {'Sealed' if sealed else 'Not sealed'}",
+                    normal_style,
+                ))
+                if striping.get("reason"):
+                    story.append(Paragraph(
+                        f"<b>Strip Check:</b> {_pdf_text(striping['reason'])}",
+                        normal_style,
+                    ))
+                evidence = striping.get("evidence_image")
+                if evidence:
+                    try:
+                        img_path = Path(evidence["path"])
+                        if img_path.exists():
+                            story.append(_pdf_image(img_path))
+                            story.append(Spacer(1, 0.1 * inch))
+                    except Exception:
+                        pass
 
     doc.build(story)
     buffer.seek(0)
@@ -4809,9 +5856,25 @@ def generate_pdf_report(
 def snapshot_state() -> dict[str, Any]:
     with STATE_LOCK:
         state = ensure_state()
+        recorder = PACKET_RECORDER
+        if (
+            recorder is not None
+            and recorder.is_recording()
+            and not state.get("pledge_id")
+            and getattr(recorder, "_pledge_id", None)
+        ):
+            recorder_pledge_id = str(recorder._pledge_id)
+            metadata = get_or_create_pledge_metadata(recorder_pledge_id)
+            apply_pledge_metadata_to_state(state, metadata)
         refresh_purity_state(state)
         build_final_summary(state)
         update_pledge_progress(state)
+        if (
+            recorder is not None
+            and state.get("pledge_id")
+            and str(getattr(recorder, "_pledge_id", "") or "") == str(state["pledge_id"])
+        ):
+            state["packet_sealing"] = recorder.snapshot()
         state_copy = copy.deepcopy(state)
         
         session_id = state_copy.get("session_id")
@@ -5853,6 +6916,12 @@ def segmentation_args_for(state: dict[str, Any]) -> SimpleNamespace:
 def run_segmentation_pipeline(state: dict[str, Any]) -> dict[str, Any]:
     args = segmentation_args_for(state)
     source_path = Path(state["source"]["working_image"]["path"])
+    full_image_artifact = state["source"].get("original_image") or {}
+    full_image_path = Path(str(full_image_artifact.get("path") or ""))
+    full_image = cv2.imread(str(full_image_path), cv2.IMREAD_COLOR)
+    if full_image is None:
+        raise RuntimeError("Could not load the full captured image for bead detection.")
+    bead_analysis, bead_detection_image = run_full_image_bead_detection(full_image)
     _preprocessed_path, preprocessed_image, preprocessed_mask = (
         load_or_create_shared_jewelry_input(state)
     )
@@ -5863,7 +6932,9 @@ def run_segmentation_pipeline(state: dict[str, Any]) -> dict[str, Any]:
         args,
         preprocessed_image=preprocessed_image,
         preprocessed_mask=preprocessed_mask,
+        bead_analysis_override=bead_analysis,
     )
+    bead_detection_path = save_bgr(output_dir / "bead_finder_full_image.png", bead_detection_image)
     summary_path = output_dir / "summary.json"
     summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
     bead_analysis = debug.get("bead_analysis") or (summary_payload.get("debug") or {}).get("bead_analysis") or {}
@@ -5883,6 +6954,8 @@ def run_segmentation_pipeline(state: dict[str, Any]) -> dict[str, Any]:
         "feedback_alignment_score": debug.get("feedback_alignment_score"),
         "pendant_detected": bool(debug.get("pendant_detected", False)),
         "tassel_detected": bool(debug.get("tassel_detected", False)),
+        "pendant_absent": bool(debug.get("pendant_absent", False)),
+        "tassel_absent": bool(debug.get("tassel_absent", False)),
         "pendant_evidence": debug.get("pendant_evidence"),
         "tassel_evidence": debug.get("tassel_evidence"),
         "part_detection_prompts": debug.get("part_detection_prompts"),
@@ -5890,6 +6963,7 @@ def run_segmentation_pipeline(state: dict[str, Any]) -> dict[str, Any]:
         "summary_json": artifact_payload(state, summary_path),
         "composite_layout": artifact_payload(state, output_dir / "composite_layout.png"),
         "bead_analysis_image": artifact_payload(state, output_dir / "bead_analysis.png") if (output_dir / "bead_analysis.png").exists() else None,
+        "bead_finder_image": artifact_payload(state, bead_detection_path),
         "preprocessed_image": artifact_payload(state, output_dir / "input_preprocessed.png"),
         "overlay_image": artifact_payload(state, output_dir / "overlay.png"),
         "part_masks": {
@@ -5910,7 +6984,7 @@ def apply_segmentation_feedback(
     preprocessed_path = Path(args.output_dir) / working_path.stem / "input_preprocessed.png"
     preprocessed = cv2.imread(str(preprocessed_path))
     if preprocessed is None:
-        raise RuntimeError("Run segmentation once before applying manual correction.")
+        raise RuntimeError("Run jewellery analysis once before applying a manual correction.")
     preprocessed_mask = cv2.imread(
         str(preprocessed_path.with_name("input_mask.png")),
         cv2.IMREAD_GRAYSCALE,
@@ -5942,7 +7016,7 @@ def apply_segmentation_feedback(
             jewel_type=args.jewel_type,
         )
     else:
-        raise RuntimeError(f"Unsupported segmentation correction part: {part}")
+        raise RuntimeError(f"Unsupported jewellery analysis correction part: {part}")
     return run_segmentation_pipeline(state)
 
 
@@ -5955,7 +7029,7 @@ def apply_segmentation_no_part(
     preprocessed_path = Path(args.output_dir) / working_path.stem / "input_preprocessed.png"
     preprocessed = cv2.imread(str(preprocessed_path))
     if preprocessed is None:
-        raise RuntimeError("Run segmentation once before applying part exclusion.")
+        raise RuntimeError("Run jewellery analysis once before excluding a region.")
     preprocessed_mask = cv2.imread(
         str(preprocessed_path.with_name("input_mask.png")),
         cv2.IMREAD_GRAYSCALE,
@@ -5983,7 +7057,7 @@ def apply_segmentation_no_part(
             jewel_type=args.jewel_type,
         )
     else:
-        raise RuntimeError(f"Unsupported segmentation exclusion part: {part}")
+        raise RuntimeError(f"Unsupported jewellery analysis exclusion part: {part}")
     result = run_segmentation_pipeline(state)
     remaining_area = int(
         ((result.get("part_summary") or {}).get(part) or {}).get("area", 0)
@@ -5991,7 +7065,7 @@ def apply_segmentation_no_part(
     if remaining_area > 0:
         raise RuntimeError(
             f"{part.title()} exclusion failed: {remaining_area} pixels remained "
-            "after the segmentation rerun."
+            "after the jewellery analysis rerun."
         )
     return result
 
@@ -6220,6 +7294,71 @@ def _scaled_measurement_scale(
     }
 
 
+def _normalized_binary_mask(
+    mask: np.ndarray,
+    image_shape: tuple[int, int],
+) -> np.ndarray:
+    mask_bin = np.asarray(mask, dtype=np.uint8)
+    if mask_bin.ndim == 3:
+        mask_bin = mask_bin.squeeze()
+    if mask_bin.shape[:2] != image_shape:
+        mask_bin = cv2.resize(
+            mask_bin,
+            (image_shape[1], image_shape[0]),
+            interpolation=cv2.INTER_NEAREST,
+        )
+    return (mask_bin > 0).astype(np.uint8)
+
+
+def _enhance_masked_jewel_with_super_resolution(
+    image_bgr: np.ndarray,
+    jewel_mask: np.ndarray,
+    runner: RealESRGANHailoX2,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Enhance only jewel pixels, then return to the calibrated native grid."""
+    mask_bin = _normalized_binary_mask(jewel_mask, image_bgr.shape[:2])
+    points = cv2.findNonZero(mask_bin)
+    if points is None:
+        raise RuntimeError("The threshold jewel mask is empty.")
+
+    x, y, width, height = cv2.boundingRect(points)
+    padding = 16
+    x1 = max(0, x - padding)
+    y1 = max(0, y - padding)
+    x2 = min(image_bgr.shape[1], x + width + padding)
+    y2 = min(image_bgr.shape[0], y + height + padding)
+
+    crop_bgr = image_bgr[y1:y2, x1:x2].copy()
+    crop_mask = mask_bin[y1:y2, x1:x2]
+    masked_crop = np.zeros_like(crop_bgr)
+    masked_crop[crop_mask > 0] = crop_bgr[crop_mask > 0]
+
+    super_resolved_crop = runner.process_bgr(masked_crop)
+    enhanced_crop = cv2.resize(
+        super_resolved_crop,
+        (masked_crop.shape[1], masked_crop.shape[0]),
+        interpolation=cv2.INTER_AREA,
+    )
+
+    # ESRGAN improves luminance detail but may reduce saturation. Preserve the
+    # calibrated source chroma so HSV stone classification remains stable.
+    enhanced_lab = cv2.cvtColor(enhanced_crop, cv2.COLOR_BGR2LAB)
+    source_lab = cv2.cvtColor(masked_crop, cv2.COLOR_BGR2LAB)
+    enhanced_lab[:, :, 1:] = source_lab[:, :, 1:]
+    enhanced_crop = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
+    enhanced_crop[crop_mask == 0] = 0
+
+    enhanced_bgr = np.zeros_like(image_bgr)
+    enhanced_bgr[y1:y2, x1:x2] = enhanced_crop
+    enhanced_bgr[mask_bin == 0] = 0
+    return enhanced_bgr, {
+        "masked_crop_bbox": [int(x1), int(y1), int(x2 - x1), int(y2 - y1)],
+        "model_output_width": int(super_resolved_crop.shape[1]),
+        "model_output_height": int(super_resolved_crop.shape[0]),
+        "measurement_grid_scale": 1,
+    }
+
+
 def run_stone_pipeline(
     state: dict[str, Any],
     image_path: Path,
@@ -6262,57 +7401,71 @@ def run_stone_pipeline(
         "runtime_seconds": 0.0,
         "tile_count": 0,
     }
-    preset_mask_for_analysis = preset_binary_mask
+    preset_mask_for_analysis = (
+        _normalized_binary_mask(preset_binary_mask, analysis_input.shape[:2])
+        if preset_binary_mask is not None
+        else None
+    )
 
     if super_resolution_info["requested"]:
-        with MODEL_LOCK:
-            runner = get_super_resolution_runner()
-            analysis_input = runner.process_bgr(analysis_input)
-            super_resolution_info["runtime_seconds"] = round(
-                float(runner.last_runtime_seconds),
-                3,
+        try:
+            if preset_mask_for_analysis is None:
+                preset_mask_for_analysis = (
+                    stone_detection.otsu_clean_mask(analysis_input) > 0
+                ).astype(np.uint8)
+            with MODEL_LOCK:
+                runner = get_super_resolution_runner()
+                analysis_input, enhancement_info = (
+                    _enhance_masked_jewel_with_super_resolution(
+                        analysis_input,
+                        preset_mask_for_analysis,
+                        runner,
+                    )
+                )
+                super_resolution_info["runtime_seconds"] = round(
+                    float(runner.last_runtime_seconds),
+                    3,
+                )
+                super_resolution_info["tile_count"] = int(runner.last_tile_count)
+            # Prediction stays on the calibrated native grid. ESRGAN contributes
+            # detail, while pixel areas and mm-per-pixel remain directly
+            # comparable with the non-SR path.
+            analysis_scale = 1
+            super_resolution_info.update(enhancement_info)
+            super_resolution_info["applied"] = True
+            super_resolution_info["scale"] = int(SUPER_RESOLUTION_SCALE)
+            analysis_image_path = save_bgr(
+                output_dir / "enhanced_masked_analysis_input.png",
+                analysis_input,
             )
-            super_resolution_info["tile_count"] = int(runner.last_tile_count)
-        analysis_scale = int(SUPER_RESOLUTION_SCALE)
-        super_resolution_info["applied"] = True
-        super_resolution_info["scale"] = analysis_scale
-        analysis_image_path = save_bgr(
-            output_dir / "super_resolved_analysis_input.png",
-            analysis_input,
-        )
-        if preset_binary_mask is not None:
-            mask_bin = preset_binary_mask.astype(np.uint8)
-            if mask_bin.ndim == 3:
-                mask_bin = mask_bin.squeeze()
-            preset_mask_for_analysis = cv2.resize(
-                (mask_bin > 0).astype(np.uint8),
-                (analysis_input.shape[1], analysis_input.shape[0]),
-                interpolation=cv2.INTER_NEAREST,
-            )
-            analysis_mask_path = output_dir / "super_resolved_analysis_mask.png"
+            analysis_mask_path = output_dir / "analysis_jewel_mask.png"
             cv2.imwrite(
                 str(analysis_mask_path),
                 (preset_mask_for_analysis * 255).astype(np.uint8),
             )
+        except Exception as exc:
+            super_resolution_info["error"] = str(exc)
+            super_resolution_info["fallback"] = "native"
+            super_resolution_info["applied"] = False
+            super_resolution_info["scale"] = 1
+            analysis_scale = 1
+            print(f"Stone super resolution failed; using native analysis: {exc}")
 
     preset_candidates = None
     if preset_mask_for_analysis is not None:
         try:
-            mask_bin = preset_mask_for_analysis.astype(np.uint8)
-            if mask_bin.ndim == 3:
-                mask_bin = mask_bin.squeeze()
-            if mask_bin.shape[:2] != analysis_input.shape[:2]:
-                mask_bin = cv2.resize(
-                    mask_bin,
-                    (analysis_input.shape[1], analysis_input.shape[0]),
-                    interpolation=cv2.INTER_NEAREST,
-                )
+            mask_bin = _normalized_binary_mask(
+                preset_mask_for_analysis,
+                analysis_input.shape[:2],
+            )
             preset_candidates = stone_detection.build_candidates_from_component_mask(
                 analysis_input,
                 mask_bin,
                 min_area=max(80, int(mask_bin.size * 0.0005)),
                 max_candidates=12,
-                reject_border_touching=True,
+                # This is an authoritative threshold/hand-removal mask. A jewel
+                # touching the Processing ROI edge is still a valid candidate.
+                reject_border_touching=False,
                 min_area_ratio_to_largest=0.01,
             )
             preset_candidates = [
@@ -6575,7 +7728,7 @@ def api_config():
     return jsonify(
         {
             "ok": True,
-            "class_labels": ALL_DISPLAY_LABELS,
+            "class_labels": sorted(ALL_DISPLAY_LABELS, key=str.casefold),
             "aruco_dicts": list(ARUCO_DICTS.keys()),
             "branches": {
                 "dimension": sorted(list(DIMENSION_CLASSES)),
@@ -6677,6 +7830,7 @@ def api_purity_start():
                 )
             print("[DEBUG] Purity start uses startup-loaded HEFs; no model load performed")
             manager.start(session_dir_for(state) / "purity_test", audio_device=audio_device)
+            clear_stage_skip(state, "acid_test")
             refresh_purity_state(state)
             state["status"] = state["purity_test"].get("status") or "Acid test running"
             state["updated_at"] = now_stamp()
@@ -6733,6 +7887,7 @@ def api_purity_skip():
                 "result": "Skipped",
                 "acid_ok": False,
             }
+            mark_stage_skipped(state, "acid_test")
             state["status"] = "Acid test skipped."
             state["updated_at"] = now_stamp()
             build_final_summary(state)
@@ -6744,7 +7899,105 @@ def api_purity_skip():
     return jsonify({"ok": True, "state": snapshot_state()})
 
 
+@app.route("/api/stage/skip", methods=["POST"])
+def api_stage_skip():
+    with STATE_LOCK:
+        state = ensure_state()
+        update_pledge_progress(state)
+        if not state.get("session_id"):
+            return fail("Capture the jewel image and run jewel type before skipping an optional stage.")
+        if not (state.get("classification") or {}).get("confirmed"):
+            return fail("Confirm the jewel type before skipping an optional stage.")
+
+        try:
+            payload = parse_post_payload()
+            stage_key = str(payload.get("stage") or "").strip()
+            branch_key = (state.get("branch") or {}).get("key")
+            allowed = {"acid_test"}
+            if branch_key == "dimension":
+                allowed.update({"dimension", "side_stone"})
+            elif branch_key == "segmentation":
+                allowed.update({"jewellery_analysis", "stone_detection"})
+            elif branch_key == "direct_stone":
+                allowed.add("stone_detection")
+            if state.get("pledge_complete"):
+                allowed.update({"final_count", "packet_sealing"})
+            if stage_key not in allowed:
+                raise ValueError("This stage is not available to skip in the current workflow.")
+
+            if stage_key == "acid_test":
+                purity = state.get("purity_test") or {}
+                if purity.get("running"):
+                    raise ValueError("Stop the running acid test before skipping it.")
+                manager = get_purity_manager()
+                manager.reset(stop_running=True)
+                state["purity_test"] = {
+                    **(manager.snapshot() or {}),
+                    "skipped": True,
+                    "skipped_at": now_stamp(),
+                    "status": "Acid test skipped.",
+                    "result": "Skipped",
+                    "acid_ok": False,
+                }
+            elif stage_key == "dimension":
+                state["dimension"] = {"done": False, "skipped": True}
+            elif stage_key == "jewellery_analysis":
+                state["segmentation"] = {"done": False, "skipped": True}
+                state["stone_detection"]["main"] = None
+            elif stage_key == "side_stone":
+                state["stone_detection"]["side"] = None
+            elif stage_key == "stone_detection":
+                state["stone_detection"]["main"] = None
+            elif stage_key in {"final_count", "packet_sealing"}:
+                pledge_id = str(state.get("pledge_id") or "").strip()
+                if not pledge_id:
+                    raise ValueError("Set the Pledge ID before skipping a closure stage.")
+                metadata = get_or_create_pledge_metadata(pledge_id)
+                if stage_key == "final_count":
+                    skipped_at = now_stamp()
+                    metadata["jewel_count_verification"] = {
+                        "skipped": True,
+                        "skipped_at": skipped_at,
+                        "status": "Skipped",
+                    }
+                else:
+                    metadata["packet_sealing"] = {
+                        **_default_packet_sealing_state(),
+                        "status": "skipped",
+                        "skipped": True,
+                        "skipped_at": now_stamp(),
+                    }
+                save_pledge_metadata(metadata)
+                apply_pledge_metadata_to_state(state, metadata)
+
+            skipped = mark_stage_skipped(state, stage_key)
+            state["status"] = f"{skipped['display_name']} skipped."
+            state["updated_at"] = now_stamp()
+            build_final_summary(state)
+            if stage_key == "acid_test":
+                speak(post_jewel_voice_prompt(state, "acid test skipped"))
+            else:
+                speak(f"{skipped['display_name']} skipped. Continue to the next stage.")
+        except Exception as exc:  # noqa: BLE001
+            return fail(str(exc))
+
+    return jsonify({"ok": True, "state": snapshot_state()})
+
+
 def _preview_jpeg_bytes() -> bytes | None:
+    recorder = PACKET_RECORDER
+    if recorder is not None and recorder.is_recording():
+        packet_frame = get_camera_backend().get_frame_copy()
+        if packet_frame is not None:
+            packet_frame = recorder.annotate_preview(packet_frame)
+            ok, buffer = cv2.imencode(
+                ".jpg",
+                packet_frame,
+                [int(cv2.IMWRITE_JPEG_QUALITY), int(CAM_PREVIEW_JPEG_QUALITY)],
+            )
+            if ok and buffer is not None:
+                return buffer.tobytes()
+
     manager = get_purity_manager()
     purity_running = manager.is_running()
     # During purity inference, the latest annotated result remains the
@@ -6836,6 +8089,9 @@ def api_video_feed():
 @app.route("/api/reset", methods=["POST"])
 def api_reset():
     global CURRENT_STATE
+    recorder = PACKET_RECORDER
+    if recorder is not None and recorder.is_recording():
+        return fail("Stop packet sealing recording before resetting the workflow.")
     with STATE_LOCK:
         CURRENT_STATE = build_empty_state()
     lcd_show_pledge_status(None)
@@ -7200,6 +8456,7 @@ def api_pledge_jewel_count_capture():
             save_pledge_metadata(metadata)
             state = ensure_state()
             apply_pledge_metadata_to_state(state, metadata)
+            clear_stage_skip(state, "final_count")
             state["status"] = (
                 f"Predicted jewel count: {verification['predicted_count']}."
             )
@@ -7229,19 +8486,69 @@ def api_packet_sealing_start():
             if not metadata.get("jewel_count_verification"):
                 speak("Capture the final jewel count before packet sealing.")
                 return fail("Capture the final jewel count before packet sealing.")
+            source = state.get("source") or {}
+            processing_roi = source.get("processing_roi") or PERSISTENT_ROIS.get(
+                "processing_roi"
+            )
 
-        packet_state = get_packet_recorder().start(pledge_id)
+        packet_state = get_packet_recorder().start(pledge_id, processing_roi)
         with STATE_LOCK:
             metadata = get_or_create_pledge_metadata(pledge_id)
             metadata["packet_sealing"] = packet_state
             save_pledge_metadata(metadata)
             state = ensure_state()
             apply_pledge_metadata_to_state(state, metadata)
+            clear_stage_skip(state, "packet_sealing")
             state["status"] = "Packet sealing recording started."
             state["updated_at"] = now_stamp()
 
         speak("Packet sealing recording started. Put all jewels into the packet and seal it.")
         return jsonify({"ok": True, "state": snapshot_state()})
+    except Exception as exc:  # noqa: BLE001
+        return fail(str(exc))
+
+
+def _update_packet_striping_state(packet_state: dict[str, Any]) -> dict[str, Any]:
+    with STATE_LOCK:
+        state = ensure_state()
+        pledge_id = str(state.get("pledge_id") or "").strip()
+        if not pledge_id:
+            raise ValueError("No active packet sealing pledge was found.")
+        metadata = get_or_create_pledge_metadata(pledge_id)
+        metadata["packet_sealing"] = packet_state
+        save_pledge_metadata(metadata)
+        apply_pledge_metadata_to_state(state, metadata)
+        clear_stage_skip(state, "packet_sealing")
+        state["updated_at"] = now_stamp()
+    return snapshot_state()
+
+
+@app.route("/api/packet-sealing/striping/hand-clear", methods=["POST"])
+def api_packet_striping_hand_clear():
+    try:
+        packet_state = get_packet_recorder().request_striping_hand_clear()
+        state = _update_packet_striping_state(packet_state)
+        return jsonify({"ok": True, "state": state})
+    except Exception as exc:  # noqa: BLE001
+        return fail(str(exc))
+
+
+@app.route("/api/packet-sealing/striping/restart", methods=["POST"])
+def api_packet_striping_restart():
+    try:
+        packet_state = get_packet_recorder().restart_striping()
+        state = _update_packet_striping_state(packet_state)
+        return jsonify({"ok": True, "state": state})
+    except Exception as exc:  # noqa: BLE001
+        return fail(str(exc))
+
+
+@app.route("/api/packet-sealing/striping/skip", methods=["POST"])
+def api_packet_striping_skip():
+    try:
+        packet_state = get_packet_recorder().skip_striping()
+        state = _update_packet_striping_state(packet_state)
+        return jsonify({"ok": True, "state": state})
     except Exception as exc:  # noqa: BLE001
         return fail(str(exc))
 
@@ -7260,6 +8567,7 @@ def api_packet_sealing_stop():
             metadata["packet_sealing"] = packet_state
             save_pledge_metadata(metadata)
             apply_pledge_metadata_to_state(state, metadata)
+            clear_stage_skip(state, "packet_sealing")
             state["status"] = (
                 "Packet sealing video saved."
                 if packet_state.get("video")
@@ -7327,15 +8635,20 @@ def api_source():
         payload = parse_post_payload()
         image_bgr, filename, use_live_frame = load_image_from_payload(payload, "source.png")
         raw_image_bgr = image_bgr.copy()
+        source_kind = str(payload.get("source_kind") or ("camera" if use_live_frame else "unknown"))
         calibration_config = april_tag_calibration_config(payload)
-        image_bgr, lens_undistorted = undistort_captured_still(
-            image_bgr,
-            calibration_config,
-        )
-        image_bgr, four_marker_calibration = rectify_with_four_apriltags(
-            image_bgr,
-            calibration_config,
-        )
+        if source_kind == "upload":
+            lens_undistorted = False
+            four_marker_calibration = None
+        else:
+            image_bgr, lens_undistorted = undistort_captured_still(
+                image_bgr,
+                calibration_config,
+            )
+            image_bgr, four_marker_calibration = rectify_with_four_apriltags(
+                image_bgr,
+                calibration_config,
+            )
         height, width = image_bgr.shape[:2]
         processing_roi = (
             None
@@ -7364,10 +8677,11 @@ def api_source():
                     "error": str(exc),
                 }
 
-        PERSISTENT_ROIS["processing_roi"] = processing_roi
-        PERSISTENT_ROIS["aruco_roi"] = aruco_roi
-        PERSISTENT_ROIS["calibration_config"] = copy.deepcopy(calibration_config)
-        save_persistent_rois()
+        if source_kind != "upload":
+            PERSISTENT_ROIS["processing_roi"] = processing_roi
+            PERSISTENT_ROIS["aruco_roi"] = aruco_roi
+            PERSISTENT_ROIS["calibration_config"] = copy.deepcopy(calibration_config)
+            save_persistent_rois()
 
         with STATE_LOCK:
             state = ensure_state()
@@ -7422,7 +8736,7 @@ def api_source():
             state["session_id"] = session_id
             state["updated_at"] = now_stamp()
             state["source"] = {
-                "kind": str(payload.get("source_kind") or ("camera" if use_live_frame else "unknown")),
+                "kind": source_kind,
                 "filename": filename,
                 "image_size": {"width": width, "height": height},
                 "processing_roi": processing_roi,
@@ -7471,6 +8785,23 @@ def api_classify():
             return fail(error_msg)
 
         try:
+            payload = parse_post_payload()
+            jewel_weight = normalize_positive_weight(
+                payload.get("jewel_weight_g"),
+                "Current jewel weight",
+                required=True,
+            )
+            appraiser_stone_weight = normalize_positive_weight(
+                payload.get("appraiser_stone_weight_g"),
+                "Appraiser stone weight",
+                required=False,
+            )
+            if appraiser_stone_weight is not None and appraiser_stone_weight > jewel_weight:
+                raise ValueError("Appraiser stone weight cannot exceed the current jewel weight.")
+            state["weight_details"] = {
+                "jewel_weight_g": jewel_weight,
+                "appraiser_stone_weight_g": appraiser_stone_weight,
+            }
             working_path = Path(state["source"]["working_image"]["path"])
             print(f"Loading image from: {working_path}")
             print(f"Image exists: {working_path.exists()}")
@@ -7540,6 +8871,21 @@ def api_classify():
     return jsonify({"ok": True, "state": snapshot_state()})
 
 
+@app.route("/api/speak", methods=["POST"])
+def api_speak():
+    """Speak an arbitrary phrase on behalf of the frontend (e.g. stage-arrival guidance
+    for transitions that happen purely client-side, with no other backend call to hang the
+    announcement off of)."""
+    try:
+        payload = parse_post_payload()
+    except ValueError as exc:
+        return fail(str(exc))
+    text = str(payload.get("text", "")).strip()
+    if text:
+        speak(text)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/classification/confirm", methods=["POST"])
 def api_classification_confirm():
     with STATE_LOCK:
@@ -7569,19 +8915,23 @@ def api_classification_confirm():
             state["segmentation"] = {"done": False}
             state["stone_detection"]["main"] = None
             state["stone_detection"]["side"] = None
+            state["stage_skips"] = {}
             reset_purity_state(state)
             build_final_summary(state)
+
+            learn_from_confirmation = state.get("source", {}).get("kind") != "upload"
 
             if is_not_gold:
                 speak(post_jewel_voice_prompt(state, "marked as not gold jewelry"))
                 # Store "Not Gold Jewelry" in gallery so similar non-gold items
                 # will be recognised as non-gold in future classifications
-                try:
-                    working_path = Path(state["source"]["working_image"]["path"])
-                    get_classifier().learn_correction(working_path, "Not Gold Jewelry")
-                    state["status"] += " (Learned as non-gold for gallery)"
-                except Exception as exc:  # noqa: BLE001
-                    print(f"Failed to learn non-gold correction: {exc}")
+                if learn_from_confirmation:
+                    try:
+                        working_path = Path(state["source"]["working_image"]["path"])
+                        get_classifier().learn_correction(working_path, "Not Gold Jewelry")
+                        state["status"] += " (Learned as non-gold for gallery)"
+                    except Exception as exc:  # noqa: BLE001
+                        print(f"Failed to learn non-gold correction: {exc}")
                 # NB: can NOT call snapshot_state() here — STATE_LOCK is already held,
                 # and snapshot_state() re-acquires STATE_LOCK → self-deadlock.
                 return jsonify({"ok": True, "state": copy.deepcopy(state)})
@@ -7591,13 +8941,13 @@ def api_classification_confirm():
             if branch_key == "dimension":
                 speak("Jewel type confirmed. Click next for Dimension analysis.")
             elif branch_key == "segmentation":
-                speak("Jewel type confirmed. Click next for Segmentation.")
+                speak("Jewel type confirmed. Click next for Jewellery Analysis.")
             else:
                 speak("Jewel type confirmed. Click next for Stone Detection.")
 
             # Gallery corrections support every UI class, including classes that
             # do not have a dedicated SigLIP text prompt (for example Mangalsutra).
-            if label != old_prediction:
+            if label != old_prediction and learn_from_confirmation:
                 try:
                     working_path = Path(state["source"]["working_image"]["path"])
                     get_classifier().learn_correction(working_path, label)
@@ -7621,6 +8971,7 @@ def api_dimension_run():
         try:
             payload = parse_post_payload()
             state["dimension"] = run_dimension_measurement(state, payload)
+            clear_stage_skip(state, "dimension")
             state["status"] = "Dimension measurement completed."
             state["updated_at"] = now_stamp()
             reset_purity_state(state)
@@ -7755,7 +9106,7 @@ def api_side_source():
             )
             state["updated_at"] = now_stamp()
 
-            speak("Side image captured. Click next for Side Stone Detection.")
+            speak("Side image captured. Click Start Stone Analysis.")
         except Exception as exc:  # noqa: BLE001
             return fail(str(exc))
 
@@ -7771,8 +9122,8 @@ def api_side_stones_run():
             return fail("Capture or upload the side image first.")
 
         try:
-            payload = parse_post_payload()
-            entered_weight = to_python_scalar(payload.get("entered_jewel_weight_g"))
+            parse_post_payload()
+            entered_weight = (state.get("weight_details") or {}).get("jewel_weight_g")
             session_dir = session_dir_for(state)
             hand_removed_path = session_dir / "side" / "hand_removed_side.png"
             hand_removed_mask_path = session_dir / "side" / "hand_removed_side_mask.png"
@@ -7910,12 +9261,13 @@ def api_side_stones_run():
                         side_result["weight_estimate"] = weight_estimate
 
             state["stone_detection"]["side"] = side_result
+            clear_stage_skip(state, "side_stone")
             state["status"] = "Side image hand removal and stone detection completed."
             state["updated_at"] = now_stamp()
             reset_purity_state(state)
             build_final_summary(state)
 
-            speak("Side stones detected. Click next for Acid Test.")
+            speak("Stone analysis completed. Click next for Acid Test.")
         except Exception as exc:  # noqa: BLE001
             return fail(str(exc))
 
@@ -7927,22 +9279,24 @@ def api_segmentation_run():
     with STATE_LOCK:
         state = ensure_state()
         if not state["classification"].get("confirmed"):
-            return fail("Confirm the jewel type before running segmentation.")
+            return fail("Confirm the jewel type before running jewellery analysis.")
         label = state["classification"].get("confirmed_label")
         if label not in SEGMENTATION_CLASSES:
-            return fail("Segmentation is only available for Haram, Necklace, Dollar chain, and Kasu Mala.")
+            return fail("Jewellery analysis is only available for Haram, Necklace, Dollar chain, and Kasu Mala.")
         try:
+            speak("Jewelry risk analysis initiated.")
             state["segmentation"] = run_segmentation_pipeline(state)
+            clear_stage_skip(state, "jewellery_analysis")
             state["stone_detection"]["main"] = None
             if state["segmentation"].get("bead_risk_high"):
-                state["status"] = "Segmentation completed. RISK JEWEL: Round beads detected in chain."
+                state["status"] = "Jewellery analysis completed. RISK JEWEL: Round beads detected in chain."
             else:
-                state["status"] = "Segmentation completed."
+                state["status"] = "Jewellery analysis completed."
             state["updated_at"] = now_stamp()
             reset_purity_state(state)
             build_final_summary(state)
 
-            speak("Segmentation completed. Click next for Stone Detection.")
+            speak("Jewellery analysis completed. Click next for Stone Detection.")
         except Exception as exc:  # noqa: BLE001
             return fail(str(exc))
 
@@ -7955,18 +9309,18 @@ def api_segmentation_correct():
         state = ensure_state()
         label = state["classification"].get("confirmed_label")
         if label not in SEGMENTATION_CLASSES:
-            return fail("Segmentation correction is only relevant for the segmentation workflow.")
+            return fail("This correction is only relevant for the jewellery analysis workflow.")
         try:
             payload = parse_post_payload()
             segmentation = state.get("segmentation") or {}
             preprocessed = segmentation.get("preprocessed_image")
             if not preprocessed:
-                return fail("Run segmentation once before applying segmentation correction.")
+                return fail("Run jewellery analysis once before applying a correction.")
 
             image_path = Path(preprocessed["path"])
             image_bgr = cv2.imread(str(image_path))
             if image_bgr is None:
-                return fail("Could not load segmentation preprocessed image.")
+                return fail("Could not load the jewellery analysis input image.")
 
             part = str(payload.get("part") or "pendant").strip().lower()
             if part not in {"pendant", "tassel"}:
@@ -7984,7 +9338,7 @@ def api_segmentation_correct():
             state["stone_detection"]["main"] = None
             state["status"] = (
                 f"{part.title()} correction learned as a position-invariant visual template; "
-                "segmentation rerun."
+                "jewellery analysis rerun."
             )
             state["updated_at"] = now_stamp()
             reset_purity_state(state)
@@ -8001,13 +9355,13 @@ def api_segmentation_no_pendant():
         state = ensure_state()
         label = state["classification"].get("confirmed_label")
         if label not in SEGMENTATION_CLASSES:
-            return fail("Segmentation is only relevant for the segmentation workflow.")
+            return fail("This action is only relevant for the jewellery analysis workflow.")
         if not (state.get("segmentation") or {}).get("done"):
-            return fail("Run segmentation once before excluding pendant.")
+            return fail("Run jewellery analysis once before excluding pendant.")
         try:
             state["segmentation"] = apply_segmentation_no_part(state, "pendant")
             state["stone_detection"]["main"] = None
-            state["status"] = "Pendant excluded; region merged into chain. Segmentation rerun."
+            state["status"] = "Pendant excluded; region merged into chain. Jewellery analysis rerun."
             state["updated_at"] = now_stamp()
             reset_purity_state(state)
             build_final_summary(state)
@@ -8023,13 +9377,13 @@ def api_segmentation_no_tassel():
         state = ensure_state()
         label = state["classification"].get("confirmed_label")
         if label not in SEGMENTATION_CLASSES:
-            return fail("Segmentation is only relevant for the segmentation workflow.")
+            return fail("This action is only relevant for the jewellery analysis workflow.")
         if not (state.get("segmentation") or {}).get("done"):
-            return fail("Run segmentation once before excluding tassel.")
+            return fail("Run jewellery analysis once before excluding tassel.")
         try:
             state["segmentation"] = apply_segmentation_no_part(state, "tassel")
             state["stone_detection"]["main"] = None
-            state["status"] = "Tassel excluded; region merged into chain. Segmentation rerun."
+            state["status"] = "Tassel excluded; region merged into chain. Jewellery analysis rerun."
             state["updated_at"] = now_stamp()
             reset_purity_state(state)
             build_final_summary(state)
@@ -8047,8 +9401,8 @@ def api_stone_detection_main():
             return fail("Capture or upload the main jewelry image first.")
 
         try:
-            payload = parse_post_payload()
-            entered_weight = to_python_scalar(payload.get("entered_jewel_weight_g"))
+            parse_post_payload()
+            entered_weight = (state.get("weight_details") or {}).get("jewel_weight_g")
             segmentation = state.get("segmentation") or {}
             working_path, working_bgr, shared_jewelry_mask = (
                 load_or_create_shared_jewelry_input(state)
@@ -8094,6 +9448,7 @@ def api_stone_detection_main():
                 )
 
             state["status"] = "Main image stone detection completed."
+            clear_stage_skip(state, "stone_detection")
             state["updated_at"] = now_stamp()
             reset_purity_state(state)
             build_final_summary(state)
@@ -8236,11 +9591,13 @@ def _packet_video_path_from_metadata(metadata: dict[str, Any] | None) -> Path | 
 
 
 def _pledge_closure_complete(metadata: dict[str, Any] | None) -> bool:
-    return bool(
-        metadata
-        and metadata.get("jewel_count_verification")
-        and _packet_video_path_from_metadata(metadata)
-    )
+    if not metadata:
+        return False
+    count_verification = metadata.get("jewel_count_verification") or {}
+    packet = metadata.get("packet_sealing") or {}
+    count_done = bool(count_verification)
+    packet_done = bool(packet.get("skipped") or _packet_video_path_from_metadata(metadata))
+    return bool(count_done and packet_done)
 
 
 @app.route("/api/report/assets", methods=["GET"])
@@ -8313,7 +9670,7 @@ def api_generate_pdf():
             if jewel_count and len(completed_indexes) < jewel_count:
                 return fail(f"Pledge report is not ready. Complete all {jewel_count} jewels first.", 400)
             if not _pledge_closure_complete(metadata):
-                return fail("Pledge report is not ready. Capture final jewel count and record packet sealing video first.", 400)
+                return fail("Pledge report is not ready. Complete or skip final count capture and packet sealing video first.", 400)
             
             try:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -8357,7 +9714,7 @@ def api_generate_pdf():
                 if jewel_count and len(completed_indexes) < jewel_count:
                     return fail(f"Pledge report is not ready. Complete all {jewel_count} jewels first.", 400)
                 if not _pledge_closure_complete(metadata):
-                    return fail("Pledge report is not ready. Capture final jewel count and record packet sealing video first.", 400)
+                    return fail("Pledge report is not ready. Complete or skip final count capture and packet sealing video first.", 400)
             else:
                 states = [state]
 
@@ -8380,225 +9737,17 @@ def api_generate_pdf():
                 return fail(str(exc), 500)
 
 
-# ---------------------------------------------------------------------------
-# GPIO-triggered classification (reuses existing source + classify pipeline)
-# ---------------------------------------------------------------------------
-
-def gpio_trigger_classify() -> None:
-    """Capture a live camera frame and run classification automatically.
-
-    Called from the GPIO interrupt handler on pin TRIGGER_GPIO_PIN (falling
-    edge).  This performs the same work as POSTing to /api/source followed by
-    /api/classify, but without any HTTP round-trip.
-    """
-    global CURRENT_STATE
-    print("\n" + "=" * 60)
-    print("GPIO TRIGGER: Classification started")
-    print("=" * 60)
-
-    try:
-        # 1. Grab a live frame from the camera backend
-        camera = get_camera_backend()
-        frame = camera.get_frame_copy()
-        if frame is None:
-            msg = "GPIO trigger: no camera frame available."
-            print(f"❌ {msg}")
-            return
-
-        image_bgr = frame
-        height, width = image_bgr.shape[:2]
-        filename = f"gpio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-
-        # 2. Build source state (same logic as /api/source)
-        processing_roi = normalize_rect(PERSISTENT_ROIS.get("processing_roi"), width, height)
-        aruco_roi = normalize_rect(PERSISTENT_ROIS.get("aruco_roi"), width, height)
-        working_aruco_roi = translate_rect_to_crop(aruco_roi, processing_roi)
-        calibration_config = april_tag_calibration_config({})
-        try:
-            stone_calibration = detect_stone_area_calibration(
-                image_bgr,
-                calibration_config,
-                aruco_roi,
-            )
-        except Exception as exc:
-            stone_calibration = {
-                "method": "aruco",
-                **calibration_config,
-                "error": str(exc),
-            }
-
-        with STATE_LOCK:
-            state = ensure_state()
-            current_pledge = state.get("pledge_id")
-            if not current_pledge:
-                msg = "GPIO trigger failed: Pledge ID is required. Please enter it in the UI first."
-                print(f"❌ {msg}")
-                speak("Please enter Pledge ID first.")
-                return
-            pledge_context = pledge_context_from_state(state)
-            metadata = pledge_context.get("metadata")
-            if not metadata or not metadata.get("count_saved") or not metadata.get("jewel_count"):
-                msg = "GPIO trigger failed: Jewel count is required before classification."
-                print(msg)
-                speak("Please enter and save the jewel count first.")
-                return
-            jewel_index = int(state.get("jewel_index") or next_jewel_index_for_pledge(str(current_pledge), metadata.get("jewel_count")))
-
-        session_id = new_session_id(pledge_id=current_pledge)
-        session_dir = RUNTIME_DIR / session_id
-        session_dir.mkdir(parents=True, exist_ok=True)
-
-        original_path = save_bgr(session_dir / "source" / f"original_{filename}", image_bgr)
-        working_bgr = crop_image(image_bgr, processing_roi)
-        aruco_ignore_mask = build_aruco_ignore_mask(
-            working_bgr.shape,
-            working_aruco_roi,
-        )
-        working_bgr[aruco_ignore_mask > 0] = 255
-        working_path = save_bgr(session_dir / "source" / "working_source.png", working_bgr)
-        preprocessed_bgr, preprocessed_mask = build_shared_jewelry_mask(
-            working_bgr,
-            erase_mask=aruco_ignore_mask,
-        )
-        preprocessed_path = save_bgr(
-            session_dir / "source" / "preprocessed.png",
-            preprocessed_bgr,
-        )
-        preprocessed_mask_path = session_dir / "source" / "preprocessed_mask.png"
-        cv2.imwrite(
-            str(preprocessed_mask_path),
-            (preprocessed_mask * 255).astype(np.uint8),
-        )
-        roi_preview_path = save_bgr(
-            session_dir / "source" / "roi_preview.png",
-            build_roi_preview(image_bgr, processing_roi, aruco_roi),
-        )
-
-        with STATE_LOCK:
-            CURRENT_STATE = build_empty_state()
-            state = CURRENT_STATE
-            apply_pledge_context_to_state(state, pledge_context, jewel_index=jewel_index)
-            state["status"] = "GPIO: Source captured."
-            state["session_id"] = session_id
-            state["updated_at"] = now_stamp()
-            state["source"] = {
-                "kind": "gpio",
-                "filename": filename,
-                "image_size": {"width": width, "height": height},
-                "processing_roi": processing_roi,
-                "aruco_roi": aruco_roi,
-                "working_aruco_roi": working_aruco_roi,
-                "calibration_config": calibration_config,
-                "stone_calibration": stone_calibration,
-                "color_correction": copy.deepcopy(PERSISTENT_ROIS["color_correction"]),
-                "background_calibration": copy.deepcopy(PERSISTENT_ROIS["background_calibration"]),
-                "learned_stone_profiles": copy.deepcopy(PERSISTENT_ROIS["learned_stone_profiles"]),
-                "original_image": artifact_payload(state, original_path),
-                "working_image": artifact_payload(state, working_path),
-                "preprocessed_image": artifact_payload(state, preprocessed_path),
-                "preprocessed_mask": artifact_payload(state, preprocessed_mask_path),
-                "roi_preview": artifact_payload(state, roi_preview_path),
-            }
-            build_final_summary(state)
-
-        # Instruction 3: Jewelry image is captured
-        speak("Jewel image is captured. Running jewel type.")
-        print(f"✅ GPIO: Source saved  session={session_id}")
-
-        # 3. Run classification (same logic as /api/classify)
-        with STATE_LOCK:
-            state = ensure_state()
-            working_path_obj = Path(state["source"]["working_image"]["path"])
-            prediction = get_classifier().classify_path(working_path_obj)
-            sess_dir = session_dir_for(state)
-            original_preview_path = save_pil(
-                sess_dir / "classification" / "original_preview.png",
-                prediction.original_image,
-            )
-            cropped_preview_path = save_pil(
-                sess_dir / "classification" / "cropped_preview.png",
-                prediction.cropped_image,
-            )
-
-            is_gold = bool(getattr(prediction, "is_gold_jewelry", True))
-            state["classification"] = {
-                "predicted_label": prediction.label,
-                "confidence": to_python_scalar(prediction.confidence),
-                "confirmed_label": prediction.label,
-                "confirmed": False,
-                "gallery_match": prediction.gallery_match,
-                "gallery_similarity": to_python_scalar(prediction.gallery_similarity),
-                "scores": [
-                    {
-                        "label": score.label,
-                        "confidence": to_python_scalar(score.confidence),
-                        "similarity": to_python_scalar(score.similarity),
-                    }
-                    for score in prediction.scores
-                ],
-                "original_preview": artifact_payload(state, original_preview_path),
-                "cropped_preview": artifact_payload(state, cropped_preview_path),
-                "is_gold_jewelry": is_gold,
-                "gold_verification_reason": str(getattr(prediction, "gold_verification_reason", "")),
-            }
-            state["branch"] = branch_for_label(prediction.label) if is_gold else {"key": "none", "label": "Not Gold"}
-            state["status"] = f"GPIO: Classification completed: {prediction.label}"
-            state["updated_at"] = now_stamp()
-            reset_purity_state(state)
-            build_final_summary(state)
-
-        conf_pct = f"{float(prediction.confidence) * 100:.1f}%" if prediction.confidence else "--"
-        if not is_gold:
-            speak("This does not look like gold jewelry. Click Yes if correct, or No to override.")
-        else:
-            speak(f"Jewel type predicted as {prediction.label}. Click Yes if correct, or No to override.")
-        
-        print(f"✅ GPIO: Classified as {prediction.label} ({conf_pct})")
-        print("=" * 60 + "\n")
-
-    except Exception as exc:
-        print(f"❌ GPIO trigger classify error: {exc}")
-
-
-def _gpio_trigger_callback(channel: int) -> None:
-    """GPIO interrupt callback — dispatches classification to a background thread."""
-    print(f"⚡ GPIO pin {channel} triggered!")
-    threading.Thread(target=gpio_trigger_classify, name="gpio-classify", daemon=True).start()
-
-
-def setup_gpio_trigger() -> None:
-    """Configure GPIO pin for classification trigger (RPi only)."""
-    if not GPIO_AVAILABLE or RPI_GPIO is None:
-        print(f"⚠️  GPIO trigger disabled (RPi.GPIO not available).")
-        return
-    try:
-        RPI_GPIO.setmode(RPI_GPIO.BCM)
-        RPI_GPIO.setup(TRIGGER_GPIO_PIN, RPI_GPIO.IN, pull_up_down=RPI_GPIO.PUD_UP)
-        RPI_GPIO.add_event_detect(
-            TRIGGER_GPIO_PIN,
-            RPI_GPIO.FALLING,
-            callback=_gpio_trigger_callback,
-            bouncetime=TRIGGER_BOUNCE_MS,
-        )
-        print(f"✅ GPIO trigger ready on BCM pin {TRIGGER_GPIO_PIN} (bounce={TRIGGER_BOUNCE_MS}ms)")
-    except Exception as exc:
-        print(f"❌ GPIO trigger setup failed: {exc}")
-
-
-def cleanup_gpio() -> None:
-    """Clean up GPIO resources on shutdown."""
-    if GPIO_AVAILABLE and RPI_GPIO is not None:
-        try:
-            RPI_GPIO.cleanup()
-        except Exception:
-            pass
-
-
 if __name__ == "__main__":
     load_persistent_rois()
     load_project_camera_calibration()
     with STATE_LOCK:
         CURRENT_STATE = build_empty_state()
+    cleanup_old_runtime_sessions()
+    threading.Thread(
+        target=storage_cleanup_worker,
+        name="storage-cleanup",
+        daemon=True,
+    ).start()
     get_camera_backend().start()
     print(f"Integrated UI running on http://0.0.0.0:{APP_PORT}")
     print(f"Raspberry Pi camera device: {CAM_DEVICE} (index {CAM_INDEX})")
@@ -8611,11 +9760,7 @@ if __name__ == "__main__":
     preload_tts_phrases()
     preload_hef_models()
     lcd_show_pledge_status(None)
-    
-    # Set up GPIO trigger for classification
-    setup_gpio_trigger()
-    atexit.register(cleanup_gpio)
-    
+
     # Instruction 1: Enter the Pledge ID
     def _announce_start():
         time.sleep(2.0)

@@ -161,7 +161,7 @@
       height: 100vh;
       overflow: hidden;
       display: grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto 1fr;
       gap: 12px;
       padding: 16px;
     }
@@ -225,6 +225,7 @@
     .leftColumn {
       min-height: 0;
       overflow-y: auto;
+      overflow-x: hidden;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -245,6 +246,34 @@
       flex-direction: column;
       gap: 10px;
       min-height: 0;
+      position: relative;
+    }
+
+    /* Setup Tools slides over the live camera preview instead of pushing/squishing it. */
+    .setupDrawer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 52px;
+      margin-top: 0 !important;
+      max-height: calc(100% - 60px);
+      overflow-y: auto;
+      z-index: 20;
+      box-shadow: 0 -12px 28px rgba(15, 23, 42, 0.28);
+      transition: transform 0.25s ease, opacity 0.2s ease;
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .setupDrawer.setupDrawerClosed {
+      transform: translateY(16px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .setupDrawer { transition: none; }
     }
 
     .previewToolbar,
@@ -395,7 +424,8 @@
 
     .rightColumn {
       min-height: 0;
-      overflow: auto;
+      overflow-y: auto;
+      overflow-x: hidden;
       padding-right: 6px;
       display: grid;
       gap: 12px;
@@ -458,14 +488,73 @@
 
     .artifactStrip {
       display: grid;
-      gap: 10px;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .artifactFigure {
+      margin: 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
     }
 
     .artifactImage {
       width: 100%;
-      border-radius: 14px;
-      border: 1px solid var(--border);
+      height: min(46vh, 420px);
+      display: block;
+      object-fit: contain;
       background: #f8fafc;
+    }
+
+    .artifactCaption {
+      padding: 9px 12px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+
+    .artifactNav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 6px 10px;
+      border-top: 1px solid var(--border);
+      background: var(--panel-strong);
+    }
+
+    .artifactNavBtn {
+      min-height: 0;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border-radius: 999px;
+      font-size: 16px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .artifactNavCount {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      min-width: 42px;
+      text-align: center;
+    }
+
+    .weightFields {
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid #bfdbfe;
+      border-radius: 14px;
+      background: #eff6ff;
     }
 
     .scoreTable {
@@ -578,6 +667,59 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* Compact operator view: one clear active step, with service tools tucked away. */
+    @keyframes nextActionPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, .72); transform: scale(1); }
+      50% { box-shadow: 0 0 0 7px rgba(245, 158, 11, 0); transform: scale(1.035); }
+    }
+    @keyframes livePulse { 50% { opacity: .25; } }
+    .next-action {
+      animation: nextActionPulse 1s ease-in-out infinite !important;
+      outline: 3px solid #f59e0b;
+      outline-offset: 2px;
+    }
+    .liveHeading { display:flex; align-items:center; gap:8px; }
+    .liveDot { width:10px; height:10px; border-radius:50%; background:#dc2626; animation:livePulse 1s infinite; }
+    .wrap { gap: 8px; padding: 8px; }
+    .header { padding: 8px 12px; border-radius: 12px; }
+    .logoImage { height: 38px; }
+    .title h1 { font-size: clamp(20px, 2.2vw, 30px); }
+    .main { gap: 8px; grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr); }
+    .card, .stageCard { padding: 9px; border-radius: 12px; }
+    .card:hover { transform: none; }
+    .card h2, .card h3 { margin-bottom: 7px; font-size: 15px; }
+    .btn { min-height: 34px; padding: 7px 11px; border-radius: 8px; font-size: 13px; }
+    .field { gap: 3px; }
+    input[type="number"], select { padding: 7px 9px; border-radius: 8px; }
+    .rightColumn, .leftColumn { gap: 8px; scrollbar-width: none; }
+    .rightColumn::-webkit-scrollbar, .leftColumn::-webkit-scrollbar { display:none; }
+    .heroValue { font-size: 25px; }
+    .heroSub { margin-top: 4px; font-size: 13px; }
+    .summaryGrid { grid-template-columns: repeat(4, 1fr); }
+    .statBox { padding: 3px 6px; border-radius: 7px; }
+    .statBox .v { font-size: 11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .artifactStrip { gap: 7px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+    .artifactImage { height: min(40vh, 340px); }
+    .artifactNav { padding: 4px 8px; gap: 8px; }
+    .artifactNavBtn { width: 26px; height: 26px; font-size: 14px; }
+    .artifactNavCount { font-size: 11px; min-width: 34px; }
+    .artifactCaption { padding: 5px 7px; font-size: 10px; }
+    .footerBar { position:absolute; right:10px; bottom:10px; z-index:10; min-height:0; max-width:220px; padding:6px 9px; opacity:.94; pointer-events:none; }
+    .footerBar > div:nth-child(2) { display:none; }
+    .footerBar .statusValue { font-size:12px; }
+    .footerBar .tiny { font-size:10px; }
+    #btnToggleAdvancedTools { width:auto !important; position:absolute; left:10px; bottom:10px; z-index:5; opacity:.88; }
+    .previewCard { position:relative; }
+    #previewHint, #stageProgressFlow, .scoreTable, #purityAudioProbabilities { display:none !important; }
+    .purityAudioCard { padding:8px; }
+    .purityAudioMeta { font-size:11px; }
+    .buttonRow, .actionRow, .toolRow { gap:6px; }
+    #btnDimensionPrev, #btnSidePrev, #btnSegmentationPrev, #btnMainStonePrev, #btnPurityPrev, #btnFinalPrev { display:none; }
+    @media (prefers-reduced-motion: reduce) {
+      .next-action { animation:none !important; }
+      .liveDot { animation:none; }
+    }
   </style>
 </head>
 
@@ -603,7 +745,7 @@
     <div class="main">
       <div class="leftColumn">
         <div class="card previewCard">
-          <h2>Source Preview</h2>
+          <h2 class="liveHeading"><span class="liveDot" aria-hidden="true"></span>LIVE CAMERA</h2>
 
 
 
@@ -612,18 +754,28 @@
             <canvas id="previewCanvas"></canvas>
           </div>
 
+          <div class="footerBar">
+            <div>
+              <div class="tiny">Backend Status</div>
+              <div id="statusValue" class="statusValue">Ready.</div>
+            </div>
+            <div>
+              <div class="tiny">Drawing Hint</div>
+              <div id="drawStatus" class="statusValue">No active drawing mode.</div>
+            </div>
+          </div>
+
           <div class="toolRow">
             <button id="btnToggleAdvancedTools" class="btn secondary"
-              style="width: 100%; display: flex; justify-content: space-between; align-items: center;"
-              onclick="document.getElementById('advancedToolsContainer').classList.toggle('hidden'); document.getElementById('advancedToolsIcon').innerText = document.getElementById('advancedToolsContainer').classList.contains('hidden') ? '▼' : '▲';">
+              style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
               <span>Setup Tools</span>
               <span id="advancedToolsIcon">▼</span>
             </button>
           </div>
-          <div id="advancedToolsContainer" class="toolRow hidden"
-            style="margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-strong); flex-direction: column; align-items: stretch;">
+          <div id="advancedToolsContainer" class="toolRow setupDrawer setupDrawerClosed"
+            style="padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-strong); flex-direction: column; align-items: stretch;">
             <div class="tiny" style="margin-bottom: 8px; color: var(--muted); line-height: 1.4;">
-              Live camera, ROI-based capture, jewel type, dimension, segmentation, hand removal, and stone detection in one staged dashboard.
+              Live camera, ROI-based capture, jewel type, dimension, jewellery analysis, hand removal, and stone detection in one staged dashboard.
             </div>
             <div style="display: grid; grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr); gap: 12px; width: 100%; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
               <div class="field">
@@ -635,7 +787,7 @@
                 <div id="ttsOutputStatus" class="heroSub">Checking speaker...</div>
               </div>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; width: 100%; align-items: end; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+            <div class="hidden" aria-hidden="true" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; width: 100%; align-items: end; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
               <div class="field">
                 <label for="audioOkThreshold">Audio OK confidence <span id="audioOkThresholdValue">90%</span></label>
                 <input id="audioOkThreshold" type="range" min="0.50" max="0.99" step="0.01" value="0.90" />
@@ -861,6 +1013,16 @@
             <button id="btnCaptureMainImage" class="btn secondary">Capture Image</button>
             <button id="btnRunClassification" class="btn">Run Jewel Type</button>
           </div>
+          <div class="weightFields twoCol">
+            <div class="field">
+              <label for="jewelWeight">Current Jewel Weight (g)</label>
+              <input id="jewelWeight" type="number" min="0.0001" step="0.0001" placeholder="Required, e.g. 12.750" />
+            </div>
+            <div class="field">
+              <label for="appraiserStoneWeight">Appraiser Stone Weight (g, optional)</label>
+              <input id="appraiserStoneWeight" type="number" min="0.0001" step="0.0001" placeholder="Optional appraiser estimate" />
+            </div>
+          </div>
           <div class="heroValue" id="classificationValue" style="margin-top: 14px;">--</div>
           <div class="heroSub" id="classificationSub">Capture or load the main jewellery image, then run jewel type.
           </div>
@@ -940,7 +1102,8 @@
 
           <div class="buttonRow" style="margin-top: 12px;">
             <button id="btnDimensionPrev" class="btn prev">Previous</button>
-            <button id="btnRunDimension" class="btn">Measure OD / ID</button>
+            <button id="btnRunDimension" class="btn">Start Measurement</button>
+            <button id="btnSkipDimension" class="btn secondary">Skip Stage</button>
             <button id="btnDimensionNext" class="btn gold" disabled>Next</button>
           </div>
 
@@ -951,23 +1114,20 @@
 
         <div id="sidePanel" class="card stageCard hidden">
           <div class="stageHead">
-            <h3>STAGE 3 SIDE CAPTURE</h3>
+            <h3>STAGE 3 STONE DETECTION</h3>
           </div>
 
           <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnCaptureSideLive" class="btn secondary">Capture Side From Live Camera</button>
+            <button id="btnCaptureSideLive" class="btn secondary">Capture Side Image</button>
           </div>
           <div class="field" style="margin-top: 12px;">
             <label for="fileSideImage">Upload Side Image</label>
             <input id="fileSideImage" type="file" accept="image/*" />
           </div>
-          <div class="field" style="margin-top: 12px;">
-            <label for="sideJewelWeight">Measured whole jewel weight (g, optional)</label>
-            <input id="sideJewelWeight" type="number" min="0" step="0.001" placeholder="Optional reference only" />
-          </div>
           <div class="buttonRow" style="margin-top: 12px;">
             <button id="btnSidePrev" class="btn prev">Previous</button>
-            <button id="btnRunSidePipeline" class="btn">Run Hand Removal + Stones</button>
+            <button id="btnRunSidePipeline" class="btn">Start Stone Analysis</button>
+            <button id="btnSkipSide" class="btn secondary">Skip Stage</button>
             <button id="btnShowFinalFromSide" class="btn gold" disabled>Acid Test</button>
           </div>
 
@@ -978,8 +1138,7 @@
             <thead>
               <tr>
                 <th>Color</th>
-                <th>% of Jewel</th>
-                <th>% of Stones</th>
+                <th>Detection</th>
               </tr>
             </thead>
             <tbody id="sideStoneTableBody"></tbody>
@@ -990,11 +1149,11 @@
 
         <div id="segmentationPanel" class="card stageCard hidden">
           <div class="stageHead">
-            <h3>STAGE 2 SEGMENTATION</h3>
+            <h3>STAGE 2 JEWELLERY ANALYSIS</h3>
           </div>
 
           <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnRunSegmentation" class="btn">Run Segmentation</button>
+            <button id="btnRunSegmentation" class="btn">Start Jewellery Analysis</button>
             <button id="btnNoPendant" class="btn secondary" disabled>No Pendant</button>
             <button id="btnNoTassel" class="btn secondary" disabled>No Tassel</button>
           </div>
@@ -1006,11 +1165,12 @@
           </div>
           <div class="buttonRow" style="margin-top: 12px;">
             <button id="btnSegmentationPrev" class="btn prev">Previous</button>
+            <button id="btnSkipSegmentation" class="btn secondary">Skip Stage</button>
             <button id="btnSegmentationNext" class="btn gold" disabled>Next</button>
           </div>
 
           <div class="heroValue" id="segmentationValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="segmentationSub">Run segmentation after jewel type is confirmed.</div>
+          <div class="heroSub" id="segmentationSub">Start jewellery analysis after jewel type is confirmed.</div>
           <div id="segmentationArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
         </div>
 
@@ -1020,12 +1180,9 @@
           </div>
 
           <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnRunMainStoneDetection" class="btn">Run Stone Detection</button>
+            <button id="btnRunMainStoneDetection" class="btn">Start Stone Analysis</button>
+            <button id="btnSkipMainStone" class="btn secondary">Skip Stage</button>
             <button id="btnShowFinalFromMain" class="btn gold" disabled>Acid Test</button>
-          </div>
-          <div class="field" style="margin-top: 12px;">
-            <label for="mainJewelWeight">Measured whole jewel weight (g, optional)</label>
-            <input id="mainJewelWeight" type="number" min="0" step="0.001" placeholder="Optional reference only" />
           </div>
           <div class="buttonRow" style="margin-top: 12px;">
             <button id="btnMainStonePrev" class="btn prev">Previous</button>
@@ -1038,8 +1195,7 @@
             <thead>
               <tr>
                 <th>Color</th>
-                <th>% of Jewel</th>
-                <th>% of Stones</th>
+                <th>Detection</th>
               </tr>
             </thead>
             <tbody id="mainStoneTableBody"></tbody>
@@ -1079,7 +1235,7 @@
           <div class="heroValue" id="purityValue" style="margin-top: 14px;">--</div>
           <div class="heroSub" id="puritySub">Start or skip the acid test after stone detection completes.</div>
 
-          <div class="purityAudioLive" style="margin-top: 14px;">
+          <div id="purityAudioLive" class="purityAudioLive" style="margin-top: 14px;">
             <div class="purityAudioHead">
               <span>Live Audio Prediction</span>
               <span id="purityAudioDecision" class="purityAudioDecision">Waiting</span>
@@ -1107,6 +1263,7 @@
               </div>
               <div class="buttonRow" style="margin-top: 10px;">
                 <button id="btnCaptureFinalJewelCount" class="btn">Capture Jewel Count</button>
+                <button id="btnSkipFinalCount" class="btn secondary">Skip Count Capture</button>
               </div>
               <div class="heroValue" id="countCaptureValue" style="margin-top: 10px;">--</div>
               <div class="heroSub" id="countCaptureSub">Place all jewels on the test bed and capture the final count.</div>
@@ -1121,11 +1278,20 @@
                 <button id="btnOpenPacketSealing" class="btn secondary">Packet Sealing</button>
               </div>
               <div id="packetSealingControls" class="buttonRow hidden" style="margin-top: 10px;">
-                <button id="btnStartPacketSealing" class="btn">Start</button>
+                <button id="btnStartPacketSealing" class="btn">Start Recording</button>
                 <button id="btnStopPacketSealing" class="btn secondary" disabled>Stop</button>
+                <button id="btnSkipPacketSealing" class="btn secondary">Skip Video</button>
               </div>
               <div class="heroValue" id="packetSealingValue" style="margin-top: 10px;">--</div>
               <div class="heroSub" id="packetSealingSub">Record the appraiser placing all jewels into the packet and sealing it.</div>
+              <div id="stripingControls" class="buttonRow hidden" style="margin-top: 10px;">
+                <button id="btnStripingHandClear" class="btn" disabled>Hand Clear - Verify Removal</button>
+                <button id="btnRestartStriping" class="btn secondary">Restart Strip Check</button>
+                <button id="btnSkipStriping" class="btn secondary">Skip Strip Check</button>
+              </div>
+              <div class="heroValue" id="stripingValue" style="margin-top: 10px;">--</div>
+              <div class="heroSub" id="stripingSub">Strip check starts after the packet is rectangular.</div>
+              <div id="stripingArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
               <a id="packetVideoLink" class="btn secondary hidden" style="margin-top: 12px; text-decoration: none; width: fit-content;" download>Download Sealing Video</a>
             </div>
           </div>
@@ -1135,17 +1301,6 @@
             <button id="btnGeneratePdf" class="btn gold">Download PDF Report</button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="footerBar">
-      <div>
-        <div class="tiny">Backend Status</div>
-        <div id="statusValue" class="statusValue">Ready.</div>
-      </div>
-      <div>
-        <div class="tiny">Drawing Hint</div>
-        <div id="drawStatus" class="statusValue">No active drawing mode.</div>
       </div>
     </div>
 
@@ -1446,6 +1601,8 @@
       workflowSource: document.getElementById("workflowSource"),
       workflowSize: document.getElementById("workflowSize"),
       btnRunClassification: document.getElementById("btnRunClassification"),
+      jewelWeight: document.getElementById("jewelWeight"),
+      appraiserStoneWeight: document.getElementById("appraiserStoneWeight"),
       classificationValue: document.getElementById("classificationValue"),
       classificationSub: document.getElementById("classificationSub"),
       classificationActions: document.getElementById("classificationActions"),
@@ -1472,6 +1629,7 @@
       btnRunDimension: document.getElementById("btnRunDimension"),
       btnDimensionNext: document.getElementById("btnDimensionNext"),
       btnDimensionPrev: document.getElementById("btnDimensionPrev"),
+      btnSkipDimension: document.getElementById("btnSkipDimension"),
       dimensionValue: document.getElementById("dimensionValue"),
       dimensionSub: document.getElementById("dimensionSub"),
       dimensionArtifacts: document.getElementById("dimensionArtifacts"),
@@ -1480,12 +1638,12 @@
       btnRunSidePipeline: document.getElementById("btnRunSidePipeline"),
       btnShowFinalFromSide: document.getElementById("btnShowFinalFromSide"),
       btnSidePrev: document.getElementById("btnSidePrev"),
+      btnSkipSide: document.getElementById("btnSkipSide"),
       sideStoneValue: document.getElementById("sideStoneValue"),
       sideStoneSub: document.getElementById("sideStoneSub"),
       sideStoneTable: document.getElementById("sideStoneTable"),
       sideStoneTableBody: document.getElementById("sideStoneTableBody"),
       sideArtifacts: document.getElementById("sideArtifacts"),
-      sideJewelWeight: document.getElementById("sideJewelWeight"),
       segmentationPanel: document.getElementById("segmentationPanel"),
       btnRunSegmentation: document.getElementById("btnRunSegmentation"),
       btnNoPendant: document.getElementById("btnNoPendant"),
@@ -1496,6 +1654,7 @@
       btnApplyTasselCorrection: document.getElementById("btnApplyTasselCorrection"),
       btnSegmentationNext: document.getElementById("btnSegmentationNext"),
       btnSegmentationPrev: document.getElementById("btnSegmentationPrev"),
+      btnSkipSegmentation: document.getElementById("btnSkipSegmentation"),
       segmentationValue: document.getElementById("segmentationValue"),
       segmentationSub: document.getElementById("segmentationSub"),
       segmentationArtifacts: document.getElementById("segmentationArtifacts"),
@@ -1505,17 +1664,18 @@
       btnRunMainStoneDetection: document.getElementById("btnRunMainStoneDetection"),
       btnShowFinalFromMain: document.getElementById("btnShowFinalFromMain"),
       btnMainStonePrev: document.getElementById("btnMainStonePrev"),
+      btnSkipMainStone: document.getElementById("btnSkipMainStone"),
       mainStoneValue: document.getElementById("mainStoneValue"),
       mainStoneSub: document.getElementById("mainStoneSub"),
       mainStoneTable: document.getElementById("mainStoneTable"),
       mainStoneTableBody: document.getElementById("mainStoneTableBody"),
       mainStoneArtifacts: document.getElementById("mainStoneArtifacts"),
-      mainJewelWeight: document.getElementById("mainJewelWeight"),
       purityPanel: document.getElementById("purityPanel"),
       purityTitle: document.getElementById("purityTitle"),
       purityTag: document.getElementById("purityTag"),
       purityMicSelect: document.getElementById("purityMicSelect"),
       purityAudioStatus: document.getElementById("purityAudioStatus"),
+      purityAudioLive: document.getElementById("purityAudioLive"),
       btnRefreshPurityAudio: document.getElementById("btnRefreshPurityAudio"),
       btnStartPurityTest: document.getElementById("btnStartPurityTest"),
       btnStopPurityTest: document.getElementById("btnStopPurityTest"),
@@ -1538,6 +1698,7 @@
       finalArtifacts: document.getElementById("finalArtifacts"),
       pledgeClosurePanel: document.getElementById("pledgeClosurePanel"),
       btnCaptureFinalJewelCount: document.getElementById("btnCaptureFinalJewelCount"),
+      btnSkipFinalCount: document.getElementById("btnSkipFinalCount"),
       countCaptureValue: document.getElementById("countCaptureValue"),
       countCaptureSub: document.getElementById("countCaptureSub"),
       countCaptureArtifacts: document.getElementById("countCaptureArtifacts"),
@@ -1545,8 +1706,16 @@
       packetSealingControls: document.getElementById("packetSealingControls"),
       btnStartPacketSealing: document.getElementById("btnStartPacketSealing"),
       btnStopPacketSealing: document.getElementById("btnStopPacketSealing"),
+      btnSkipPacketSealing: document.getElementById("btnSkipPacketSealing"),
       packetSealingValue: document.getElementById("packetSealingValue"),
       packetSealingSub: document.getElementById("packetSealingSub"),
+      stripingControls: document.getElementById("stripingControls"),
+      btnStripingHandClear: document.getElementById("btnStripingHandClear"),
+      btnRestartStriping: document.getElementById("btnRestartStriping"),
+      btnSkipStriping: document.getElementById("btnSkipStriping"),
+      stripingValue: document.getElementById("stripingValue"),
+      stripingSub: document.getElementById("stripingSub"),
+      stripingArtifacts: document.getElementById("stripingArtifacts"),
       packetVideoLink: document.getElementById("packetVideoLink"),
       btnFinalPrev: document.getElementById("btnFinalPrev"),
       btnNextJewelFromFinal: document.getElementById("btnNextJewelFromFinal"),
@@ -1618,6 +1787,10 @@
         processing: null,
         aruco: null,
       },
+      cameraRois: {
+        processing: null,
+        aruco: null,
+      },
       linePoints: [],
       correctionBoxes: {
         pendant: null,
@@ -1671,6 +1844,27 @@
       return order.indexOf(flow.currentStage);
     }
 
+    function stageDisplayName(stageKey) {
+      return {
+        classification: "Jewel Type",
+        dimension: "Dimension",
+        side: "Stone Detection",
+        segmentation: "Jewellery Analysis",
+        mainStone: "Stone Analysis",
+        purity: "Acid Test",
+        final: "Pledge Closure",
+      }[stageKey] || stageKey;
+    }
+
+    function skipKeyForUiStage(stageKey) {
+      if (stageKey === "dimension") return "dimension";
+      if (stageKey === "side") return "side_stone";
+      if (stageKey === "segmentation") return "jewellery_analysis";
+      if (stageKey === "mainStone") return "stone_detection";
+      if (stageKey === "purity") return "acid_test";
+      return null;
+    }
+
     function canGoToStage(stage) {
       const order = getStageOrder();
       const currentIndex = getCurrentStageIndex();
@@ -1681,6 +1875,7 @@
     function goToStage(stage) {
       if (!canGoToStage(stage)) return;
       flow.currentStage = stage;
+      if (STAGE_ARRIVAL_PHRASES[stage]) announce(STAGE_ARRIVAL_PHRASES[stage]);
       renderPanels();
     }
 
@@ -1841,7 +2036,50 @@
       ctx.strokeStyle = color;
       ctx.lineWidth = 3;
       ctx.strokeRect(x, y, w, h);
-      drawLabel(label, x, y, color);
+      if (label) drawLabel(label, x, y, color);
+    }
+
+    function drawPolygonOverlay(points, fillColor, strokeColor) {
+      if (!Array.isArray(points) || points.length < 3 || !previewState.displayRect) return;
+      const canvasPoints = points.map(imagePointToCanvasPoint).filter(Boolean);
+      if (canvasPoints.length < 3) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(canvasPoints[0].x, canvasPoints[0].y);
+      canvasPoints.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
+      ctx.closePath();
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawPacketStripingOverlay() {
+      const packet = backendState && backendState.packet_sealing;
+      const striping = packet && packet.striping;
+      const overlay = striping && striping.overlay;
+      if (!packet || !packet.recording || !overlay) return;
+
+      const bag = overlay.bag;
+      if (bag) {
+        drawPolygonOverlay(bag.contour, "rgba(50, 220, 50, 0.20)", "#32dc32");
+        const rectangularity = Number(overlay.rectangularity || 0).toFixed(2);
+        const bagConfidence = overlay.bag_confidence == null
+          ? ""
+          : ` C ${Number(overlay.bag_confidence).toFixed(3)}`;
+        drawRectOverlay(bag.rect, "#32dc32", `Packet${bagConfidence} R ${rectangularity}`);
+      }
+
+      const strip = overlay.strip;
+      if (strip) {
+        drawPolygonOverlay(strip.contour, "rgba(255, 140, 0, 0.28)", "#ff8c00");
+        const stripConfidence = overlay.strip_confidence == null
+          ? ""
+          : ` C ${Number(overlay.strip_confidence).toFixed(3)}`;
+        drawRectOverlay(strip.rect, "#ff8c00", `Packet Strip${stripConfidence}`);
+      }
     }
 
     function drawLineOverlay(points, color, label) {
@@ -1992,13 +2230,21 @@
 
     function updateCapturedSetupControls() {
       const captured = Boolean(previewState.main.dataUrl);
+      const uploaded = captured && previewState.main.kind === "upload";
+      const uploadedRoisReady = !uploaded || Boolean(
+        previewState.rois.processing && previewState.rois.aruco
+      );
       refs.stoneSaturation.disabled = !captured;
       refs.stoneContrast.disabled = !captured;
       refs.stoneBrightness.disabled = !captured;
       refs.btnSetStoneBackground.disabled = !captured;
       refs.btnLearnStoneColor.disabled = !captured;
       refs.btnCaptureMainImage.disabled = !pledgeCountSaved();
-      refs.btnRunClassification.disabled = !captured && !(backendState && backendState.source && backendState.source.working_image);
+      refs.btnCaptureMainImage.textContent = uploaded ? "Use Camera Image Instead" : "Capture Image";
+      refs.btnRunClassification.disabled = (
+        (!captured && !(backendState && backendState.source && backendState.source.working_image)) ||
+        !uploadedRoisReady
+      );
     }
 
     function stonePreviewFilter() {
@@ -2192,9 +2438,9 @@
       } else if (mode === "learn-stone") {
         setDrawStatus("Click the center of the missed gemstone to learn its HSV/LAB representation.");
       } else if (mode === "pendant") {
-        setDrawStatus("Drag on the segmentation preprocessed image to draw the correct pendant box.");
+        setDrawStatus("Drag on the jewellery analysis image to draw the correct pendant box.");
       } else if (mode === "tassel") {
-        setDrawStatus("Drag on the segmentation preprocessed image to draw the correct tassel box.");
+        setDrawStatus("Drag on the jewellery analysis image to draw the correct tassel box.");
       }
     }
 
@@ -2265,6 +2511,7 @@
     }
 
     async function persistRois() {
+      if (previewState.main.kind === "upload") return;
       try {
         await postJson("/api/rois", {
           processing_roi: previewState.rois.processing,
@@ -2300,10 +2547,39 @@
       }
     }
 
+    function announce(text) {
+      // Fire-and-forget voice line; must never block UI or affect the state-mutation
+      // polling gate that postJson() uses, so this bypasses postJson entirely.
+      if (!text) return;
+      fetch("/api/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      }).catch(() => {});
+    }
+
+    function toggleSetupTools() {
+      const drawer = document.getElementById("advancedToolsContainer");
+      const icon = document.getElementById("advancedToolsIcon");
+      const closed = drawer.classList.toggle("setupDrawerClosed");
+      icon.innerText = closed ? "▼" : "▲";
+    }
+
+    const STAGE_ARRIVAL_PHRASES = {
+      dimension: "Dimension stage. Click Start Measurement.",
+      side: "Stone Detection stage. Click Start Stone Analysis.",
+      segmentation: "Jewellery Analysis stage. Click Start Jewellery Analysis.",
+      mainStone: "Stone Analysis stage. Click Start Stone Analysis.",
+      purity: "Acid Test stage.",
+      final: "Pledge Closure stage. Review the final result.",
+    };
+
     async function loadConfig() {
       const response = await fetch("/api/config");
       const data = await response.json();
-      config.class_labels = data.class_labels || [];
+      config.class_labels = [...(data.class_labels || [])].sort((left, right) =>
+        left.localeCompare(right, undefined, { sensitivity: "base" })
+      );
       config.aruco_dicts = data.aruco_dicts || [];
 
       if (data.persistent_rois) {
@@ -2368,8 +2644,6 @@
     function renderPurityAudio(purity) {
       const label = purity.audio_label || "Waiting...";
       const decision = purity.audio_decision || purity.sound_status || "Waiting";
-      const confidence = Number(purity.audio_confidence || 0);
-      const threshold = Number(purity.audio_ok_threshold || config.audio_settings.ok_confidence_threshold || 0.90);
       const inputRate = Number(purity.audio_input_rate || 0);
       const modelRate = Number(purity.audio_model_rate || 0);
       const backend = purity.audio_model_backend || "";
@@ -2386,45 +2660,9 @@
       const rateText = inputRate || modelRate
         ? `stream ${inputRate || "--"} Hz / model ${modelRate || "--"} Hz`
         : "sample rate pending";
-      refs.purityAudioMeta.textContent = `${(confidence * 100).toFixed(1)}% confidence | OK >= ${(threshold * 100).toFixed(0)}% | ${rateText}${backend ? ` | ${backend}` : ""}`;
+      refs.purityAudioMeta.textContent = `${rateText}${backend ? ` | ${backend}` : ""}`;
 
       refs.purityAudioProbabilities.innerHTML = "";
-      const probabilities = Object.entries(purity.audio_probabilities || {})
-        .map(([name, value]) => [name, Number(value || 0)])
-        .sort((left, right) => right[1] - left[1]);
-
-      if (!probabilities.length) {
-        const empty = document.createElement("div");
-        empty.className = "purityAudioMeta";
-        empty.textContent = "Waiting for model probabilities.";
-        refs.purityAudioProbabilities.appendChild(empty);
-        return;
-      }
-
-      probabilities.forEach(([name, value]) => {
-        const row = document.createElement("div");
-        row.className = "purityAudioProbRow";
-
-        const nameEl = document.createElement("span");
-        nameEl.className = "purityAudioProbName";
-        nameEl.textContent = name;
-
-        const track = document.createElement("span");
-        track.className = "purityAudioProbTrack";
-        const fill = document.createElement("span");
-        fill.className = "purityAudioProbFill";
-        fill.style.width = `${Math.max(0, Math.min(100, value * 100))}%`;
-        track.appendChild(fill);
-
-        const valueEl = document.createElement("span");
-        valueEl.className = "purityAudioProbValue";
-        valueEl.textContent = `${(value * 100).toFixed(0)}%`;
-
-        row.appendChild(nameEl);
-        row.appendChild(track);
-        row.appendChild(valueEl);
-        refs.purityAudioProbabilities.appendChild(row);
-      });
     }
 
     async function loadPurityAudioDevices(options = {}) {
@@ -2531,6 +2769,18 @@
 
     async function setMainImage(dataUrl, filename, kind) {
       await loadImageInto(previewState.main.image, dataUrl);
+      const previousKind = previewState.main.kind;
+      if (kind === "upload") {
+        if (previousKind !== "upload") {
+          previewState.cameraRois.processing = previewState.rois.processing;
+          previewState.cameraRois.aruco = previewState.rois.aruco;
+        }
+        previewState.rois.processing = null;
+        previewState.rois.aruco = null;
+      } else if (kind !== "upload" && previousKind === "upload") {
+        previewState.rois.processing = previewState.cameraRois.processing;
+        previewState.rois.aruco = previewState.cameraRois.aruco;
+      }
       previewState.main.dataUrl = dataUrl;
       previewState.main.filename = filename;
       previewState.main.kind = kind;
@@ -2541,6 +2791,18 @@
       setStatus(`Main image ready: ${filename}`);
       updateCapturedSetupControls();
       markSourceDirty();
+      if (kind === "upload") {
+        flow.pledgeSetupComplete = pledgeCountSaved();
+        flow.currentStage = "classification";
+        setDrawMode("processing");
+        setStatusWithIndicator(
+          pledgeCountSaved()
+            ? "Uploaded image ready. First draw the Processing ROI around the jewel, then draw the ArUco ROI around the AprilTag."
+            : "Uploaded image ready. Set the Pledge ID and jewel count, then draw the Processing ROI followed by the ArUco ROI.",
+          "success"
+        );
+        renderPanels();
+      }
     }
 
     async function setSideImage(dataUrl, filename) {
@@ -2556,9 +2818,9 @@
       await loadImageInto(previewState.segmentationImage, url);
       previewState.context = contextName;
       if (contextName === "segmentation") {
-        refs.previewModePill.textContent = "Preview: Segmentation Input";
+        refs.previewModePill.textContent = "Preview: Jewellery Analysis Input";
       } else if (contextName === "segmentation-result") {
-        refs.previewModePill.textContent = "Preview: Segmentation Result";
+        refs.previewModePill.textContent = "Preview: Jewellery Analysis Result";
       }
     }
 
@@ -2734,13 +2996,46 @@
           setStatusWithIndicator("Capture the jewel image before running jewel type.", "warning");
           return;
         }
+        if (previewState.main.kind === "upload" && !previewState.rois.processing) {
+          setStatusWithIndicator("Draw the Processing ROI around the jewel before running jewel type.", "warning");
+          previewState.context = "source";
+          setDrawMode("processing");
+          return;
+        }
+        if (previewState.main.kind === "upload" && !previewState.rois.aruco) {
+          setStatusWithIndicator("Draw the ArUco ROI tightly around the AprilTag before running jewel type.", "warning");
+          previewState.context = "source";
+          setDrawMode("aruco");
+          return;
+        }
+        const jewelWeight = Number(refs.jewelWeight.value);
+        if (!Number.isFinite(jewelWeight) || jewelWeight <= 0) {
+          setStatusWithIndicator("Enter the current jewel weight in grams before running jewel type.", "warning");
+          refs.jewelWeight.focus();
+          return;
+        }
+        const appraiserStoneWeightText = refs.appraiserStoneWeight.value.trim();
+        const appraiserStoneWeight = appraiserStoneWeightText === "" ? null : Number(appraiserStoneWeightText);
+        if (appraiserStoneWeight !== null && (!Number.isFinite(appraiserStoneWeight) || appraiserStoneWeight <= 0)) {
+          setStatusWithIndicator("Enter a valid appraiser stone weight or leave it blank.", "warning");
+          refs.appraiserStoneWeight.focus();
+          return;
+        }
+        if (appraiserStoneWeight !== null && appraiserStoneWeight > jewelWeight) {
+          setStatusWithIndicator("Appraiser stone weight cannot exceed the current jewel weight.", "warning");
+          refs.appraiserStoneWeight.focus();
+          return;
+        }
         flow.pledgeSetupComplete = true;
         showLoading("Saving source image and ROIs...");
         setStatus("Saving source image and ROIs...");
         await ensureMainSourceSaved();
         showLoading("Running jewellery jewel type...");
         setStatus("Running jewellery jewel type...");
-        const data = await postJson("/api/classify");
+        const data = await postJson("/api/classify", {
+          jewel_weight_g: jewelWeight,
+          appraiser_stone_weight_g: appraiserStoneWeight,
+        });
         backendState = data.state;
         flow.classificationConfirmed = false;
         flow.classificationNext = false;
@@ -2809,8 +3104,8 @@
 
     async function runSegmentation() {
       try {
-        showLoading("Running necklace segmentation...");
-        setStatus("Running necklace segmentation...");
+        showLoading("Starting jewellery risk analysis...");
+        setStatus("Jewellery risk analysis initiated...");
         const data = await postJson("/api/segmentation/run");
         backendState = data.state;
         previewState.correctionBoxes.pendant = null;
@@ -2823,7 +3118,7 @@
         refs.btnApplyTasselCorrection.disabled = true;
         refs.btnSegmentationNext.disabled = false;
         hideLoading();
-        setStatusWithIndicator("Segmentation completed.", "success");
+        setStatusWithIndicator("Jewellery analysis completed.", "success");
         renderServerState();
       } catch (error) {
         hideLoading();
@@ -2835,7 +3130,7 @@
       const partConfig = correctionConfig(part);
       const segmentation = backendState && backendState.segmentation;
       if (!segmentation || !segmentation.preprocessed_image) {
-        throw new Error("Run segmentation first.");
+        throw new Error("Start jewellery analysis first.");
       }
       await showArtifactInCanvas(segmentation.preprocessed_image.url, "segmentation");
       previewState.correctionBoxes[part] = null;
@@ -2846,7 +3141,7 @@
       }
       setDrawMode(part);
       renderPanels();
-      setStatus(`Segmentation image loaded. Draw the ${partConfig.drawLabel}.`);
+      setStatus(`Jewellery analysis image loaded. Draw the ${partConfig.drawLabel}.`);
     }
 
     async function applySegmentationCorrection(part) {
@@ -2854,7 +3149,7 @@
         const box = previewState.correctionBoxes[part];
         const partConfig = correctionConfig(part);
         if (!box) {
-          throw new Error(`Draw a ${part} box on the segmentation image first.`);
+          throw new Error(`Draw a ${part} box on the jewellery analysis image first.`);
         }
         setStatus(`Applying ${part} correction...`);
         const data = await postJson("/api/segmentation/correct", {
@@ -2886,7 +3181,6 @@
         showLoading("Running main image stone detection...");
         setStatus("Running main image stone detection...");
         const data = await postJson("/api/stone-detection/main", {
-          entered_jewel_weight_g: Number(refs.mainJewelWeight.value) || null,
         });
         backendState = data.state;
         refs.btnShowFinalFromMain.disabled = false;
@@ -2905,10 +3199,9 @@
         showLoading("Saving side image...");
         setStatus("Saving side image...");
         await ensureSideSourceSaved();
-        showLoading("Running hand removal and side stone detection...");
-        setStatus("Running hand removal and side stone detection...");
+        showLoading("Running stone analysis...");
+        setStatus("Running stone analysis...");
         const data = await postJson("/api/side-stones/run", {
-          entered_jewel_weight_g: Number(refs.sideJewelWeight.value) || null,
         });
         backendState = data.state;
         refs.btnShowFinalFromSide.disabled = false;
@@ -3007,19 +3300,37 @@
       }
     }
 
-    async function skipPurityTest() {
+    async function runStripingAction(endpoint, message) {
       try {
-        showLoading("Skipping acid test...");
-        setStatus("Skipping acid test...");
-        const data = await postJson("/api/purity/skip", {});
+        const data = await postJson(endpoint, {});
+        backendState = data.state;
+        flow.packetSealingOpen = true;
+        setStatusWithIndicator(message, "success");
+        renderServerState();
+      } catch (error) {
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
+    async function skipOptionalStage(stageKey, displayName) {
+      try {
+        showLoading(`Skipping ${displayName.toLowerCase()}...`);
+        setStatus(`Skipping ${displayName.toLowerCase()}...`);
+        const data = await postJson("/api/stage/skip", { stage: stageKey });
         backendState = data.state;
         hideLoading();
-        setStatusWithIndicator("Acid test skipped", "warning");
+        setStatusWithIndicator(`${displayName} skipped`, "warning");
         renderServerState();
+        return true;
       } catch (error) {
         hideLoading();
         setStatusWithIndicator(error.message, "error");
+        return false;
       }
+    }
+
+    async function skipPurityTest() {
+      await skipOptionalStage("acid_test", "Acid test");
     }
 
     async function goToNextJewel() {
@@ -3040,6 +3351,8 @@
         previewState.backgroundPoint = null;
         previewState.learnedStonePoint = null;
         refs.previewModePill.textContent = "Preview: RPi Live Camera";
+        refs.jewelWeight.value = "";
+        refs.appraiserStoneWeight.value = "";
         resetFlow();
         flow.pledgeSetupComplete = true;
         setDrawMode(null);
@@ -3065,21 +3378,84 @@
       return `${(Number(value) * 100).toFixed(2)}%`;
     }
 
+    const artifactCarouselState = new WeakMap();
+
     function renderArtifactStrip(container, items) {
-      container.innerHTML = "";
-      (items || []).filter(Boolean).forEach((artifact) => {
-        const wrapper = document.createElement("div");
-        const label = document.createElement("div");
-        label.className = "tiny";
-        label.textContent = artifact.name || "Artifact";
+      const artifacts = (items || []).filter(Boolean);
+      if (!artifacts.length) {
+        container.innerHTML = "";
+        artifactCarouselState.delete(container);
+        return;
+      }
+
+      // Preserve the operator's paging position across the 900ms poll re-render;
+      // only reset to the first image when the underlying image set actually changes.
+      const signature = artifacts.map((artifact) => artifact.url).join("|");
+      let state = artifactCarouselState.get(container);
+      if (!state || state.signature !== signature) {
+        state = { signature, index: 0 };
+        artifactCarouselState.set(container, state);
+      }
+      state.index = Math.min(Math.max(state.index, 0), artifacts.length - 1);
+
+      const renderCurrent = () => {
+        const artifact = artifacts[state.index];
+        container.innerHTML = "";
+
+        const wrapper = document.createElement("figure");
+        wrapper.className = "artifactFigure";
+
         const image = document.createElement("img");
         image.className = "artifactImage";
         image.src = artifact.url;
         image.alt = artifact.name || "artifact";
-        wrapper.appendChild(label);
         wrapper.appendChild(image);
+
+        if (artifacts.length > 1) {
+          const nav = document.createElement("div");
+          nav.className = "artifactNav";
+
+          const prevBtn = document.createElement("button");
+          prevBtn.type = "button";
+          prevBtn.className = "artifactNavBtn";
+          prevBtn.setAttribute("aria-label", "Previous result image");
+          prevBtn.textContent = "‹";
+          prevBtn.addEventListener("click", () => {
+            state.index = (state.index - 1 + artifacts.length) % artifacts.length;
+            renderCurrent();
+          });
+
+          const counter = document.createElement("span");
+          counter.className = "artifactNavCount";
+          counter.textContent = `${state.index + 1} / ${artifacts.length}`;
+
+          const nextBtn = document.createElement("button");
+          nextBtn.type = "button";
+          nextBtn.className = "artifactNavBtn";
+          nextBtn.setAttribute("aria-label", "Next result image");
+          nextBtn.textContent = "›";
+          nextBtn.addEventListener("click", () => {
+            state.index = (state.index + 1) % artifacts.length;
+            renderCurrent();
+          });
+
+          nav.appendChild(prevBtn);
+          nav.appendChild(counter);
+          nav.appendChild(nextBtn);
+          wrapper.appendChild(nav);
+        }
+
+        const label = document.createElement("div");
+        label.className = "artifactCaption";
+        label.textContent = String(artifact.name || "Result image")
+          .replace(/\.[^.]+$/, "")
+          .replaceAll("_", " ");
+        wrapper.appendChild(label);
+
         container.appendChild(wrapper);
-      });
+      };
+
+      renderCurrent();
     }
 
     function renderClassificationTable(scores) {
@@ -3129,14 +3505,20 @@
         (Number(weight.estimated_total_maximum_ct || 0) * 0.2)
       );
       let text = `Estimated stone weight: ${averageG.toFixed(4)} g (${minimumG.toFixed(4)}-${maximumG.toFixed(4)} g).`;
-      if (Number(weight.entered_jewel_weight_g) > 0) {
-        const share = Number(
-          weight.estimated_stone_share_of_jewel_weight_percent ??
-          (averageG / Number(weight.entered_jewel_weight_g) * 100)
-        );
-        text += ` This is ${share.toFixed(2)}% of the entered ${Number(weight.entered_jewel_weight_g).toFixed(3)} g whole-jewel weight.`;
-      }
       return text;
+    }
+
+    function stoneWeightHero(weight) {
+      if (!weight || !weight.success) return "Estimate unavailable";
+      const grams = Number(
+        weight.estimated_total_average_g ??
+        (Number(weight.estimated_total_average_ct || 0) * 0.2)
+      );
+      return `Estimated Stone Weight: ${grams.toFixed(4)} g`;
+    }
+
+    function stageSkipped(stageKey) {
+      return Boolean(backendState && backendState.stage_skips && backendState.stage_skips[stageKey]);
     }
 
     function stoneSuperResolutionText(result) {
@@ -3145,7 +3527,7 @@
       if (sr.applied) {
         const seconds = Number(sr.runtime_seconds || 0);
         const tileText = Number(sr.tile_count || 0) > 0 ? `, ${Number(sr.tile_count)} tile(s)` : "";
-        return `Analysis: Real-ESRGAN x${Number(sr.scale || 2)}${seconds > 0 ? ` in ${seconds.toFixed(1)}s` : ""}${tileText}.`;
+        return `Analysis: Real-ESRGAN x${Number(sr.scale || 2)} detail enhancement${seconds > 0 ? ` in ${seconds.toFixed(1)}s` : ""}${tileText}; calibrated native measurement grid.`;
       }
       return "Analysis: SR requested but not applied.";
     }
@@ -3154,7 +3536,8 @@
       return Boolean(
         backendState &&
         backendState.jewel_count_verification &&
-        Number.isFinite(Number(backendState.jewel_count_verification.predicted_count))
+        (backendState.jewel_count_verification.skipped ||
+          Number.isFinite(Number(backendState.jewel_count_verification.predicted_count)))
       );
     }
 
@@ -3162,7 +3545,7 @@
       return Boolean(
         backendState &&
         backendState.packet_sealing &&
-        backendState.packet_sealing.video
+        (backendState.packet_sealing.video || backendState.packet_sealing.skipped)
       );
     }
 
@@ -3179,12 +3562,18 @@
 
       refs.pledgeClosurePanel.classList.toggle("hidden", !showClosure);
       refs.btnCaptureFinalJewelCount.disabled = !pledgeComplete || Boolean(packet.recording);
+      refs.btnSkipFinalCount.disabled = !pledgeComplete || countVerificationDone() || Boolean(packet.recording);
       refs.finalTitle.textContent = closureComplete ? "OVERALL RESULT" : "PLEDGE CLOSURE";
       refs.finalHeadline.classList.toggle("hidden", !closureComplete);
       refs.finalLines.classList.toggle("hidden", !closureComplete);
       refs.finalArtifacts.classList.toggle("hidden", !closureComplete);
 
       if (verification) {
+        if (verification.skipped) {
+          refs.countCaptureValue.textContent = "Skipped";
+          refs.countCaptureSub.textContent = `Final jewel count capture skipped${verification.skipped_at ? ` at ${verification.skipped_at}` : ""}.`;
+          refs.countCaptureArtifacts.innerHTML = "";
+        } else {
         const predicted = Number(verification.predicted_count || 0);
         const entered = verification.user_entered_count ?? backendState.jewel_count ?? "-";
         refs.countCaptureValue.textContent = `Predicted jewel count: ${predicted}`;
@@ -3194,6 +3583,7 @@
         renderArtifactStrip(refs.countCaptureArtifacts, [
           verification.result_image,
         ]);
+        }
       } else {
         refs.countCaptureValue.textContent = "--";
         refs.countCaptureSub.textContent = pledgeComplete
@@ -3206,12 +3596,23 @@
       refs.packetSealingControls.classList.toggle("hidden", !flow.packetSealingOpen && !packet.recording);
       refs.btnStartPacketSealing.disabled = !countVerificationDone() || Boolean(packet.recording);
       refs.btnStopPacketSealing.disabled = !packet.recording;
+      refs.btnSkipPacketSealing.disabled = !countVerificationDone() || packetSealingDone() || Boolean(packet.recording);
+      refs.btnResetUi.disabled = Boolean(packet.recording);
+      const striping = packet.striping || {};
+      const stripingStatus = String(striping.status || "idle");
+      refs.stripingControls.classList.toggle("hidden", !packet.recording);
+      refs.btnStripingHandClear.disabled = !packet.recording || !Boolean(striping.hand_clear_enabled);
+      refs.btnRestartStriping.disabled = !packet.recording || stripingStatus === "unavailable";
+      refs.btnSkipStriping.disabled = !packet.recording || ["sealed", "not_sealed", "skipped"].includes(stripingStatus);
 
       if (packet.recording) {
         refs.packetSealingValue.textContent = "Recording";
         refs.packetSealingSub.textContent = packet.started_at
           ? `Started at ${packet.started_at}. Stop after the packet is sealed.`
           : "Recording packet sealing. Stop after the packet is sealed.";
+      } else if (packet.skipped) {
+        refs.packetSealingValue.textContent = "Skipped";
+        refs.packetSealingSub.textContent = `Packet sealing video skipped${packet.skipped_at ? ` at ${packet.skipped_at}` : ""}.`;
       } else if (packet.video) {
         const av1 = packet.av1 || {};
         refs.packetSealingValue.textContent = "Video saved";
@@ -3224,6 +3625,25 @@
           ? "Click Packet Sealing, then Start before placing jewels into the packet."
           : "Capture the final jewel count before packet sealing.";
       }
+
+      const stripingLabels = {
+        idle: "Waiting",
+        tracking: "Waiting for rectangular packet",
+        strip_mode: "Looking for strip",
+        strip_detected: "Remove strip",
+        cover_check: "Checking packet",
+        sealed: "Sealed",
+        not_sealed: "Not sealed",
+        skipped: "Not sealed (strip check skipped)",
+        unavailable: "Strip check unavailable",
+      };
+      refs.stripingValue.textContent = stripingLabels[stripingStatus] || "Waiting";
+      refs.stripingSub.textContent = striping.reason || (
+        packet.recording
+          ? "Strip check starts after the packet is rectangular."
+          : "Strip result is saved with the packet sealing report."
+      );
+      renderArtifactStrip(refs.stripingArtifacts, [striping.evidence_image]);
 
       if (packet.video && packet.video.url) {
         refs.packetVideoLink.href = packet.video.url;
@@ -3257,7 +3677,7 @@
         refs.dimensionArtifacts.innerHTML = "";
 
         refs.segmentationValue.textContent = "--";
-        refs.segmentationSub.textContent = "Run segmentation after jewel type is confirmed.";
+        refs.segmentationSub.textContent = "Start jewellery analysis after jewel type is confirmed.";
         refs.segmentationArtifacts.innerHTML = "";
 
         refs.mainStoneValue.textContent = "--";
@@ -3271,6 +3691,7 @@
         refs.purityValue.textContent = "--";
         refs.puritySub.textContent = "Start or skip the acid test after stone detection completes.";
         refs.purityAudioStatus.textContent = "Waiting for microphone selection.";
+        refs.purityAudioLive.classList.add("hidden");
         renderPurityAudio({});
         refs.purityProgress.innerHTML = "";
         refs.purityArtifacts.innerHTML = "";
@@ -3285,6 +3706,10 @@
         refs.packetSealingControls.classList.add("hidden");
         refs.packetSealingValue.textContent = "--";
         refs.packetSealingSub.textContent = "Record the appraiser placing all jewels into the packet and sealing it.";
+        refs.stripingControls.classList.add("hidden");
+        refs.stripingValue.textContent = "--";
+        refs.stripingSub.textContent = "Strip check starts after the packet is rectangular.";
+        refs.stripingArtifacts.innerHTML = "";
         refs.packetVideoLink.classList.add("hidden");
 
         renderPanels();
@@ -3292,13 +3717,25 @@
       }
 
       const source = backendState.source || {};
-      const classification = backendState.classification || {};
+      const classification = previewState.main.dataUrl && previewState.main.dirty
+        ? {}
+        : (backendState.classification || {});
+      const weightDetails = backendState.weight_details || {};
       const dimension = backendState.dimension || {};
       const segmentation = backendState.segmentation || {};
       const mainStone = (backendState.stone_detection || {}).main;
       const sideStone = (backendState.stone_detection || {}).side;
       const purity = backendState.purity_test || {};
       const finalState = backendState.final || {};
+
+      if (weightDetails.jewel_weight_g != null) {
+        refs.jewelWeight.value = weightDetails.jewel_weight_g;
+      }
+      if (weightDetails.appraiser_stone_weight_g != null) {
+        refs.appraiserStoneWeight.value = weightDetails.appraiser_stone_weight_g;
+      }
+      refs.jewelWeight.disabled = Boolean(classification.predicted_label);
+      refs.appraiserStoneWeight.disabled = Boolean(classification.predicted_label);
 
       flow.classificationConfirmed = Boolean(classification.confirmed);
       if (!flow.classificationConfirmed) {
@@ -3360,11 +3797,16 @@
           ? "Jewel type completed."
           : "Capture or load the main jewellery image, then run jewel type.";
         refs.classificationActions.classList.toggle("hidden", !classification.predicted_label);
-        if (!classification.predicted_label) {
+        refs.btnClassificationNext.textContent = "Next";
+        if (classification.confirmed) {
+          refs.btnClassYes.classList.add("hidden");
+          refs.btnClassNo.classList.add("hidden");
+          refs.btnClassificationNext.classList.remove("hidden");
+        } else {
           refs.btnClassYes.classList.remove("hidden");
           refs.btnClassNo.classList.remove("hidden");
+          refs.btnClassificationNext.classList.add("hidden");
         }
-        refs.btnClassificationNext.textContent = "Next";
       }
       if (!overrideActive) {
         refs.overrideArea.classList.add("hidden");
@@ -3406,27 +3848,36 @@
           if (segmentation.no_pendant || (segmentation.debug && segmentation.debug.no_pendant)) excludedParts.push("Pendant");
           if (segmentation.no_tassel || (segmentation.debug && segmentation.debug.no_tassel)) excludedParts.push("Tassel");
         const feedbackMatchType = segmentation.debug && segmentation.debug.feedback_match_type;
+        const pendantPresent = Boolean(segmentation.pendant_detected || pendant > 0) && !segmentation.no_pendant;
+        const tasselPresent = Boolean(segmentation.tassel_detected || tassel > 0) && !segmentation.no_tassel;
+        const automaticallyAbsentParts = [];
+        if (!pendantPresent && segmentation.pendant_absent && !segmentation.no_pendant) automaticallyAbsentParts.push("distinct pendant");
+        if (!tasselPresent && segmentation.tassel_absent && !segmentation.no_tassel) automaticallyAbsentParts.push("tassel");
         let feedbackSourceText = "";
         if (feedbackMatchType === "similar_signature") {
           feedbackSourceText = " from similar saved feedback";
         } else if (feedbackMatchType === "exact_signature" || feedbackMatchType === "legacy_path") {
           feedbackSourceText = " from saved feedback";
         }
-          refs.segmentationValue.textContent = "Segmentation completed";
+          refs.segmentationValue.textContent = "Jewellery analysis completed";
           if (beadRiskHigh) {
-            refs.segmentationSub.textContent = "RISK JEWEL: Round beads/decorative elements detected in chain.";
+            refs.segmentationSub.textContent = `RISK JEWEL: Round beads/decorative elements detected in chain.${tasselPresent ? " Tassel region detected; estimated weight 1.5000 g." : ""}`;
           } else {
-            refs.segmentationSub.textContent = excludedParts.length
+            const analysisNote = excludedParts.length
               ? `${excludedParts.join(" and ")} excluded; merged into chain.`
               : correctedParts.length
                 ? `${correctedParts.join(" and ")} correction applied${feedbackSourceText}.`
-                : "";
+                : automaticallyAbsentParts.length
+                  ? `No ${automaticallyAbsentParts.join(" or ")} region detected.`
+                  : "";
+            refs.segmentationSub.textContent = `${analysisNote}${tasselPresent ? `${analysisNote ? " " : ""}Tassel region detected; estimated weight 1.5000 g.` : ""}`;
           }
         renderArtifactStrip(refs.segmentationArtifacts, [
           segmentation.composite_layout,
           segmentation.bead_analysis_image,
           segmentation.overlay_image,
           segmentation.preprocessed_image,
+          segmentation.bead_finder_image,
         ]);
         refs.btnStartPendantCorrection.disabled = false;
         refs.btnStartTasselCorrection.disabled = false;
@@ -3436,8 +3887,8 @@
       } else {
         refs.segmentationValue.textContent = "--";
         refs.segmentationSub.textContent = classification.confirmed && getCurrentBranch() === "segmentation"
-          ? `Jewel type confirmed as ${classification.confirmed_label}. Click Run Segmentation.`
-          : "Confirm a necklace-type jewel before running segmentation.";
+          ? `Jewel type confirmed as ${classification.confirmed_label}. Click Start Jewellery Analysis.`
+          : "Confirm a necklace-type jewel before starting jewellery analysis.";
         refs.segmentationArtifacts.innerHTML = "";
         refs.btnNoPendant.disabled = true;
         refs.btnNoTassel.disabled = true;
@@ -3451,23 +3902,20 @@
         const mainStats = mainStone.stone_area_statistics;
         const mainWeight = mainStone.weight_estimate || {};
         const mainWeightText = stoneWeightText(mainWeight);
+        refs.mainStoneValue.textContent = stoneWeightHero(mainWeight);
         if (mainStats && mainStats.success) {
-          refs.mainStoneValue.textContent = `Stone Percentage: ${mainStats.stone_percentage.toFixed(2)}%`;
           refs.mainStoneSub.textContent = (mainStone.reflection_risk || mainStone.reflection_flagged)
-            ? `RISK JEWEL — ${mainStone.reflection_summary} Visible Metal: ${mainStats.metal_percentage.toFixed(2)}%`
-            : `Visible Metal: ${mainStats.metal_percentage.toFixed(2)}%`;
+            ? `RISK JEWEL — ${mainStone.reflection_summary}`
+            : "Stone analysis completed.";
         } else {
-          refs.mainStoneValue.textContent = mainStone.summary_text || "--";
           refs.mainStoneSub.textContent = (mainStone.reflection_risk || mainStone.reflection_flagged)
             ? `RISK JEWEL — ${mainStone.reflection_summary}`
             : "Stone detection completed. No dense reflection risk.";
         }
         refs.mainStoneSub.textContent = `${refs.mainStoneSub.textContent} ${mainWeightText} ${stoneSuperResolutionText(mainStone)}`;
-        const mainSr = mainStone.stone_super_resolution || {};
         renderArtifactStrip(refs.mainStoneArtifacts, [
+          source.working_image || source.original_image,
           mainStone.gallery,
-          mainSr.analysis_image,
-          mainSr.analysis_mask,
         ]);
 
         refs.mainStoneTableBody.innerHTML = "";
@@ -3484,8 +3932,7 @@
               const row = document.createElement("tr");
               row.innerHTML = `
                 <td>${color}${learnedLabels.length ? `<div class="tiny">Learned: ${learnedLabels.map(escapeHtml).join(", ")}</div>` : ""}</td>
-                <td>${cdata.percentage_of_jewel.toFixed(2)}%</td>
-                <td>${cdata.percentage_of_stones.toFixed(2)}%</td>
+                <td>Detected</td>
               `;
               refs.mainStoneTableBody.appendChild(row);
             });
@@ -3493,11 +3940,10 @@
           refs.mainStoneTable.classList.remove("hidden");
           mainStone.summary_entries.forEach(entry => {
             const row = document.createElement("tr");
-            row.innerHTML = `
-              <td>${entry.color}${Array.isArray(entry.learned_labels) && entry.learned_labels.length ? `<div class="tiny">Learned: ${entry.learned_labels.map(escapeHtml).join(", ")}</div>` : ""}</td>
-              <td>${entry.stone_percentage.toFixed(2)}%</td>
-              <td>--</td>
-            `;
+              row.innerHTML = `
+                <td>${entry.color}${Array.isArray(entry.learned_labels) && entry.learned_labels.length ? `<div class="tiny">Learned: ${entry.learned_labels.map(escapeHtml).join(", ")}</div>` : ""}</td>
+                <td>${Number(entry.region_count || 0)} region(s)</td>
+              `;
             refs.mainStoneTableBody.appendChild(row);
           });
         } else {
@@ -3514,24 +3960,20 @@
         const sideStats = sideStone.stone_area_statistics;
         const sideWeight = sideStone.weight_estimate || {};
         const sideWeightText = stoneWeightText(sideWeight);
+        refs.sideStoneValue.textContent = stoneWeightHero(sideWeight);
         if (sideStats && sideStats.success) {
-          refs.sideStoneValue.textContent = `Stone Percentage: ${sideStats.stone_percentage.toFixed(2)}%`;
           refs.sideStoneSub.textContent = (sideStone.reflection_risk || sideStone.reflection_flagged)
-            ? `RISK JEWEL — ${sideStone.reflection_summary} Visible Metal: ${sideStats.metal_percentage.toFixed(2)}%`
-            : `Visible Metal: ${sideStats.metal_percentage.toFixed(2)}%`;
+            ? `RISK JEWEL — ${sideStone.reflection_summary}`
+            : "Side stone analysis completed.";
         } else {
-          refs.sideStoneValue.textContent = sideStone.summary_text || "--";
           refs.sideStoneSub.textContent = (sideStone.reflection_risk || sideStone.reflection_flagged)
             ? `RISK JEWEL — ${sideStone.reflection_summary}`
             : "Side stone detection completed. No dense reflection risk.";
         }
         refs.sideStoneSub.textContent = `${refs.sideStoneSub.textContent} ${sideWeightText} ${stoneSuperResolutionText(sideStone)}`;
-        const sideSr = sideStone.stone_super_resolution || {};
         renderArtifactStrip(refs.sideArtifacts, [
-          sideStone.hand_removed_image,
+          (backendState.side_capture || {}).original_image,
           sideStone.gallery,
-          sideSr.analysis_image,
-          sideSr.analysis_mask,
         ]);
 
         refs.sideStoneTableBody.innerHTML = "";
@@ -3548,8 +3990,7 @@
               const row = document.createElement("tr");
               row.innerHTML = `
                 <td>${color}${learnedLabels.length ? `<div class="tiny">Learned: ${learnedLabels.map(escapeHtml).join(", ")}</div>` : ""}</td>
-                <td>${cdata.percentage_of_jewel.toFixed(2)}%</td>
-                <td>${cdata.percentage_of_stones.toFixed(2)}%</td>
+                <td>Detected</td>
               `;
               refs.sideStoneTableBody.appendChild(row);
             });
@@ -3557,11 +3998,10 @@
           refs.sideStoneTable.classList.remove("hidden");
           sideStone.summary_entries.forEach(entry => {
             const row = document.createElement("tr");
-            row.innerHTML = `
-              <td>${entry.color}${Array.isArray(entry.learned_labels) && entry.learned_labels.length ? `<div class="tiny">Learned: ${entry.learned_labels.map(escapeHtml).join(", ")}</div>` : ""}</td>
-              <td>${entry.stone_percentage.toFixed(2)}%</td>
-              <td>--</td>
-            `;
+              row.innerHTML = `
+                <td>${entry.color}${Array.isArray(entry.learned_labels) && entry.learned_labels.length ? `<div class="tiny">Learned: ${entry.learned_labels.map(escapeHtml).join(", ")}</div>` : ""}</td>
+                <td>${Number(entry.region_count || 0)} region(s)</td>
+              `;
             refs.sideStoneTableBody.appendChild(row);
           });
         } else {
@@ -3583,6 +4023,7 @@
             : purity.result || "--";
       refs.puritySub.textContent = purity.status || "Start or skip the acid test after stone detection completes.";
       refs.purityAudioStatus.textContent = purity.audio_device_name || purity.audio_selected_device || "Waiting for microphone selection.";
+      refs.purityAudioLive.classList.toggle("hidden", !purity.running);
       renderPurityAudio(purity);
       renderPurityProgress((purity.ui_progress || {}).items || []);
       renderArtifactStrip(refs.purityArtifacts, [
@@ -3619,8 +4060,46 @@
       refs.btnDrawScaleLine.classList.toggle("hidden", method !== "line");
     }
 
+    function updateNextActionIndicator() {
+      document.querySelectorAll(".next-action").forEach((element) => element.classList.remove("next-action"));
+      const sourceReady = Boolean(
+        previewState.main.dataUrl ||
+        (backendState && backendState.source && backendState.source.working_image)
+      );
+      const classification = previewState.main.dataUrl && previewState.main.dirty
+        ? {}
+        : ((backendState && backendState.classification) || {});
+      let nextId = null;
+      if (!backendState || !backendState.pledge_id) nextId = "btnSetPledge";
+      else if (!backendState.jewel_count_saved) nextId = "btnSaveJewelCount";
+      else if (!flow.pledgeSetupComplete) nextId = "btnPledgeSetupNext";
+      else if (flow.currentStage === "classification" && !sourceReady) nextId = "btnCaptureMainImage";
+      else if (flow.currentStage === "classification" && !classification.predicted_label) nextId = "btnRunClassification";
+      else if (flow.currentStage === "classification" && !classification.confirmed) nextId = "btnClassYes";
+      else if (flow.currentStage === "final" && backendState && backendState.packet_sealing && backendState.packet_sealing.recording) {
+        const striping = backendState.packet_sealing.striping || {};
+        if (striping.hand_clear_enabled) nextId = "btnStripingHandClear";
+      }
+
+      const candidates = [
+        "btnClassificationNext", "btnRunDimension", "btnDimensionNext",
+        "btnCaptureSideLive", "btnRunSidePipeline", "btnShowFinalFromSide",
+        "btnRunSegmentation", "btnSegmentationNext", "btnRunMainStoneDetection",
+        "btnShowFinalFromMain", "btnStartPurityTest", "btnStopPurityTest",
+        "btnNextJewelFromPurity", "btnShowFinalFromPurity", "btnCaptureFinalJewelCount",
+        "btnOpenPacketSealing", "btnStartPacketSealing", "btnStripingHandClear", "btnStopPacketSealing", "btnGeneratePdf"
+      ];
+      const usable = (element) => element && !element.disabled && element.offsetParent !== null;
+      let nextElement = document.getElementById(nextId);
+      if (!usable(nextElement)) {
+        nextElement = candidates.map((id) => document.getElementById(id)).find(usable);
+      }
+      if (nextElement) nextElement.classList.add("next-action");
+    }
+
     function renderPanels() {
       updateCapturedSetupControls();
+      const state = backendState || {};
       const branchKey = backendState && backendState.branch ? backendState.branch.key : null;
       const classificationDone = backendState && backendState.classification && backendState.classification.confirmed;
 
@@ -3646,8 +4125,8 @@
       const puritySkipped = backendState && backendState.purity_test && backendState.purity_test.skipped;
       const purityAvailable = backendState && backendState.purity_test && backendState.purity_test.available;
       const purityStartReady = backendState && (
-        (branchKey === "dimension" && backendState.stone_detection && backendState.stone_detection.side) ||
-        (branchKey !== "dimension" && backendState.stone_detection && backendState.stone_detection.main)
+        (branchKey === "dimension" && ((backendState.stone_detection && backendState.stone_detection.side) || stageSkipped("side_stone"))) ||
+        (branchKey !== "dimension" && ((backendState.stone_detection && backendState.stone_detection.main) || stageSkipped("stone_detection")))
       );
       const nextJewelAvailable = Boolean(backendState && backendState.next_jewel_available);
       const retryJewelAvailable = Boolean(backendState && backendState.retry_jewel_available);
@@ -3657,10 +4136,14 @@
 
       refs.btnClassificationNext.disabled = !classificationDone || !pledgeCountSaved();
       refs.btnRunSegmentation.disabled = !(classificationDone && branchKey === "segmentation");
-      refs.btnDimensionNext.disabled = !(backendState && backendState.dimension && backendState.dimension.done);
-      refs.btnSegmentationNext.disabled = !(backendState && backendState.segmentation && backendState.segmentation.done);
-      refs.btnShowFinalFromMain.disabled = !(backendState && backendState.stone_detection && backendState.stone_detection.main);
-      refs.btnShowFinalFromSide.disabled = !(backendState && backendState.stone_detection && backendState.stone_detection.side);
+      refs.btnSkipDimension.disabled = Boolean((state.dimension || {}).done) || stageSkipped("dimension");
+      refs.btnSkipSide.disabled = Boolean((state.stone_detection || {}).side) || stageSkipped("side_stone");
+      refs.btnSkipSegmentation.disabled = Boolean((state.segmentation || {}).done) || stageSkipped("jewellery_analysis");
+      refs.btnSkipMainStone.disabled = Boolean((state.stone_detection || {}).main) || stageSkipped("stone_detection");
+      refs.btnDimensionNext.disabled = !(backendState && backendState.dimension && backendState.dimension.done) && !stageSkipped("dimension");
+      refs.btnSegmentationNext.disabled = !(backendState && backendState.segmentation && backendState.segmentation.done) && !stageSkipped("jewellery_analysis");
+      refs.btnShowFinalFromMain.disabled = !(backendState && backendState.stone_detection && backendState.stone_detection.main) && !stageSkipped("stone_detection");
+      refs.btnShowFinalFromSide.disabled = !(backendState && backendState.stone_detection && backendState.stone_detection.side) && !stageSkipped("side_stone");
       refs.btnStartPurityTest.disabled = !(purityAvailable && purityStartReady) || Boolean(purityRunning) || Boolean(puritySkipped);
       refs.btnSkipPurityTest.disabled = !purityStartReady || Boolean(purityRunning) || Boolean(finalReady);
       refs.btnStopPurityTest.disabled = !purityRunning;
@@ -3693,6 +4176,7 @@
           progressContainer.classList.add("hidden");
         }
         refs.previewHint.textContent = "Wait for the Raspberry Pi live stream or load an image, then draw the Processing ROI and ArUco ROI before jewel type.";
+        updateNextActionIndicator();
         return;
       }
 
@@ -3704,15 +4188,16 @@
         refs.previewHint.textContent = pledgeCountSaved()
           ? "Click Next after the saved jewel count to start Jewel 1."
           : "Set the Pledge ID, enter jewel count, and save it before starting the workflow.";
+        updateNextActionIndicator();
         return;
       }
 
       if (branchKey === "dimension" && flow.classificationNext && !flow.dimensionNext) {
         refs.previewHint.textContent = "For manual line calibration, click Draw Calibration Line and set two points on the source image.";
       } else if (previewState.context === "segmentation") {
-        refs.previewHint.textContent = "You are viewing the segmentation preprocessed image. Draw the correct pendant or tassel box, apply it, and then check the refreshed result.";
+        refs.previewHint.textContent = "You are viewing the jewellery analysis input. Draw the correct pendant or tassel box, apply it, and then check the refreshed result.";
       } else if (previewState.context === "segmentation-result") {
-        refs.previewHint.textContent = "You are viewing the refreshed segmentation result. If another correction is needed, reopen the segmentation input and draw a new pendant or tassel box.";
+        refs.previewHint.textContent = "You are viewing the refreshed jewellery analysis result. If another correction is needed, reopen the analysis input and draw a new pendant or tassel box.";
       } else if (closureLiveFeedActive()) {
         refs.previewHint.textContent = "Live camera stays active for final count capture and packet sealing. Keep all jewels visible inside the Processing ROI.";
       } else if (flow.currentStage === "purity") {
@@ -3722,6 +4207,7 @@
       }
 
       showCurrentStage();
+      updateNextActionIndicator();
     }
 
     function showCurrentStage() {
@@ -3742,8 +4228,8 @@
         (branchKey === "direct_stone" && classificationDone) ||
         (branchKey === "segmentation" && flow.segmentationNext);
       const showPurity =
-        (branchKey === "dimension" && backendState && backendState.stone_detection && backendState.stone_detection.side) ||
-        (branchKey !== "dimension" && backendState && backendState.stone_detection && backendState.stone_detection.main);
+        (branchKey === "dimension" && backendState && ((backendState.stone_detection && backendState.stone_detection.side) || stageSkipped("side_stone"))) ||
+        (branchKey !== "dimension" && backendState && ((backendState.stone_detection && backendState.stone_detection.main) || stageSkipped("stone_detection")));
 
       if (flow.currentStage !== "purity" && previewState.context === "purity") {
         previewState.context = "source";
@@ -3817,6 +4303,7 @@
       }
 
       renderStageProgress();
+      requestAnimationFrame(updateNextActionIndicator);
     }
 
     function renderStageProgress() {
@@ -3841,10 +4328,18 @@
         pill.style.letterSpacing = "0.05em";
         pill.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)";
 
-        const label = stageKey === "final" ? (packetSealingDone() ? "FINAL" : "COUNT") : `STAGE ${idx + 1}`;
+        const label = stageKey === "final"
+          ? (packetSealingDone() ? "FINAL · COMPLETE" : "PLEDGE CLOSURE")
+          : `STAGE ${idx + 1} · ${stageDisplayName(stageKey)}`;
         pill.textContent = label;
 
-        if (isPast) {
+        const skipped = stageSkipped(skipKeyForUiStage(stageKey));
+        if (skipped) {
+          pill.style.background = "linear-gradient(180deg, #f59e0b, #d97706)";
+          pill.style.color = "#ffffff";
+          pill.style.border = "1px solid #b45309";
+          pill.textContent += " · SKIPPED";
+        } else if (isPast) {
           pill.style.background = "linear-gradient(180deg, #22c55e, #16a34a)";
           pill.style.color = "#ffffff";
           pill.style.border = "1px solid #15803d";
@@ -3898,8 +4393,9 @@
       ctx.restore();
 
       if (previewState.context === "source") {
-        drawRectOverlay(previewState.rois.processing, "#2563eb", "Processing ROI");
-        drawRectOverlay(previewState.rois.aruco, "#16a34a", "Aruco ROI");
+        drawRectOverlay(previewState.rois.processing, "#2563eb", "");
+        drawRectOverlay(previewState.rois.aruco, "#16a34a", "");
+        drawPacketStripingOverlay();
         drawLineOverlay(previewState.linePoints, "#f59e0b", "Calibration Line");
         if (previewState.backgroundPoint) {
           const point = imagePointToCanvasPoint(previewState.backgroundPoint);
@@ -3979,11 +4475,25 @@
           updateRoiSummaryText();
           persistRois();
           markSourceDirty();
+          if (previewState.main.kind === "upload") {
+            setDrawMode("aruco");
+            setStatusWithIndicator(
+              `Processing ROI set. Now draw the ArUco ROI tightly around AprilTag ID ${Number(refs.setupMarkerId.value)}.`,
+              "success"
+            );
+          }
         } else if (previewState.drawMode === "aruco") {
           previewState.rois.aruco = rect;
           updateRoiSummaryText();
           persistRois();
           markSourceDirty();
+          if (previewState.main.kind === "upload") {
+            setDrawMode(null);
+            setStatusWithIndicator(
+              "Processing and ArUco ROIs are set. Enter the jewel weight, then run Jewel Type.",
+              "success"
+            );
+          }
         } else if (previewState.drawMode === "pendant" || previewState.drawMode === "tassel") {
           previewState.correctionBoxes[previewState.drawMode] = rect;
           if (previewState.drawMode === "pendant") {
@@ -4120,6 +4630,8 @@
       }
     });
 
+    document.getElementById("btnToggleAdvancedTools").addEventListener("click", toggleSetupTools);
+
     refs.btnSaveCalibrationSetup.addEventListener(
       "click",
       withButtonGuard(refs.btnSaveCalibrationSetup, async () => {
@@ -4217,13 +4729,17 @@
     });
 
     refs.btnResetUi.addEventListener("click", async () => {
-      let resetState = null;
       try {
         const data = await postJson("/api/reset", {});
-        resetState = data.state;
-      } catch (_) {
+        backendState = data.state;
+      } catch (error) {
+        setStatusWithIndicator(error.message, "error");
+        return;
       }
-      backendState = resetState;
+      if (previewState.main.kind === "upload") {
+        previewState.rois.processing = previewState.cameraRois.processing;
+        previewState.rois.aruco = previewState.cameraRois.aruco;
+      }
       previewState.main.dataUrl = null;
       previewState.main.image.src = "";
       previewState.main.kind = "live";
@@ -4238,6 +4754,8 @@
       refs.previewModePill.textContent = "Preview: RPi Live Camera";
       refs.pledgeStatus.textContent = "";
       refs.inputJewelCount.value = "";
+      refs.jewelWeight.value = "";
+      refs.appraiserStoneWeight.value = "";
       refs.jewelCountStatus.textContent = "Set a Pledge ID, then save jewel count.";
       refs.btnPledgeSetupNext.disabled = true;
       resetFlow();
@@ -4382,6 +4900,12 @@
 
     refs.calibrationMethod.addEventListener("change", updateCalibrationFields);
     refs.btnRunDimension.addEventListener("click", withButtonGuard(refs.btnRunDimension, runDimension));
+    refs.btnSkipDimension.addEventListener("click", withButtonGuard(refs.btnSkipDimension, async () => {
+      if (await skipOptionalStage("dimension", "Dimension analysis")) {
+        flow.dimensionNext = true;
+        goToNextStage();
+      }
+    }));
     refs.btnDimensionNext.addEventListener("click", () => {
       flow.dimensionNext = true;
       flow.finalVisible = false;
@@ -4407,6 +4931,12 @@
     }));
 
     refs.btnRunSidePipeline.addEventListener("click", withButtonGuard(refs.btnRunSidePipeline, runSidePipeline));
+    refs.btnSkipSide.addEventListener("click", withButtonGuard(refs.btnSkipSide, async () => {
+      if (await skipOptionalStage("side_stone", "Side capture and stone analysis")) {
+        previewState.context = "purity";
+        goToNextStage();
+      }
+    }));
     refs.btnShowFinalFromSide.addEventListener("click", () => {
       previewState.context = "purity";
       goToNextStage();
@@ -4416,6 +4946,13 @@
     });
 
     refs.btnRunSegmentation.addEventListener("click", withButtonGuard(refs.btnRunSegmentation, runSegmentation));
+    refs.btnSkipSegmentation.addEventListener("click", withButtonGuard(refs.btnSkipSegmentation, async () => {
+      if (await skipOptionalStage("jewellery_analysis", "Jewellery analysis")) {
+        flow.segmentationNext = true;
+        previewState.context = "source";
+        goToNextStage();
+      }
+    }));
     refs.btnStartPendantCorrection.addEventListener("click", async () => {
       try {
         await startSegmentationCorrection("pendant");
@@ -4442,7 +4979,7 @@
         const data = await postJson("/api/segmentation/no-pendant");
         backendState = data.state;
         hideLoading();
-        setStatusWithIndicator("Pendant excluded and merged into chain. Segmentation rerun.", "success");
+        setStatusWithIndicator("Pendant excluded and merged into chain. Jewellery analysis rerun.", "success");
         const latestSegmentation = backendState && backendState.segmentation;
         if (latestSegmentation && latestSegmentation.overlay_image) {
           await showArtifactInCanvas(latestSegmentation.overlay_image.url, "segmentation-result");
@@ -4461,7 +4998,7 @@
         const data = await postJson("/api/segmentation/no-tassel");
         backendState = data.state;
         hideLoading();
-        setStatusWithIndicator("Tassel excluded and merged into chain. Segmentation rerun.", "success");
+        setStatusWithIndicator("Tassel excluded and merged into chain. Jewellery analysis rerun.", "success");
         const latestSegmentation = backendState && backendState.segmentation;
         if (latestSegmentation && latestSegmentation.overlay_image) {
           await showArtifactInCanvas(latestSegmentation.overlay_image.url, "segmentation-result");
@@ -4515,6 +5052,12 @@
     });
 
     refs.btnRunMainStoneDetection.addEventListener("click", withButtonGuard(refs.btnRunMainStoneDetection, runMainStoneDetection));
+    refs.btnSkipMainStone.addEventListener("click", withButtonGuard(refs.btnSkipMainStone, async () => {
+      if (await skipOptionalStage("stone_detection", "Stone detection")) {
+        previewState.context = "purity";
+        goToNextStage();
+      }
+    }));
     refs.btnShowFinalFromMain.addEventListener("click", () => {
       previewState.context = "purity";
       goToNextStage();
@@ -4551,12 +5094,30 @@
     });
     refs.btnNextJewelFromFinal.addEventListener("click", withButtonGuard(refs.btnNextJewelFromFinal, goToNextJewel));
     refs.btnCaptureFinalJewelCount.addEventListener("click", withButtonGuard(refs.btnCaptureFinalJewelCount, captureFinalJewelCount));
+    refs.btnSkipFinalCount.addEventListener("click", withButtonGuard(refs.btnSkipFinalCount, async () => {
+      if (await skipOptionalStage("final_count", "Final jewel count")) {
+        flow.packetSealingOpen = true;
+        renderPledgeClosure();
+      }
+    }));
     refs.btnOpenPacketSealing.addEventListener("click", () => {
       flow.packetSealingOpen = !flow.packetSealingOpen;
       renderPledgeClosure();
     });
     refs.btnStartPacketSealing.addEventListener("click", withButtonGuard(refs.btnStartPacketSealing, startPacketSealing));
     refs.btnStopPacketSealing.addEventListener("click", withButtonGuard(refs.btnStopPacketSealing, stopPacketSealing));
+    refs.btnSkipPacketSealing.addEventListener("click", withButtonGuard(refs.btnSkipPacketSealing, async () => {
+      await skipOptionalStage("packet_sealing", "Packet sealing video");
+    }));
+    refs.btnStripingHandClear.addEventListener("click", withButtonGuard(refs.btnStripingHandClear, async () => {
+      await runStripingAction("/api/packet-sealing/striping/hand-clear", "Checking strip removal. Keep hands clear of the packet.");
+    }));
+    refs.btnRestartStriping.addEventListener("click", withButtonGuard(refs.btnRestartStriping, async () => {
+      await runStripingAction("/api/packet-sealing/striping/restart", "Strip check restarted");
+    }));
+    refs.btnSkipStriping.addEventListener("click", withButtonGuard(refs.btnSkipStriping, async () => {
+      await runStripingAction("/api/packet-sealing/striping/skip", "Strip check skipped");
+    }));
 
     refs.btnGeneratePdf.addEventListener("click", () => {
       window.open("/api/report/pdf", "_blank");
