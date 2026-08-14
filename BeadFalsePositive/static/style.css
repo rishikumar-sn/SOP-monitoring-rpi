@@ -1,0 +1,61 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #090c12;
+  color: #f6f7fb;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #172033 0, #090c12 42%); }
+button, input { font: inherit; }
+main { width: min(1500px, 96vw); margin: 0 auto; padding: 28px 0 48px; }
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+h1, h2, h3, p { margin-top: 0; }
+h1 { margin-bottom: 6px; font-size: clamp(30px, 4vw, 48px); letter-spacing: -0.04em; }
+h2 { margin-bottom: 14px; }
+.eyebrow { color: #94a3b8; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; margin-bottom: 7px; }
+.subtitle, .muted { color: #a8b2c3; margin-bottom: 0; }
+.upload-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.file-picker { display: grid; gap: 5px; padding: 10px 14px; border: 1px solid #374151; border-radius: 12px; background: #111827; color: #d9e1ee; }
+.file-picker span { font-size: 12px; color: #9aa7ba; }
+.file-picker input { max-width: 280px; }
+button { border: 0; border-radius: 10px; padding: 10px 14px; color: white; cursor: pointer; font-weight: 750; }
+button:disabled { cursor: wait; opacity: 0.55; }
+.primary { min-height: 52px; background: #2563eb; }
+.notice { padding: 12px 15px; margin-bottom: 18px; border-radius: 10px; background: #1e293b; }
+.notice.error { color: #fecaca; border: 1px solid #7f1d1d; background: #2a1115; }
+.workspace { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 18px; align-items: start; }
+aside, .review-panel { border: 1px solid #263142; border-radius: 16px; background: rgba(15, 20, 31, 0.94); }
+aside { padding: 16px; position: sticky; top: 16px; }
+.sessions { display: grid; gap: 8px; }
+.session-link { display: grid; gap: 4px; padding: 10px; border-radius: 10px; color: #e5e7eb; text-decoration: none; background: #151d2b; border: 1px solid transparent; }
+.session-link:hover, .session-link.active { border-color: #3b82f6; background: #17243a; }
+.session-link strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-link span, .session-link small { color: #94a3b8; font-size: 11px; }
+.review-panel { padding: 20px; min-height: 520px; }
+.review-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.counts { display: flex; gap: 8px; flex-wrap: wrap; }
+.counts span { padding: 8px 10px; border-radius: 999px; background: #1f2937; color: #cbd5e1; font-size: 13px; }
+.counts .true { background: #123322; color: #bbf7d0; }
+.counts .false { background: #3a171b; color: #fecaca; }
+.annotated { display: block; max-width: 100%; max-height: 520px; margin: 12px auto 22px; border-radius: 12px; object-fit: contain; background: #05070a; }
+.candidate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 14px; }
+.candidate { padding: 12px; border: 2px solid #334155; border-radius: 14px; background: #111827; transition: border-color 120ms ease, background 120ms ease; }
+.candidate.label-true_bead { border-color: #22c55e; background: #0e2118; }
+.candidate.label-false_positive { border-color: #ef4444; background: #2a1215; }
+.candidate-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.candidate-title h3 { margin-bottom: 8px; font-size: 16px; }
+.status { color: #aeb8c8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+.candidate img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 9px; background: #05070a; }
+.label-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
+.label-actions .true { background: #15803d; }
+.label-actions .false { background: #b91c1c; }
+.label-actions .clear { grid-column: 1 / -1; padding: 7px; background: #374151; color: #cbd5e1; }
+.empty-state { min-height: 430px; display: grid; place-content: center; text-align: center; color: #9ca8ba; }
+.empty-state h2 { color: #f3f4f6; margin-bottom: 6px; }
+
+@media (max-width: 850px) {
+  header { align-items: stretch; flex-direction: column; }
+  .workspace { grid-template-columns: 1fr; }
+  aside { position: static; }
+}

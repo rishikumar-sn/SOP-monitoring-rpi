@@ -1,0 +1,1 @@
+"""PaddleOCR integration."""

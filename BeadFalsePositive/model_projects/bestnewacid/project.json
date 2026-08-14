@@ -1,0 +1,13 @@
+{
+  "project_id": "bestnewacid",
+  "hef_file": "bestnewacid.hef",
+  "resnet_model": "beadcheck.pt",
+  "mobilenet_model": "bestnewacid_mobilenet_v3_candidate.pt",
+  "mobilenet_report": "bestnewacid_mobilenet_v3_candidate_training_report.json",
+  "input_height": 320,
+  "input_width": 320,
+  "input_channels": 3,
+  "output_format": "RAW_YOLOV8_SEG",
+  "output_decoder": "yolov8_seg_raw",
+  "number_of_classes": 1
+}

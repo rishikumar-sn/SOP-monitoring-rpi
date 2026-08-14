@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bead Candidate Labeler</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">RESNET-18 DATASET TOOL</p>
+          <h1>Bead Candidate Labeler</h1>
+          <p class="subtitle">Run YOLO on one captured image, then review each candidate.</p>
+        </div>
+        <form action="{{ url_for('detect') }}" method="post" enctype="multipart/form-data" class="upload-form">
+          <label class="file-picker">
+            <span>Choose jewellery image</span>
+            <input type="file" name="image" accept="image/*" required>
+          </label>
+          <button type="submit" class="primary">Run YOLO</button>
+        </form>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="notice {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+      {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+
+      <section class="workspace">
+        <aside>
+          <h2>Saved sessions</h2>
+          {% if sessions %}
+            <nav class="sessions">
+              {% for item in sessions %}
+                <a href="{{ url_for('index', session=item.session_id) }}"
+                   class="session-link {% if manifest and manifest.session_id == item.session_id %}active{% endif %}">
+                  <strong>{{ item.original_filename }}</strong>
+                  <span>{{ item.created_at }}</span>
+                  <small>{{ item.counts.true_bead }} true · {{ item.counts.false_positive }} false · {{ item.counts.unreviewed }} open</small>
+                </a>
+              {% endfor %}
+            </nav>
+          {% else %}
+            <p class="muted">No images reviewed yet.</p>
+          {% endif %}
+        </aside>
+
+        <section class="review-panel">
+          {% if manifest %}
+            <div class="review-heading">
+              <div>
+                <p class="eyebrow">{{ manifest.original_filename }}</p>
+                <h2>Review candidates</h2>
+              </div>
+              <div class="counts">
+                <span class="true"><b id="true-count">{{ counts.true_bead }}</b> True beads</span>
+                <span class="false"><b id="false-count">{{ counts.false_positive }}</b> False positives</span>
+                <span><b id="open-count">{{ counts.unreviewed }}</b> Unreviewed</span>
+              </div>
+            </div>
+
+            <img class="annotated" src="{{ url_for('dataset_file', relative_path=manifest.annotated_image) }}" alt="YOLO bead detections">
+
+            {% if manifest.candidates %}
+              <div class="candidate-grid" data-session-id="{{ manifest.session_id }}">
+                {% for candidate in manifest.candidates %}
+                  <article class="candidate label-{{ candidate.label }}" data-candidate-id="{{ candidate.id }}">
+                    <div class="candidate-title">
+                      <h3>Candidate {{ candidate.number }}</h3>
+                      <span class="status">{{ candidate.label.replace('_', ' ') }}</span>
+                    </div>
+                    <img src="{{ url_for('dataset_file', relative_path=candidate.crop) }}" alt="Candidate {{ candidate.number }} crop">
+                    <div class="label-actions">
+                      <button type="button" data-label="true_bead" class="true">True Bead</button>
+                      <button type="button" data-label="false_positive" class="false">False Positive</button>
+                      <button type="button" data-label="unreviewed" class="clear">Unreviewed</button>
+                    </div>
+                  </article>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="empty-state">YOLO did not return any candidates for this image.</div>
+            {% endif %}
+          {% else %}
+            <div class="empty-state">
+              <h2>Choose an image to begin</h2>
+              <p>The tool will show the full detection image and a separate crop for every YOLO candidate.</p>
+            </div>
+          {% endif %}
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const grid = document.querySelector(".candidate-grid");
+      if (grid) {
+        grid.addEventListener("click", async (event) => {
+          const button = event.target.closest("button[data-label]");
+          if (!button) return;
+          const card = button.closest(".candidate");
+          const label = button.dataset.label;
+          button.disabled = true;
+          try {
+            const response = await fetch(`/api/session/${grid.dataset.sessionId}/label`, {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              body: JSON.stringify({candidate_id: card.dataset.candidateId, label}),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.ok) throw new Error(result.error || "Could not save label.");
+            card.className = `candidate label-${label}`;
+            card.querySelector(".status").textContent = label.replace("_", " ");
+            document.querySelector("#true-count").textContent = result.counts.true_bead;
+            document.querySelector("#false-count").textContent = result.counts.false_positive;
+            document.querySelector("#open-count").textContent = result.counts.unreviewed;
+          } catch (error) {
+            window.alert(error.message);
+          } finally {
+            button.disabled = false;
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

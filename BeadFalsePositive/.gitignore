@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+dataset/
+false_positive/
+true_detection/

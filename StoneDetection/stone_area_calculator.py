@@ -41,6 +41,30 @@ logger = logging.getLogger(__name__)
 # is treated as false-positive noise and removed before area calculation.
 # Raise this value to be more aggressive about noise removal.
 MIN_STONE_COMPONENT_AREA_PX: int = 5
+MAX_REPORTED_STONE_WEIGHT_RANGE_G: float = 3.0
+MAX_REPORTED_STONE_WEIGHT_RANGE_RATIO: float = 0.30
+STONE_SETTING_PROFILE_FRONT_ONLY = "front_only_shallow"
+STONE_SETTING_PROFILE_OPEN_BACK = "open_back_faceted"
+STONE_SETTING_PROFILE_UNKNOWN = "unknown"
+DEFAULT_STONE_SETTING_PROFILE = STONE_SETTING_PROFILE_FRONT_ONLY
+FRONT_ONLY_AREAL_MASS_G_PER_MM2: float = 0.001695
+FRONT_ONLY_WEIGHT_UNCERTAINTY_RATIO: float = 0.15
+FRONT_ONLY_CALIBRATION_SAMPLE_COUNT: int = 1
+STONE_WEIGHT_MAX_JEWEL_SHARE: float = 1.0
+STONE_MATERIAL_PROFILES: dict[str, dict[str, float]] = {
+    "lightweight_imitation": {"density_min_g_cm3": 1.8, "density_max_g_cm3": 2.6},
+    "glass_like": {"density_min_g_cm3": 2.3, "density_max_g_cm3": 3.0},
+    "natural_gem_general": {"density_min_g_cm3": 2.6, "density_max_g_cm3": 4.3},
+}
+STONE_UNKNOWN_DENSITY_RANGE_G_CM3 = (1.8, 3.1, 4.3)
+STONE_SHAPE_DEPTH_PROFILES: dict[str, tuple[float, float, float, float]] = {
+    # minimum, typical and maximum depth/minor-axis ratios, then volume factor
+    "round": (0.32, 0.52, 0.72, math.pi / 6.0),
+    "oval": (0.25, 0.45, 0.66, math.pi / 6.0),
+    "rectangular": (0.22, 0.42, 0.62, 0.55),
+    "pear": (0.24, 0.45, 0.68, 0.48),
+    "irregular": (0.18, 0.38, 0.65, 0.42),
+}
 
 # Reflection-risk thresholds. A jewel is flagged when reflections cover a
 # meaningful share of the jewel, or when a smaller but sufficiently large
@@ -444,6 +468,394 @@ def calculate_stone_measurements(
             "and gemstone density are not measured."
         ),
     }
+
+
+def estimate_stone_weight_range(
+    measurement_result: dict[str, Any],
+    setting_profile: Any,
+    jewel_weight_g: float | None = None,
+) -> dict[str, Any]:
+    """Estimate a broad mass range from face-up geometry.
+
+    The image supplies length, width and area.  Hidden depth and material
+    density remain explicit uncertainty inputs; visible color never selects a
+    mineral or density profile.
+    """
+    profile = normalize_stone_setting_profile(setting_profile)
+    instances = list(measurement_result.get("instances") or [])
+    if not measurement_result.get("success") or not instances:
+        return {
+            **measurement_result,
+            "success": bool(measurement_result.get("success")) and not instances,
+            "stone_setting_profile": profile,
+            "weight_estimate_suppressed": False,
+            "estimated_total_typical_g": 0.0,
+            "weight_confidence": "Low",
+            "weight_confidence_score": 0.0,
+            "weight_method": "face-up geometry with depth and density uncertainty",
+            "weight_warnings": ["No measurable final stone instances were available."],
+        }
+
+    density_min, density_typical, density_max = STONE_UNKNOWN_DENSITY_RANGE_G_CM3
+    depth_scale = 0.68 if profile == STONE_SETTING_PROFILE_FRONT_ONLY else 1.0
+    minimum_total = 0.0
+    typical_total = 0.0
+    maximum_total = 0.0
+    irregular_count = 0
+    implausibly_large_count = 0
+    enriched_instances: list[dict[str, Any]] = []
+    for instance in instances:
+        shape = str(instance.get("shape") or "irregular")
+        depth_min, depth_typical, depth_max, shape_factor = (
+            STONE_SHAPE_DEPTH_PROFILES.get(
+                shape,
+                STONE_SHAPE_DEPTH_PROFILES["irregular"],
+            )
+        )
+        if shape == "irregular":
+            irregular_count += 1
+        major = max(0.0, float(instance.get("major_axis_mm", 0.0)))
+        minor = max(0.0, float(instance.get("minor_axis_mm", 0.0)))
+        if major <= 0.0 or minor <= 0.0:
+            continue
+        if major > 30.0 or minor > 25.0:
+            implausibly_large_count += 1
+        minimum_depth = minor * depth_min * depth_scale
+        typical_depth = minor * depth_typical * depth_scale
+        maximum_depth = minor * depth_max * depth_scale
+        minimum_volume = major * minor * minimum_depth * shape_factor
+        typical_volume = major * minor * typical_depth * shape_factor
+        maximum_volume = major * minor * maximum_depth * shape_factor
+        minimum_g = minimum_volume / 1000.0 * density_min
+        typical_g = typical_volume / 1000.0 * density_typical
+        maximum_g = maximum_volume / 1000.0 * density_max
+        minimum_total += minimum_g
+        typical_total += typical_g
+        maximum_total += maximum_g
+        enriched = dict(instance)
+        enriched["estimated_depth_range_mm"] = [
+            round(minimum_depth, 3),
+            round(typical_depth, 3),
+            round(maximum_depth, 3),
+        ]
+        enriched["estimated_weight_range_g"] = [
+            round(minimum_g, 5),
+            round(typical_g, 5),
+            round(maximum_g, 5),
+        ]
+        enriched_instances.append(enriched)
+
+    warnings = [
+        "Stone depth is not directly visible in the captured image.",
+        "Gemstone material and density are not identified from visible color.",
+    ]
+    confidence_score = 0.68
+    if profile == STONE_SETTING_PROFILE_FRONT_ONLY:
+        warnings.append(
+            "Front-only setting uses a shallower depth profile because the stone back is hidden."
+        )
+        confidence_score -= 0.08
+    if irregular_count:
+        warnings.append(
+            f"{irregular_count} irregular instance(s) have wider shape uncertainty."
+        )
+        confidence_score -= min(0.18, irregular_count / float(len(instances)) * 0.18)
+    if implausibly_large_count:
+        warnings.append(
+            "One or more very large regions may contain merged stones or residual metal."
+        )
+        confidence_score -= 0.25
+    confidence_score = max(0.10, min(0.90, confidence_score))
+    confidence = "High" if confidence_score >= 0.78 else "Medium" if confidence_score >= 0.50 else "Low"
+    result = {
+        **measurement_result,
+        "success": True,
+        "instances": enriched_instances,
+        "stone_setting_profile": profile,
+        "weight_model": "geometry_depth_density_range",
+        "weight_method": "face-up geometry with depth and density uncertainty",
+        "v2_geometry_estimate": True,
+        "material_profile": "unknown_general_range",
+        "density_range_g_cm3": [density_min, density_typical, density_max],
+        "estimated_total_minimum_g": round(max(0.0, minimum_total), 4),
+        "estimated_total_typical_g": round(max(0.0, typical_total), 4),
+        "estimated_total_average_g": round(max(0.0, typical_total), 4),
+        "estimated_total_maximum_g": round(max(0.0, maximum_total), 4),
+        "estimated_total_minimum_ct": round(max(0.0, minimum_total) * 5.0, 4),
+        "estimated_total_average_ct": round(max(0.0, typical_total) * 5.0, 4),
+        "estimated_total_maximum_ct": round(max(0.0, maximum_total) * 5.0, 4),
+        "weight_confidence": confidence,
+        "weight_confidence_score": round(confidence_score, 3),
+        "weight_warnings": warnings,
+        "note": (
+            "Approximate image-based range; hidden depth, cut and material density "
+            "are not measured."
+        ),
+    }
+    return calibrate_weight_estimate_to_jewel_weight(result, jewel_weight_g)
+
+
+def calibrate_weight_estimate_to_jewel_weight(
+    weight_estimate: dict[str, Any],
+    jewel_weight_g: float | None,
+) -> dict[str, Any]:
+    """Constrain an estimated stone-weight range to the complete jewel weight."""
+    calibrated = dict(weight_estimate)
+    entered_weight = (
+        float(jewel_weight_g)
+        if jewel_weight_g is not None and float(jewel_weight_g) > 0
+        else None
+    )
+    calibrated["entered_jewel_weight_g"] = entered_weight
+    if not calibrated.get("success") or entered_weight is None:
+        return calibrated
+
+    raw_values: dict[str, float] = {}
+    for name in ("minimum", "average", "maximum"):
+        raw_key = f"raw_estimated_total_{name}_g"
+        raw_values[name] = max(
+            0.0,
+            float(
+                calibrated.get(
+                    raw_key,
+                    calibrated.get(
+                        f"estimated_total_{name}_g",
+                        float(calibrated.get(f"estimated_total_{name}_ct", 0.0)) * 0.2,
+                    ),
+                )
+            ),
+        )
+
+    raw_maximum = raw_values["maximum"]
+    physical_upper_bound = entered_weight * STONE_WEIGHT_MAX_JEWEL_SHARE
+    calibration_factor = (
+        min(1.0, physical_upper_bound / raw_maximum)
+        if raw_maximum > 0
+        else 1.0
+    )
+    calibration_applied = calibration_factor < 1.0
+    bounded_values = {
+        name: raw_value_g * calibration_factor
+        for name, raw_value_g in raw_values.items()
+    }
+    original_span_g = max(
+        0.0,
+        bounded_values["maximum"] - bounded_values["minimum"],
+    )
+    target_span_g = (
+        original_span_g
+        if calibrated.get("v2_geometry_estimate")
+        else min(
+            original_span_g,
+            MAX_REPORTED_STONE_WEIGHT_RANGE_G,
+            bounded_values["average"] * MAX_REPORTED_STONE_WEIGHT_RANGE_RATIO,
+        )
+    )
+    range_narrowing_applied = target_span_g < original_span_g
+    if range_narrowing_applied:
+        narrowed_minimum = bounded_values["average"] - target_span_g / 2.0
+        narrowed_maximum = bounded_values["average"] + target_span_g / 2.0
+        if narrowed_minimum < bounded_values["minimum"]:
+            narrowed_maximum += bounded_values["minimum"] - narrowed_minimum
+            narrowed_minimum = bounded_values["minimum"]
+        if narrowed_maximum > bounded_values["maximum"]:
+            narrowed_minimum -= narrowed_maximum - bounded_values["maximum"]
+            narrowed_maximum = bounded_values["maximum"]
+        bounded_values["minimum"] = max(0.0, narrowed_minimum)
+        bounded_values["maximum"] = min(entered_weight, narrowed_maximum)
+
+    if calibration_applied or range_narrowing_applied:
+        for name, value_g in raw_values.items():
+            calibrated[f"raw_estimated_total_{name}_g"] = round(value_g, 4)
+            calibrated[f"raw_estimated_total_{name}_ct"] = round(value_g * 5.0, 4)
+
+    for name, value_g in bounded_values.items():
+        calibrated[f"estimated_total_{name}_g"] = round(value_g, 4)
+        calibrated[f"estimated_total_{name}_ct"] = round(value_g * 5.0, 4)
+    calibrated["estimated_total_typical_g"] = calibrated[
+        "estimated_total_average_g"
+    ]
+
+    calibrated["calibration_applied"] = calibration_applied
+    calibrated["range_narrowing_applied"] = range_narrowing_applied
+    calibrated["jewel_weight_calibration_factor"] = round(calibration_factor, 6)
+    calibrated["reported_range_span_g"] = round(
+        calibrated["estimated_total_maximum_g"]
+        - calibrated["estimated_total_minimum_g"],
+        4,
+    )
+    calibrated["reported_range_maximum_span_g"] = MAX_REPORTED_STONE_WEIGHT_RANGE_G
+    calibrated["estimated_stone_share_of_jewel_weight_percent"] = round(
+        calibrated["estimated_total_average_g"] / entered_weight * 100.0,
+        2,
+    )
+    calibrated["estimated_stone_share_range_percent"] = [
+        round(calibrated["estimated_total_minimum_g"] / entered_weight * 100.0, 2),
+        round(calibrated["estimated_total_maximum_g"] / entered_weight * 100.0, 2),
+    ]
+    calibrated["reference_check"] = (
+        "calibrated_to_jewel_weight" if calibration_applied else "plausible"
+    )
+    warnings = list(calibrated.get("weight_warnings") or [])
+    if calibration_applied:
+        warnings.append(
+            "Visible stone geometry conflicted with the complete OCR jewel weight; "
+            "the raw range is retained and the reported range is safety-bounded."
+        )
+        calibrated["weight_confidence_score"] = round(
+            max(0.05, float(calibrated.get("weight_confidence_score", 0.5)) - 0.25),
+            3,
+        )
+        calibrated["weight_confidence"] = (
+            "Low"
+            if calibrated["weight_confidence_score"] < 0.50
+            else "Medium"
+        )
+    calibrated["weight_warnings"] = warnings
+    calibrated["sanity_constraint_applied"] = calibration_applied
+    calibrated["stone_weight_max_jewel_share"] = STONE_WEIGHT_MAX_JEWEL_SHARE
+    reference_notes = [
+        (
+            "The captured OCR jewel weight is a hard upper bound. The raw stone-weight "
+            "range was proportionally scaled because its maximum exceeded that bound."
+            if calibration_applied
+            else "The captured OCR jewel weight was used as a hard upper-bound check."
+        )
+    ]
+    if range_narrowing_applied:
+        reference_notes.append(
+            "The reported range was narrowed around the average estimate to a maximum "
+            "of 3.00 g or 30% of the average estimate, whichever is smaller."
+        )
+    calibrated["reference_note"] = " ".join(reference_notes)
+    return calibrated
+
+
+def normalize_stone_setting_profile(value: Any) -> str:
+    profile = str(value or "").strip().lower()
+    if profile in {
+        STONE_SETTING_PROFILE_FRONT_ONLY,
+        STONE_SETTING_PROFILE_OPEN_BACK,
+        STONE_SETTING_PROFILE_UNKNOWN,
+    }:
+        return profile
+    return DEFAULT_STONE_SETTING_PROFILE
+
+
+def apply_stone_setting_weight_model(
+    face_up_estimate: dict[str, Any],
+    setting_profile: Any,
+    visible_stone_area_mm2: float | None,
+    jewel_weight_g: float | None,
+) -> dict[str, Any]:
+    """Choose the weight model appropriate for the observed stone setting."""
+    profile = normalize_stone_setting_profile(setting_profile)
+    visible_area = (
+        max(0.0, float(visible_stone_area_mm2))
+        if visible_stone_area_mm2 is not None
+        else None
+    )
+
+    if profile == STONE_SETTING_PROFILE_UNKNOWN:
+        return {
+            "success": False,
+            "weight_estimate_suppressed": True,
+            "stone_setting_profile": profile,
+            "weight_model": "visible_area_only",
+            "visible_stone_area_mm2": (
+                round(visible_area, 4) if visible_area is not None else None
+            ),
+            "entered_jewel_weight_g": jewel_weight_g,
+            "error": (
+                "Stone weight is not estimated until the setting type is known."
+            ),
+        }
+
+    if face_up_estimate.get("success") and face_up_estimate.get("instances"):
+        estimated = estimate_stone_weight_range(
+            face_up_estimate,
+            profile,
+            jewel_weight_g,
+        )
+        estimated["visible_stone_area_mm2"] = (
+            round(visible_area, 4) if visible_area is not None else None
+        )
+        return estimated
+
+    if profile == STONE_SETTING_PROFILE_OPEN_BACK:
+        estimated = calibrate_weight_estimate_to_jewel_weight(
+            face_up_estimate,
+            jewel_weight_g,
+        )
+        estimated["stone_setting_profile"] = profile
+        estimated["weight_model"] = "face_up_size_table_fallback"
+        estimated["weight_method"] = "legacy face-up size-table fallback"
+        estimated["weight_confidence"] = "Low"
+        estimated["weight_confidence_score"] = 0.30
+        estimated["weight_warnings"] = [
+            "Per-instance geometry was unavailable; legacy face-up tables were used."
+        ]
+        estimated["visible_stone_area_mm2"] = (
+            round(visible_area, 4) if visible_area is not None else None
+        )
+        return estimated
+
+    if visible_area is None:
+        return {
+            "success": False,
+            "stone_setting_profile": profile,
+            "weight_model": "front_only_areal_calibration",
+            "weight_method": "front-only visible-area calibration fallback",
+            "weight_confidence": "Low",
+            "weight_confidence_score": 0.30,
+            "weight_warnings": [
+                "Per-instance geometry was unavailable; provisional visible-area calibration was used."
+            ],
+            "visible_stone_area_mm2": None,
+            "entered_jewel_weight_g": jewel_weight_g,
+            "error": "Metric calibration is required for front-only stone weight.",
+        }
+
+    average_g = visible_area * FRONT_ONLY_AREAL_MASS_G_PER_MM2
+    minimum_g = average_g * (1.0 - FRONT_ONLY_WEIGHT_UNCERTAINTY_RATIO)
+    maximum_g = average_g * (1.0 + FRONT_ONLY_WEIGHT_UNCERTAINTY_RATIO)
+    estimated = calibrate_weight_estimate_to_jewel_weight(
+        {
+            "success": True,
+            "estimated_total_average_g": round(average_g, 4),
+            "estimated_total_minimum_g": round(minimum_g, 4),
+            "estimated_total_maximum_g": round(maximum_g, 4),
+            "estimated_total_average_ct": round(average_g * 5.0, 4),
+            "estimated_total_minimum_ct": round(minimum_g * 5.0, 4),
+            "estimated_total_maximum_ct": round(maximum_g * 5.0, 4),
+            "weight_method": "front-only visible-area calibration fallback",
+            "weight_confidence": "Low",
+            "weight_confidence_score": 0.30,
+            "weight_warnings": [
+                "Per-instance geometry was unavailable; provisional visible-area calibration was used."
+            ],
+        },
+        jewel_weight_g,
+    )
+    estimated.update(
+        {
+            "stone_setting_profile": profile,
+            "weight_model": "front_only_areal_calibration",
+            "visible_stone_area_mm2": round(visible_area, 4),
+            "calibration_g_per_mm2": FRONT_ONLY_AREAL_MASS_G_PER_MM2,
+            "calibration_sample_count": FRONT_ONLY_CALIBRATION_SAMPLE_COUNT,
+            "provisional_calibration": True,
+            "uncertainty_percent": round(
+                FRONT_ONLY_WEIGHT_UNCERTAINTY_RATIO * 100.0,
+                1,
+            ),
+            "note": (
+                "Front-only shallow-stone estimate from visible area using one "
+                "physical peeled-stone calibration sample."
+            ),
+        }
+    )
+    return estimated
 
 
 # ---------------------------------------------------------------------------
@@ -950,6 +1362,44 @@ def _run_tests() -> None:
         <= r10["estimated_total_average_g"]
         <= r10["estimated_total_maximum_g"],
         str(r10),
+    )
+
+    # Test 11: V2 uses per-instance geometry with explicit uncertainty.
+    r11 = apply_stone_setting_weight_model(
+        r10,
+        STONE_SETTING_PROFILE_FRONT_ONLY,
+        visible_stone_area_mm2=1061.6565,
+        jewel_weight_g=18.44,
+    )
+    check(
+        "T11 geometry range ordered",
+        r11["estimated_total_minimum_g"]
+        <= r11["estimated_total_typical_g"]
+        <= r11["estimated_total_maximum_g"],
+        str(r11),
+    )
+    check(
+        "T11 typical preserves legacy average key",
+        r11["estimated_total_typical_g"] == r11["estimated_total_average_g"],
+        str(r11),
+    )
+    check(
+        "T11 depth and density warnings exposed",
+        len(r11.get("weight_warnings") or []) >= 2,
+        str(r11),
+    )
+
+    # Test 12: unknown setting exposes area but deliberately suppresses grams.
+    r12 = apply_stone_setting_weight_model(
+        r10,
+        STONE_SETTING_PROFILE_UNKNOWN,
+        visible_stone_area_mm2=1061.6565,
+        jewel_weight_g=18.44,
+    )
+    check(
+        "T12 unknown setting suppresses weight",
+        r12["success"] is False and r12["weight_estimate_suppressed"] is True,
+        str(r12),
     )
 
     print(f"\n{'All tests passed.' if failed == 0 else f'{failed} test(s) FAILED.'}")

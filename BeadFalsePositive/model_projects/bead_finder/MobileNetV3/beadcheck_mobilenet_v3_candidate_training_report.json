@@ -1,0 +1,111 @@
+{
+  "warning": "Validate test metrics before using this checkpoint in production",
+  "model": "mobilenet_v3_small",
+  "output": "/home/pi/Desktop/EMBSYS-AI/BeadFalsePositive/model_projects/bead_finder/MobileNetV3/beadcheck_mobilenet_v3_candidate.pt",
+  "base_model": null,
+  "class_to_index": {
+    "false_positive": 0,
+    "true_detection": 1
+  },
+  "split_mode": "stratified_random_crop",
+  "true_detection_threshold": 0.75,
+  "false_positive_weight": 2.0,
+  "input_size": [
+    224,
+    224
+  ],
+  "normalization_mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "normalization_std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "epochs": 20,
+  "seed": 42,
+  "split_counts": {
+    "train": {
+      "false_positive": 91,
+      "true_detection": 63
+    },
+    "validation": {
+      "false_positive": 19,
+      "true_detection": 14
+    },
+    "test": {
+      "false_positive": 19,
+      "true_detection": 14
+    }
+  },
+  "validation_metrics": {
+    "loss": 0.01505795746440223,
+    "accuracy": 1.0,
+    "true_detection_precision": 1.0,
+    "true_detection_recall": 1.0,
+    "true_detection_f1": 1.0,
+    "true_detection_f0_5": 1.0,
+    "false_positive_acceptance_rate": 0.0,
+    "true_detection_rejection_rate": 0.0,
+    "confusion_matrix": [
+      [
+        19,
+        0
+      ],
+      [
+        0,
+        14
+      ]
+    ]
+  },
+  "test_metrics": {
+    "loss": 0.15593491517233127,
+    "accuracy": 0.9090909090909091,
+    "true_detection_precision": 0.9230769230769231,
+    "true_detection_recall": 0.8571428571428571,
+    "true_detection_f1": 0.888888888888889,
+    "true_detection_f0_5": 0.9090909090909092,
+    "false_positive_acceptance_rate": 0.05263157894736842,
+    "true_detection_rejection_rate": 0.14285714285714285,
+    "confusion_matrix": [
+      [
+        18,
+        1
+      ],
+      [
+        2,
+        12
+      ]
+    ]
+  },
+  "locked_evaluation_manifest": "/home/pi/Desktop/EMBSYS-AI/BeadFalsePositive/model_projects/bead_finder/ResNet18/locked_crop_evaluation_manifest.json",
+  "locked_evaluation_counts": {
+    "false_positive": 17,
+    "true_detection": 14
+  },
+  "baseline_locked_metrics": null,
+  "candidate_locked_metrics": {
+    "loss": 0.07688231658070319,
+    "accuracy": 0.967741935483871,
+    "true_detection_precision": 1.0,
+    "true_detection_recall": 0.9285714285714286,
+    "true_detection_f1": 0.962962962962963,
+    "true_detection_f0_5": 0.9848484848484849,
+    "false_positive_acceptance_rate": 0.0,
+    "true_detection_rejection_rate": 0.07142857142857142,
+    "confusion_matrix": [
+      [
+        17,
+        0
+      ],
+      [
+        1,
+        13
+      ]
+    ]
+  },
+  "metrics_improved": false,
+  "promotion_recommended": false
+}

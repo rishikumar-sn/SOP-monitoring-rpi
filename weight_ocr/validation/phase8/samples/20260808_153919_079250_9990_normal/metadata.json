@@ -1,0 +1,35 @@
+{
+  "backend": "ONNX CPU fallback",
+  "captured_at": "2026-08-08T15:39:19.079250+05:30",
+  "condition": "normal",
+  "detector_confidence": 0.921916127204895,
+  "digit_confidence": 0.705623973727422,
+  "failed_slots": [
+    2
+  ],
+  "inference_error": null,
+  "inference_status": "read_failed",
+  "label_digits": "9990",
+  "predicted_digits": null,
+  "roi_bounds": [
+    667,
+    78,
+    1890,
+    1083
+  ],
+  "sample_id": "20260808_153919_079250_9990_normal",
+  "saved_files": [
+    "roi.png",
+    "full.png",
+    "model_obb.png",
+    "roi_obb.png",
+    "full_obb.png",
+    "lcd_raw.png",
+    "lcd_rectified.png",
+    "lcd_gray.png",
+    "lcd_otsu.png",
+    "lcd_adaptive.png",
+    "lcd_slots.png"
+  ],
+  "true_reading": "9990"
+}

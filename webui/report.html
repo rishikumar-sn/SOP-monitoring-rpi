@@ -3,59 +3,106 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pledge Report Search - Embsys</title>
+  <title>Pledge Reports - Embsys</title>
   <style>
-    body { font-family: "Segoe UI", Tahoma, sans-serif; background: #f0f4f8; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-    .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08); width: 100%; max-width: 400px; text-align: center; }
-    h1 { margin-top: 0; color: #1a202c; font-size: 24px; }
-    input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #d0dce6; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-    button { background: #2563eb; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; transition: all 0.2s ease; }
-    button:hover { background: #1d4ed8; transform: translateY(-1px); }
-    .error { color: #dc2626; margin-top: 10px; font-size: 14px; display: none; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #f0f4f8; color: #1a202c; font-family: "Segoe UI", Tahoma, sans-serif; }
+    .page { width: min(960px, calc(100% - 28px)); margin: 28px auto; }
+    .header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+    .header img { height: 48px; }
+    h1 { margin: 0; font-size: 26px; }
+    .sub { margin: 4px 0 0; color: #64748b; font-size: 14px; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08); padding: 20px; }
+    input { width: 100%; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; }
+    .reportList { display: grid; gap: 10px; margin-top: 16px; }
+    .reportItem { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 14px; align-items: center; padding: 15px; border: 1px solid #dbe4ee; border-radius: 10px; }
+    .pledgeId { font-size: 18px; font-weight: 800; overflow-wrap: anywhere; }
+    .meta { margin-top: 4px; color: #64748b; font-size: 13px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .button { display: inline-block; min-width: 132px; padding: 10px 14px; border-radius: 8px; background: #2563eb; color: #fff; font-weight: 700; text-align: center; text-decoration: none; }
+    .button.video { background: #0f766e; }
+    .empty { padding: 24px 8px 8px; color: #64748b; text-align: center; }
+    .error { padding: 18px 8px 4px; color: #dc2626; text-align: center; }
+    @media (max-width: 650px) {
+      .reportItem { grid-template-columns: 1fr; }
+      .actions { justify-content: flex-start; }
+      .button { flex: 1; }
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <img src="/webui/embsys_logo.png" alt="Embsys Logo" style="height: 50px; margin-bottom: 15px;" />
-    <h1>Pledge Report Search</h1>
-    <p style="color: #4a5568; font-size: 14px; margin-bottom: 20px;">Enter the Pledge ID to view the combined jewelry analysis report.</p>
-    <input type="text" id="pledgeInput" placeholder="Enter Pledge ID" />
-    <button onclick="downloadReport()">View Report PDF</button>
-    <div id="errorMsg" class="error"></div>
-  </div>
+  <main class="page">
+    <div class="header">
+      <img src="/webui/embsys_logo.png" alt="Embsys Logo" />
+      <div>
+        <h1>Pledge Reports</h1>
+        <p class="sub">Completed reports are listed with the most recently added first.</p>
+      </div>
+    </div>
+
+    <section class="card">
+      <input type="search" id="reportSearch" placeholder="Search by Pledge ID" aria-label="Search reports by Pledge ID" />
+      <div id="reportList" class="reportList"></div>
+      <div id="message" class="empty">Loading reports...</div>
+    </section>
+  </main>
 
   <script>
-    async function downloadReport() {
-      const pledgeId = document.getElementById('pledgeInput').value.trim();
-      const errorMsg = document.getElementById('errorMsg');
-      errorMsg.style.display = 'none';
+    const reportList = document.getElementById("reportList");
+    const reportSearch = document.getElementById("reportSearch");
+    const message = document.getElementById("message");
+    let reports = [];
 
-      if (!pledgeId) {
-        errorMsg.textContent = 'Please enter a valid Pledge ID.';
-        errorMsg.style.display = 'block';
-        return;
-      }
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
 
-      window.open(`/api/report/pdf?pledge_id=${encodeURIComponent(pledgeId)}`, '_blank');
+    function renderReports() {
+      const query = reportSearch.value.trim().toLowerCase();
+      const visibleReports = reports.filter((report) =>
+        String(report.pledge_id || "").toLowerCase().includes(query)
+      );
+      reportList.innerHTML = visibleReports.map((report) => `
+        <article class="reportItem">
+          <div>
+            <div class="pledgeId">${escapeHtml(report.pledge_id)}</div>
+            <div class="meta">Added: ${escapeHtml(report.started_at || "Unknown")} · Jewels: ${Number(report.jewel_count || 0)}</div>
+          </div>
+          <div class="actions">
+            <a class="button" href="${escapeHtml(report.pdf_url)}" download>Download PDF</a>
+            ${report.video_url ? `<a class="button video" href="${escapeHtml(report.video_url)}" download>Download Video</a>` : ""}
+          </div>
+        </article>
+      `).join("");
+      message.textContent = reports.length
+        ? "No reports match this Pledge ID."
+        : "No completed reports are available yet.";
+      message.style.display = visibleReports.length ? "none" : "block";
+    }
 
+    async function loadReports() {
       try {
-        const response = await fetch(`/api/report/assets?pledge_id=${encodeURIComponent(pledgeId)}`, {
-          cache: 'no-store',
-        });
+        const response = await fetch("/api/reports", { cache: "no-store" });
         const data = await response.json();
-        if (data.ok && data.has_packet_video && data.packet_video_url) {
-          const link = document.createElement('a');
-          link.href = data.packet_video_url;
-          link.download = data.packet_video_name || 'packet_sealing.mp4';
-          link.style.display = 'none';
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "Could not load reports.");
         }
+        reports = data.reports || [];
+        renderReports();
       } catch (error) {
-        console.warn('Packet video lookup failed:', error);
+        reportList.innerHTML = "";
+        message.className = "error";
+        message.textContent = error.message || "Could not load reports.";
       }
     }
+
+    reportSearch.addEventListener("input", renderReports);
+    loadReports();
   </script>
 </body>
 </html>

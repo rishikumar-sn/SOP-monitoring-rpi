@@ -812,6 +812,8 @@
               <button id="btnUseLiveNow" class="btn gold">Use Current Live Frame</button>
               <button id="btnDrawProcessingRoi" class="btn secondary">Draw Processing ROI</button>
               <button id="btnDrawArucoRoi" class="btn secondary">Draw ArUco ROI</button>
+              <button id="btnDrawWeightRoi" class="btn secondary">Draw Weight Scale ROI</button>
+              <button id="btnClearWeightRoi" class="btn secondary">Clear Weight Scale ROI</button>
               <button id="btnDrawScaleLine" class="btn secondary hidden">Draw Calibration Line</button>
               <button id="btnDrawPendantBox" class="btn secondary hidden">Draw Pendant Box</button>
               <button id="btnDrawTasselBox" class="btn secondary hidden">Draw Tassel Box</button>
@@ -883,7 +885,7 @@
                     <option>Pink</option>
                     <option>Black</option>
                     <option>White/Colorless</option>
-                    <option>Multicolor/Color-changing</option>
+                    <option value="Multicolor/Color-changing">Multicolor / Mixed Appearance</option>
                   </select>
                 </div>
                 <div class="field">
@@ -1013,16 +1015,7 @@
             <button id="btnCaptureMainImage" class="btn secondary">Capture Image</button>
             <button id="btnRunClassification" class="btn">Run Jewel Type</button>
           </div>
-          <div class="weightFields twoCol">
-            <div class="field">
-              <label for="jewelWeight">Current Jewel Weight (g)</label>
-              <input id="jewelWeight" type="number" min="0.0001" step="0.0001" placeholder="Required, e.g. 12.750" />
-            </div>
-            <div class="field">
-              <label for="appraiserStoneWeight">Appraiser Stone Weight (g, optional)</label>
-              <input id="appraiserStoneWeight" type="number" min="0.0001" step="0.0001" placeholder="Optional appraiser estimate" />
-            </div>
-          </div>
+          <div class="heroSub" id="classificationFocusStatus" style="margin-top: 10px;">Focus gate: waiting for the Processing ROI.</div>
           <div class="heroValue" id="classificationValue" style="margin-top: 14px;">--</div>
           <div class="heroSub" id="classificationSub">Capture or load the main jewellery image, then run jewel type.
           </div>
@@ -1055,9 +1048,32 @@
           </table>
         </div>
 
+        <div id="weightPanel" class="card stageCard hidden">
+          <div class="stageHead">
+            <h3>STAGE 2 JEWEL WEIGHT EXTRACTION</h3>
+          </div>
+          <div class="heroSub" style="font-weight: 800; color: var(--accent);">
+            Place the weight scale inside the guide box region.
+          </div>
+          <div class="field" style="margin-top: 12px;">
+            <label for="appraiserStoneWeight">Appraiser Stone Weight (g, optional)</label>
+            <input id="appraiserStoneWeight" type="number" min="0.0001" step="0.0001" placeholder="Optional appraiser estimate" />
+          </div>
+          <div class="buttonRow" style="margin-top: 12px;">
+            <button id="btnWeightPrev" class="btn secondary">Previous</button>
+            <button id="btnCaptureWeight" class="btn">Capture Weight</button>
+            <button id="btnRetakeWeight" class="btn secondary" disabled>Retake</button>
+            <button id="btnSkipWeight" class="btn secondary">Skip Stage</button>
+            <button id="btnWeightNext" class="btn gold" disabled>Next</button>
+          </div>
+          <div class="heroValue" id="weightValue" style="margin-top: 14px;">--</div>
+          <div class="heroSub" id="weightSub">The Weight Scale ROI is a placement guide; OCR reads the Processing ROI.</div>
+          <div id="weightArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
+        </div>
+
         <div id="dimensionPanel" class="card stageCard hidden">
           <div class="stageHead">
-            <h3>STAGE 2 DIMENSION</h3>
+            <h3>STAGE 3 DIMENSION</h3>
           </div>
 
           <div class="twoCol" style="margin-top: 12px;">
@@ -1108,13 +1124,22 @@
           </div>
 
           <div class="heroValue" id="dimensionValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="dimensionSub">Run OD/ID measurement after jewel type is confirmed.</div>
+          <div class="heroSub" id="dimensionSub">Run OD/ID measurement after actual weight is captured.</div>
           <div id="dimensionArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
         </div>
 
         <div id="sidePanel" class="card stageCard hidden">
           <div class="stageHead">
-            <h3>STAGE 3 STONE DETECTION</h3>
+            <h3>STAGE 4 STONE DETECTION</h3>
+          </div>
+
+          <div class="field" style="margin-top: 12px;">
+            <label for="sideStoneSettingProfile">Stone Setting Type</label>
+            <select id="sideStoneSettingProfile">
+              <option value="front_only_shallow">Half cut / front-only stones</option>
+              <option value="open_back_faceted">Full cut / open-back stones</option>
+              <option value="unknown">Unknown — visible area only</option>
+            </select>
           </div>
 
           <div class="buttonRow" style="margin-top: 12px;">
@@ -1149,7 +1174,7 @@
 
         <div id="segmentationPanel" class="card stageCard hidden">
           <div class="stageHead">
-            <h3>STAGE 2 JEWELLERY ANALYSIS</h3>
+            <h3>STAGE 3 JEWELLERY ANALYSIS</h3>
           </div>
 
           <div class="buttonRow" style="margin-top: 12px;">
@@ -1170,13 +1195,22 @@
           </div>
 
           <div class="heroValue" id="segmentationValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="segmentationSub">Start jewellery analysis after jewel type is confirmed.</div>
+          <div class="heroSub" id="segmentationSub">Start jewellery analysis after actual weight is captured.</div>
           <div id="segmentationArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
         </div>
 
         <div id="mainStonePanel" class="card stageCard hidden">
           <div class="stageHead">
-            <h3 id="mainStoneTitle">STAGE 2 STONE DETECTION</h3>
+            <h3 id="mainStoneTitle">STAGE 3 STONE DETECTION</h3>
+          </div>
+
+          <div class="field" style="margin-top: 12px;">
+            <label for="mainStoneSettingProfile">Stone Setting Type</label>
+            <select id="mainStoneSettingProfile">
+              <option value="front_only_shallow">Half cut / front-only stones</option>
+              <option value="open_back_faceted">Full cut / open-back stones</option>
+              <option value="unknown">Unknown — visible area only</option>
+            </select>
           </div>
 
           <div class="buttonRow" style="margin-top: 12px;">
@@ -1206,7 +1240,7 @@
 
         <div id="purityPanel" class="card stageCard hidden">
           <div class="stageHead">
-            <h3 id="purityTitle">STAGE 3 ACID TEST</h3>
+            <h3 id="purityTitle">STAGE 4 ACID TEST</h3>
           </div>
 
           <div class="grid twoCols" style="margin-top: 12px;">
@@ -1218,6 +1252,9 @@
               <label for="purityAudioStatus">Microphone Status</label>
               <div id="purityAudioStatus" class="heroSub">Waiting for microphone selection.</div>
             </div>
+          </div>
+          <div id="purityMicWarning" class="hidden" style="margin-top: 10px; padding: 10px 12px; border: 1px solid #ef4444; border-radius: 8px; background: #fef2f2; color: #b91c1c; font-weight: 800;">
+            Audio sensor not connected.
           </div>
 
           <div class="buttonRow" style="margin-top: 12px;">
@@ -1542,10 +1579,13 @@
       fileSideImage: document.getElementById("fileSideImage"),
       btnCaptureFrame: document.getElementById("btnCaptureFrame"),
       btnCaptureMainImage: document.getElementById("btnCaptureMainImage"),
+      classificationFocusStatus: document.getElementById("classificationFocusStatus"),
       btnUseLiveNow: document.getElementById("btnUseLiveNow"),
       btnResetUi: document.getElementById("btnResetUi"),
       btnDrawProcessingRoi: document.getElementById("btnDrawProcessingRoi"),
       btnDrawArucoRoi: document.getElementById("btnDrawArucoRoi"),
+      btnDrawWeightRoi: document.getElementById("btnDrawWeightRoi"),
+      btnClearWeightRoi: document.getElementById("btnClearWeightRoi"),
       btnDrawScaleLine: document.getElementById("btnDrawScaleLine"),
       btnDrawPendantBox: document.getElementById("btnDrawPendantBox"),
       btnDrawTasselBox: document.getElementById("btnDrawTasselBox"),
@@ -1601,7 +1641,6 @@
       workflowSource: document.getElementById("workflowSource"),
       workflowSize: document.getElementById("workflowSize"),
       btnRunClassification: document.getElementById("btnRunClassification"),
-      jewelWeight: document.getElementById("jewelWeight"),
       appraiserStoneWeight: document.getElementById("appraiserStoneWeight"),
       classificationValue: document.getElementById("classificationValue"),
       classificationSub: document.getElementById("classificationSub"),
@@ -1615,6 +1654,15 @@
       classificationTable: document.getElementById("classificationTable"),
       classificationTableBody: document.getElementById("classificationTableBody"),
       classificationPanel: document.getElementById("classificationPanel"),
+      weightPanel: document.getElementById("weightPanel"),
+      btnCaptureWeight: document.getElementById("btnCaptureWeight"),
+      btnRetakeWeight: document.getElementById("btnRetakeWeight"),
+      btnSkipWeight: document.getElementById("btnSkipWeight"),
+      btnWeightPrev: document.getElementById("btnWeightPrev"),
+      btnWeightNext: document.getElementById("btnWeightNext"),
+      weightValue: document.getElementById("weightValue"),
+      weightSub: document.getElementById("weightSub"),
+      weightArtifacts: document.getElementById("weightArtifacts"),
       dimensionPanel: document.getElementById("dimensionPanel"),
       calibrationMethod: document.getElementById("calibrationMethod"),
       arucoDict: document.getElementById("arucoDict"),
@@ -1634,6 +1682,7 @@
       dimensionSub: document.getElementById("dimensionSub"),
       dimensionArtifacts: document.getElementById("dimensionArtifacts"),
       sidePanel: document.getElementById("sidePanel"),
+      sideStoneSettingProfile: document.getElementById("sideStoneSettingProfile"),
       btnCaptureSideLive: document.getElementById("btnCaptureSideLive"),
       btnRunSidePipeline: document.getElementById("btnRunSidePipeline"),
       btnShowFinalFromSide: document.getElementById("btnShowFinalFromSide"),
@@ -1661,6 +1710,7 @@
       mainStonePanel: document.getElementById("mainStonePanel"),
       mainStoneTitle: document.getElementById("mainStoneTitle"),
       mainStoneTag: document.getElementById("mainStoneTag"),
+      mainStoneSettingProfile: document.getElementById("mainStoneSettingProfile"),
       btnRunMainStoneDetection: document.getElementById("btnRunMainStoneDetection"),
       btnShowFinalFromMain: document.getElementById("btnShowFinalFromMain"),
       btnMainStonePrev: document.getElementById("btnMainStonePrev"),
@@ -1675,6 +1725,7 @@
       purityTag: document.getElementById("purityTag"),
       purityMicSelect: document.getElementById("purityMicSelect"),
       purityAudioStatus: document.getElementById("purityAudioStatus"),
+      purityMicWarning: document.getElementById("purityMicWarning"),
       purityAudioLive: document.getElementById("purityAudioLive"),
       btnRefreshPurityAudio: document.getElementById("btnRefreshPurityAudio"),
       btnStartPurityTest: document.getElementById("btnStartPurityTest"),
@@ -1750,6 +1801,10 @@
     };
 
     let backendState = null;
+    let cameraFocusState = {
+      ready: false,
+      status: "Draw the Processing ROI before capture.",
+    };
     let animationHandle = 0;
     let dragging = false;
     let liveFrameInterval = 0;
@@ -1757,7 +1812,9 @@
     let audioDevicePollInterval = 0;
     let stateMutationVersion = 0;
     let stateMutationsInFlight = 0;
+    let initialFlowRestored = false;
     let overrideActive = false;
+    let pendingStoneSettingProfile = null;
     let purityMicSelectActive = false;
     let ttsOutputSelectActive = false;
     let stoneSettingsSaveTimer = 0;
@@ -1786,6 +1843,7 @@
       rois: {
         processing: null,
         aruco: null,
+        weight: null,
       },
       cameraRois: {
         processing: null,
@@ -1804,6 +1862,7 @@
       pledgeSetupComplete: false,
       classificationConfirmed: false,
       classificationNext: false,
+      weightNext: false,
       dimensionNext: false,
       segmentationNext: false,
       finalVisible: false,
@@ -1812,10 +1871,10 @@
     };
 
     const stageOrder = {
-      dimension: ["classification", "dimension", "side", "purity", "final"],
-      segmentation: ["classification", "segmentation", "mainStone", "purity", "final"],
-      direct_stone: ["classification", "mainStone", "purity", "final"],
-      none: ["classification", "final"],
+      dimension: ["classification", "weight", "dimension", "side", "purity", "final"],
+      segmentation: ["classification", "weight", "segmentation", "mainStone", "purity", "final"],
+      direct_stone: ["classification", "weight", "mainStone", "purity", "final"],
+      none: ["classification", "weight", "final"],
     };
 
     function getCurrentBranch() {
@@ -1847,6 +1906,7 @@
     function stageDisplayName(stageKey) {
       return {
         classification: "Jewel Type",
+        weight: "Jewel Weight Extraction",
         dimension: "Dimension",
         side: "Stone Detection",
         segmentation: "Jewellery Analysis",
@@ -1857,6 +1917,7 @@
     }
 
     function skipKeyForUiStage(stageKey) {
+      if (stageKey === "weight") return "weight_extraction";
       if (stageKey === "dimension") return "dimension";
       if (stageKey === "side") return "side_stone";
       if (stageKey === "segmentation") return "jewellery_analysis";
@@ -1896,15 +1957,53 @@
     }
 
     function resetFlow() {
+      initialFlowRestored = false;
       flow.pledgeSetupComplete = false;
       flow.classificationConfirmed = false;
       flow.classificationNext = false;
+      flow.weightNext = false;
       flow.dimensionNext = false;
       flow.segmentationNext = false;
       flow.finalVisible = false;
       flow.packetSealingOpen = false;
       flow.currentStage = "classification";
       overrideActive = false;
+      pendingStoneSettingProfile = null;
+    }
+
+    function restorePledgeClosureFromBackend() {
+      if (
+        !backendState ||
+        !backendState.pledge_complete ||
+        !(backendState.final && backendState.final.ready)
+      ) {
+        return false;
+      }
+
+      flow.pledgeSetupComplete = Boolean(backendState.jewel_count_saved);
+      flow.classificationConfirmed = Boolean(
+        backendState.classification && backendState.classification.confirmed
+      );
+      flow.classificationNext = flow.classificationConfirmed;
+      flow.weightNext = Boolean(
+        (backendState.weight_extraction || {}).success ||
+        (backendState.stage_skips || {}).weight_extraction
+      );
+      flow.dimensionNext = Boolean(
+        (backendState.dimension || {}).done ||
+        (backendState.stage_skips || {}).dimension
+      );
+      flow.segmentationNext = Boolean(
+        (backendState.segmentation || {}).done ||
+        (backendState.stage_skips || {}).jewellery_analysis
+      );
+      flow.finalVisible = true;
+      flow.packetSealingOpen = Boolean(
+        backendState.jewel_count_verification ||
+        (backendState.packet_sealing && backendState.packet_sealing.status !== "idle")
+      );
+      flow.currentStage = "final";
+      return true;
     }
 
     function setStatus(text) {
@@ -1955,6 +2054,11 @@
     function activeImageForCanvas() {
       if (isSegmentationContext() && previewState.segmentationImage.src) {
         return { type: "image", image: previewState.segmentationImage, captured: false };
+      }
+      if (flow.currentStage === "weight" || previewState.context === "weight") {
+        if (liveImageReady()) {
+          return { type: "image", image: refs.hiddenLiveImage, captured: false };
+        }
       }
       if (flow.currentStage === "purity" || (backendState && backendState.purity_test && backendState.purity_test.running)) {
         if (liveImageReady()) {
@@ -2231,6 +2335,8 @@
     function updateCapturedSetupControls() {
       const captured = Boolean(previewState.main.dataUrl);
       const uploaded = captured && previewState.main.kind === "upload";
+      const focusReady = Boolean(cameraFocusState && cameraFocusState.ready);
+      const pendingCameraSource = captured && !uploaded && previewState.main.dirty;
       const uploadedRoisReady = !uploaded || Boolean(
         previewState.rois.processing && previewState.rois.aruco
       );
@@ -2239,12 +2345,16 @@
       refs.stoneBrightness.disabled = !captured;
       refs.btnSetStoneBackground.disabled = !captured;
       refs.btnLearnStoneColor.disabled = !captured;
-      refs.btnCaptureMainImage.disabled = !pledgeCountSaved();
+      refs.btnCaptureMainImage.disabled = !pledgeCountSaved() || !focusReady;
       refs.btnCaptureMainImage.textContent = uploaded ? "Use Camera Image Instead" : "Capture Image";
       refs.btnRunClassification.disabled = (
         (!captured && !(backendState && backendState.source && backendState.source.working_image)) ||
-        !uploadedRoisReady
+        !uploadedRoisReady ||
+        (pendingCameraSource && !focusReady)
       );
+      refs.classificationFocusStatus.textContent = uploaded
+        ? "Focus gate: uploaded image does not require camera autofocus."
+        : `Focus gate: ${(cameraFocusState && cameraFocusState.status) || "Waiting for camera focus."}`;
     }
 
     function stonePreviewFilter() {
@@ -2431,6 +2541,8 @@
         setDrawStatus("Drag on the preview to set the Processing ROI.");
       } else if (mode === "aruco") {
         setDrawStatus("Drag on the preview to set the ArUco ROI.");
+      } else if (mode === "weight") {
+        setDrawStatus("Drag a box around the complete weight-scale LCD area.");
       } else if (mode === "line") {
         setDrawStatus("Click two points on the preview to create the calibration line.");
       } else if (mode === "background") {
@@ -2474,6 +2586,9 @@
         previewState.rois.aruco = null;
         shouldMarkSourceDirty = true;
         shouldPersistRois = true;
+      } else if (previewState.drawMode === "weight") {
+        previewState.rois.weight = null;
+        persistWeightRoi();
       } else if (previewState.drawMode === "line") {
         previewState.linePoints = [];
         shouldMarkSourceDirty = true;
@@ -2522,6 +2637,14 @@
       }
     }
 
+    async function persistWeightRoi() {
+      try {
+        await postJson("/api/rois", { weight_roi: previewState.rois.weight });
+      } catch (error) {
+        console.error("Failed to persist Weight Scale ROI:", error);
+      }
+    }
+
     async function postJson(url, payload = {}) {
       try {
         stateMutationVersion += 1;
@@ -2566,6 +2689,7 @@
     }
 
     const STAGE_ARRIVAL_PHRASES = {
+      weight: "Jewel Weight Extraction stage. Place the weight scale inside the box region and capture weight.",
       dimension: "Dimension stage. Click Start Measurement.",
       side: "Stone Detection stage. Click Start Stone Analysis.",
       segmentation: "Jewellery Analysis stage. Click Start Jewellery Analysis.",
@@ -2585,6 +2709,7 @@
       if (data.persistent_rois) {
         previewState.rois.processing = data.persistent_rois.processing_roi;
         previewState.rois.aruco = data.persistent_rois.aruco_roi;
+        previewState.rois.weight = data.persistent_rois.weight_roi;
         updateRoiSummaryText();
       }
       applyStoneSettings(data.stone_settings || {
@@ -2720,6 +2845,10 @@
         refs.ttsOutputSelect.value = "__AUTO__";
       }
       refs.ttsOutputStatus.textContent = ttsState.status || "Preferred USB speaker not connected.";
+
+      const audioSensor = data.audio_sensor || {};
+      refs.purityMicWarning.textContent = audioSensor.status || "Audio sensor not connected.";
+      refs.purityMicWarning.classList.toggle("hidden", Boolean(audioSensor.connected));
     }
 
     async function pollBackendState() {
@@ -2730,6 +2859,10 @@
         const data = await response.json();
         if (data.ok && stateMutationsInFlight === 0 && pollVersion === stateMutationVersion) {
           backendState = data.state;
+          cameraFocusState = data.camera_focus || cameraFocusState;
+          if (!initialFlowRestored) {
+            initialFlowRestored = restorePledgeClosureFromBackend();
+          }
           renderServerState();
         }
       } catch (error) {
@@ -3008,21 +3141,10 @@
           setDrawMode("aruco");
           return;
         }
-        const jewelWeight = Number(refs.jewelWeight.value);
-        if (!Number.isFinite(jewelWeight) || jewelWeight <= 0) {
-          setStatusWithIndicator("Enter the current jewel weight in grams before running jewel type.", "warning");
-          refs.jewelWeight.focus();
-          return;
-        }
         const appraiserStoneWeightText = refs.appraiserStoneWeight.value.trim();
         const appraiserStoneWeight = appraiserStoneWeightText === "" ? null : Number(appraiserStoneWeightText);
         if (appraiserStoneWeight !== null && (!Number.isFinite(appraiserStoneWeight) || appraiserStoneWeight <= 0)) {
           setStatusWithIndicator("Enter a valid appraiser stone weight or leave it blank.", "warning");
-          refs.appraiserStoneWeight.focus();
-          return;
-        }
-        if (appraiserStoneWeight !== null && appraiserStoneWeight > jewelWeight) {
-          setStatusWithIndicator("Appraiser stone weight cannot exceed the current jewel weight.", "warning");
           refs.appraiserStoneWeight.focus();
           return;
         }
@@ -3033,12 +3155,12 @@
         showLoading("Running jewellery jewel type...");
         setStatus("Running jewellery jewel type...");
         const data = await postJson("/api/classify", {
-          jewel_weight_g: jewelWeight,
           appraiser_stone_weight_g: appraiserStoneWeight,
         });
         backendState = data.state;
         flow.classificationConfirmed = false;
         flow.classificationNext = false;
+        flow.weightNext = false;
         flow.dimensionNext = false;
         flow.segmentationNext = false;
         flow.finalVisible = false;
@@ -3058,19 +3180,53 @@
         backendState = data.state;
         flow.classificationConfirmed = true;
         flow.classificationNext = false;
+        flow.weightNext = false;
         flow.dimensionNext = false;
         flow.segmentationNext = false;
         flow.finalVisible = false;
         overrideActive = false;
-        // If confirmed as "Not Gold Jewelry", go directly to final result
-        if (label === "Not Gold Jewelry") {
-          flow.currentStage = "final";
-        } else {
-          refs.btnClassificationNext.disabled = false;
-        }
+        refs.btnClassificationNext.disabled = false;
         renderServerState();
       } catch (error) {
         setStatus(error.message);
+      }
+    }
+
+    async function captureWeight() {
+      refs.btnCaptureWeight.disabled = true;
+      refs.btnRetakeWeight.disabled = true;
+      try {
+        if (!previewState.rois.weight) {
+          previewState.context = "weight";
+          setDrawMode("weight");
+          setStatusWithIndicator("Draw the Weight Scale ROI around the LCD before capturing weight.", "warning");
+          return;
+        }
+        const appraiserText = refs.appraiserStoneWeight.value.trim();
+        const appraiserWeight = appraiserText === "" ? null : Number(appraiserText);
+        if (appraiserWeight !== null && (!Number.isFinite(appraiserWeight) || appraiserWeight <= 0)) {
+          setStatusWithIndicator("Enter a valid appraiser stone weight or leave it blank.", "warning");
+          return;
+        }
+        showLoading("Capturing and reading the weight scale...");
+        setStatus("Capturing and reading the weight scale...");
+        const data = await postJson("/api/weight/capture", {
+          appraiser_stone_weight_g: appraiserWeight,
+        });
+        backendState = data.state;
+        const result = backendState.weight_extraction || {};
+        hideLoading();
+        setStatusWithIndicator(result.message || "Weight capture completed.", result.success ? "success" : "warning");
+        renderServerState();
+      } catch (error) {
+        hideLoading();
+        setStatusWithIndicator(error.message, "error");
+      } finally {
+        const weightExtraction = (backendState && backendState.weight_extraction) || {};
+        const weightSkipped = stageSkipped("weight_extraction");
+        refs.btnCaptureWeight.disabled = Boolean(weightExtraction.captured_at) && !weightSkipped;
+        refs.btnRetakeWeight.disabled = !weightExtraction.captured_at || weightSkipped;
+        refs.btnSkipWeight.disabled = Boolean(weightExtraction.success) || weightSkipped;
       }
     }
 
@@ -3181,8 +3337,10 @@
         showLoading("Running main image stone detection...");
         setStatus("Running main image stone detection...");
         const data = await postJson("/api/stone-detection/main", {
+          stone_setting_profile: refs.mainStoneSettingProfile.value,
         });
         backendState = data.state;
+        pendingStoneSettingProfile = null;
         refs.btnShowFinalFromMain.disabled = false;
         hideLoading();
         setStatusWithIndicator("Stone detection completed successfully", "success");
@@ -3202,8 +3360,10 @@
         showLoading("Running stone analysis...");
         setStatus("Running stone analysis...");
         const data = await postJson("/api/side-stones/run", {
+          stone_setting_profile: refs.sideStoneSettingProfile.value,
         });
         backendState = data.state;
+        pendingStoneSettingProfile = null;
         refs.btnShowFinalFromSide.disabled = false;
         hideLoading();
         setStatusWithIndicator("Side image processing completed", "success");
@@ -3285,13 +3445,17 @@
 
     async function stopPacketSealing() {
       try {
-        setStatus("Stopping and compressing packet sealing video...");
+        setStatus("Stopping packet sealing recording...");
         const data = await postJson("/api/packet-sealing/stop", {});
         backendState = data.state;
         const packet = backendState && backendState.packet_sealing;
         setStatusWithIndicator(
-          packet && packet.video ? "Packet sealing video saved" : (packet && packet.error) || "Packet sealing stopped",
-          packet && packet.video ? "success" : "warning"
+          packet && packet.video
+            ? "Packet sealing video saved"
+            : packet && packet.compressing
+              ? "Video compression is running in the background"
+              : (packet && packet.error) || "Packet sealing stopped",
+          packet && (packet.video || packet.compressing) ? "success" : "warning"
         );
         renderServerState();
       } catch (error) {
@@ -3351,7 +3515,6 @@
         previewState.backgroundPoint = null;
         previewState.learnedStonePoint = null;
         refs.previewModePill.textContent = "Preview: RPi Live Camera";
-        refs.jewelWeight.value = "";
         refs.appraiserStoneWeight.value = "";
         resetFlow();
         flow.pledgeSetupComplete = true;
@@ -3462,6 +3625,15 @@
       refs.classificationTableBody.innerHTML = "";
       if (!scores || !scores.length) {
         refs.classificationTable.classList.add("hidden");
+
+        refs.weightValue.textContent = "--";
+        refs.weightSub.textContent = "The Weight Scale ROI is a placement guide; OCR reads the Processing ROI.";
+        refs.weightArtifacts.innerHTML = "";
+        refs.btnCaptureWeight.textContent = "Capture Weight";
+        refs.btnCaptureWeight.disabled = false;
+        refs.btnRetakeWeight.disabled = true;
+        refs.btnSkipWeight.disabled = false;
+        refs.btnWeightNext.disabled = true;
         return;
       }
       refs.classificationTable.classList.remove("hidden");
@@ -3489,13 +3661,14 @@
     }
 
     function stoneWeightText(weight) {
+      if (weight && weight.weight_estimate_suppressed) {
+        const area = Number(weight.visible_stone_area_mm2);
+        const areaText = Number.isFinite(area) ? ` Visible stone area: ${area.toFixed(2)} mm².` : "";
+        return `Stone weight not estimated for an unknown setting type.${areaText}`;
+      }
       if (!weight || !weight.success) {
         return "Metric weight estimate unavailable; check AprilTag calibration.";
       }
-      const averageG = Number(
-        weight.estimated_total_average_g ??
-        (Number(weight.estimated_total_average_ct || 0) * 0.2)
-      );
       const minimumG = Number(
         weight.estimated_total_minimum_g ??
         (Number(weight.estimated_total_minimum_ct || 0) * 0.2)
@@ -3504,17 +3677,52 @@
         weight.estimated_total_maximum_g ??
         (Number(weight.estimated_total_maximum_ct || 0) * 0.2)
       );
-      let text = `Estimated stone weight: ${averageG.toFixed(4)} g (${minimumG.toFixed(4)}-${maximumG.toFixed(4)} g).`;
-      return text;
-    }
-
-    function stoneWeightHero(weight) {
-      if (!weight || !weight.success) return "Estimate unavailable";
-      const grams = Number(
+      const typicalG = Number(
+        weight.estimated_total_typical_g ??
         weight.estimated_total_average_g ??
         (Number(weight.estimated_total_average_ct || 0) * 0.2)
       );
-      return `Estimated Stone Weight: ${grams.toFixed(4)} g`;
+      const notes = [];
+      if (weight.calibration_applied) {
+        notes.push("OCR-weight sanity bound applied");
+      }
+      const noteText = notes.length ? ` ${notes.join(". ")}.` : "";
+      const confidence = weight.weight_confidence || "Low";
+      return `Estimated stone weight: ${formatStoneWeight(minimumG)}-${formatStoneWeight(maximumG)} g; typical ${formatStoneWeight(typicalG)} g; confidence ${confidence}.${noteText}`;
+    }
+
+    function formatStoneWeight(value) {
+      const number = Number(value || 0);
+      return number < 0.1 ? number.toFixed(2) : number.toFixed(1);
+    }
+
+    function displayStoneColor(color) {
+      return color === "Multicolor/Color-changing"
+        ? "Multicolor / Mixed Appearance"
+        : color;
+    }
+
+    function stoneSurfaceStatus(result) {
+      if (!result) return "--";
+      return result.stone_surface_status ||
+        (result.stone_surface_risk && result.stone_surface_risk.status) ||
+        (Number(result.stone_percentage || 0) > 40
+          ? "HIGH STONE AREA — RISK"
+          : Number(result.stone_percentage || 0) > 0
+            ? "LOW STONE AREA — NORMAL"
+            : "NO SIGNIFICANT STONES DETECTED");
+    }
+
+    function stoneAnalysisText(result) {
+      const coverage = Number(
+        result.stone_surface_coverage_percent ?? result.stone_percentage ?? 0
+      );
+      const instances = Number(result.stone_instance_count || 0);
+      const weightText = stoneWeightText(result.weight_estimate || {});
+      const reflectionText = (result.reflection_risk || result.reflection_flagged)
+        ? ` ${result.reflection_summary || "Dense reflection is additional transparent-stone evidence."}`
+        : "";
+      return `Visible Stone Coverage: ${coverage.toFixed(1)}%. Detected Stone Regions: ${instances}. ${weightText}${reflectionText}`;
     }
 
     function stageSkipped(stageKey) {
@@ -3557,7 +3765,7 @@
       const pledgeComplete = Boolean(backendState && backendState.pledge_complete);
       const verification = backendState && backendState.jewel_count_verification;
       const packet = (backendState && backendState.packet_sealing) || {};
-      const showClosure = pledgeComplete || Boolean(verification) || Boolean(packet.video) || Boolean(packet.recording);
+      const showClosure = pledgeComplete || Boolean(verification) || Boolean(packet.video) || Boolean(packet.recording) || Boolean(packet.compressing);
       const closureComplete = countVerificationDone() && packetSealingDone();
 
       refs.pledgeClosurePanel.classList.toggle("hidden", !showClosure);
@@ -3593,10 +3801,10 @@
       }
 
       refs.btnOpenPacketSealing.disabled = !countVerificationDone();
-      refs.packetSealingControls.classList.toggle("hidden", !flow.packetSealingOpen && !packet.recording);
-      refs.btnStartPacketSealing.disabled = !countVerificationDone() || Boolean(packet.recording);
+      refs.packetSealingControls.classList.toggle("hidden", !flow.packetSealingOpen && !packet.recording && !packet.compressing);
+      refs.btnStartPacketSealing.disabled = !countVerificationDone() || Boolean(packet.recording) || Boolean(packet.compressing);
       refs.btnStopPacketSealing.disabled = !packet.recording;
-      refs.btnSkipPacketSealing.disabled = !countVerificationDone() || packetSealingDone() || Boolean(packet.recording);
+      refs.btnSkipPacketSealing.disabled = !countVerificationDone() || packetSealingDone() || Boolean(packet.recording) || Boolean(packet.compressing);
       refs.btnResetUi.disabled = Boolean(packet.recording);
       const striping = packet.striping || {};
       const stripingStatus = String(striping.status || "idle");
@@ -3610,6 +3818,9 @@
         refs.packetSealingSub.textContent = packet.started_at
           ? `Started at ${packet.started_at}. Stop after the packet is sealed.`
           : "Recording packet sealing. Stop after the packet is sealed.";
+      } else if (packet.compressing) {
+        refs.packetSealingValue.textContent = "Compressing in background";
+        refs.packetSealingSub.textContent = "You can continue using the application. The report and video download will appear when compression finishes.";
       } else if (packet.skipped) {
         refs.packetSealingValue.textContent = "Skipped";
         refs.packetSealingSub.textContent = `Packet sealing video skipped${packet.skipped_at ? ` at ${packet.skipped_at}` : ""}.`;
@@ -3673,11 +3884,11 @@
         refs.classificationTable.classList.add("hidden");
 
         refs.dimensionValue.textContent = "--";
-        refs.dimensionSub.textContent = "Run OD/ID measurement after jewel type is confirmed.";
+        refs.dimensionSub.textContent = "Run OD/ID measurement after actual weight is captured.";
         refs.dimensionArtifacts.innerHTML = "";
 
         refs.segmentationValue.textContent = "--";
-        refs.segmentationSub.textContent = "Start jewellery analysis after jewel type is confirmed.";
+        refs.segmentationSub.textContent = "Start jewellery analysis after actual weight is captured.";
         refs.segmentationArtifacts.innerHTML = "";
 
         refs.mainStoneValue.textContent = "--";
@@ -3691,6 +3902,7 @@
         refs.purityValue.textContent = "--";
         refs.puritySub.textContent = "Start or skip the acid test after stone detection completes.";
         refs.purityAudioStatus.textContent = "Waiting for microphone selection.";
+        refs.purityMicWarning.classList.add("hidden");
         refs.purityAudioLive.classList.add("hidden");
         renderPurityAudio({});
         refs.purityProgress.innerHTML = "";
@@ -3721,25 +3933,29 @@
         ? {}
         : (backendState.classification || {});
       const weightDetails = backendState.weight_details || {};
+      const weightExtraction = backendState.weight_extraction || {};
       const dimension = backendState.dimension || {};
       const segmentation = backendState.segmentation || {};
-      const mainStone = (backendState.stone_detection || {}).main;
-      const sideStone = (backendState.stone_detection || {}).side;
+      const stoneDetection = backendState.stone_detection || {};
+      const settingProfile = pendingStoneSettingProfile || stoneDetection.setting_profile || "front_only_shallow";
+      refs.mainStoneSettingProfile.value = settingProfile;
+      refs.sideStoneSettingProfile.value = settingProfile;
+      const mainStone = stoneDetection.main;
+      const sideStone = stoneDetection.side;
       const purity = backendState.purity_test || {};
       const finalState = backendState.final || {};
 
-      if (weightDetails.jewel_weight_g != null) {
-        refs.jewelWeight.value = weightDetails.jewel_weight_g;
-      }
       if (weightDetails.appraiser_stone_weight_g != null) {
         refs.appraiserStoneWeight.value = weightDetails.appraiser_stone_weight_g;
+      } else if (weightExtraction.captured_at) {
+        refs.appraiserStoneWeight.value = "";
       }
-      refs.jewelWeight.disabled = Boolean(classification.predicted_label);
-      refs.appraiserStoneWeight.disabled = Boolean(classification.predicted_label);
+      refs.appraiserStoneWeight.disabled = Boolean(weightExtraction.success);
 
       flow.classificationConfirmed = Boolean(classification.confirmed);
       if (!flow.classificationConfirmed) {
         flow.classificationNext = false;
+        flow.weightNext = false;
         flow.dimensionNext = false;
         flow.segmentationNext = false;
         flow.currentStage = "classification";
@@ -3778,7 +3994,7 @@
       refs.classificationValue.textContent = notGold ? "⛔ Not Gold Jewelry" : (displayedClassification || "--");
       if (notGold) {
         if (classification.confirmed) {
-          refs.classificationSub.textContent = "Confirmed as Not Gold Jewelry. This item is not counted; capture another item for the same jewel number.";
+          refs.classificationSub.textContent = "Confirmed as Not Gold Jewelry. Capture its actual weight next; this item will not be counted.";
           refs.classificationActions.classList.remove("hidden");
           refs.btnClassYes.classList.add("hidden");
           refs.btnClassNo.classList.add("hidden");
@@ -3819,6 +4035,27 @@
         refs.classificationSub.textContent = `Confirmed jewel type: ${classification.confirmed_label}`;
       }
 
+      const weightSkipped = stageSkipped("weight_extraction");
+      if (weightSkipped) {
+        refs.weightValue.textContent = "SKIPPED";
+        refs.weightSub.textContent = weightExtraction.message || "Jewel weight extraction skipped.";
+      } else if (weightExtraction.success && weightDetails.jewel_weight_g != null) {
+        refs.weightValue.textContent = `${Number(weightDetails.jewel_weight_g).toFixed(2)} g`;
+        refs.weightSub.textContent = weightExtraction.message || "Actual weight captured from the scale.";
+      } else {
+        refs.weightValue.textContent = weightExtraction.captured_at ? "READ FAILED" : "--";
+        refs.weightSub.textContent = weightExtraction.message || "The Weight Scale ROI is a placement guide; OCR reads the Processing ROI.";
+      }
+      refs.btnCaptureWeight.textContent = "Capture Weight";
+      refs.btnCaptureWeight.disabled = Boolean(weightExtraction.captured_at) && !weightSkipped;
+      refs.btnRetakeWeight.disabled = !weightExtraction.captured_at || weightSkipped;
+      refs.btnSkipWeight.disabled = Boolean(weightExtraction.success) || weightSkipped;
+      refs.btnWeightNext.disabled = !weightExtraction.success && !weightSkipped;
+      renderArtifactStrip(refs.weightArtifacts, [
+        weightExtraction.captured_image,
+        weightExtraction.lcd_image,
+      ]);
+
       if (dimension.done) {
         if (dimension.od_mm !== null && dimension.od_mm !== undefined) {
           refs.dimensionValue.textContent = `OD ${dimension.od_mm.toFixed(2)} mm | ID ${dimension.id_mm.toFixed(2)} mm`;
@@ -3830,7 +4067,7 @@
         renderArtifactStrip(refs.dimensionArtifacts, [dimension.result_image, dimension.measurement_input]);
       } else {
         refs.dimensionValue.textContent = "--";
-        refs.dimensionSub.textContent = "Run OD/ID measurement after jewel type is confirmed.";
+        refs.dimensionSub.textContent = "Run OD/ID measurement after actual weight is captured.";
         refs.dimensionArtifacts.innerHTML = "";
       }
 
@@ -3900,19 +4137,8 @@
 
       if (mainStone) {
         const mainStats = mainStone.stone_area_statistics;
-        const mainWeight = mainStone.weight_estimate || {};
-        const mainWeightText = stoneWeightText(mainWeight);
-        refs.mainStoneValue.textContent = stoneWeightHero(mainWeight);
-        if (mainStats && mainStats.success) {
-          refs.mainStoneSub.textContent = (mainStone.reflection_risk || mainStone.reflection_flagged)
-            ? `RISK JEWEL — ${mainStone.reflection_summary}`
-            : "Stone analysis completed.";
-        } else {
-          refs.mainStoneSub.textContent = (mainStone.reflection_risk || mainStone.reflection_flagged)
-            ? `RISK JEWEL — ${mainStone.reflection_summary}`
-            : "Stone detection completed. No dense reflection risk.";
-        }
-        refs.mainStoneSub.textContent = `${refs.mainStoneSub.textContent} ${mainWeightText} ${stoneSuperResolutionText(mainStone)}`;
+        refs.mainStoneValue.textContent = stoneSurfaceStatus(mainStone);
+        refs.mainStoneSub.textContent = `${stoneAnalysisText(mainStone)} ${stoneSuperResolutionText(mainStone)}`;
         renderArtifactStrip(refs.mainStoneArtifacts, [
           source.working_image || source.original_image,
           mainStone.gallery,
@@ -3931,7 +4157,7 @@
                 : [];
               const row = document.createElement("tr");
               row.innerHTML = `
-                <td>${color}${learnedLabels.length ? `<div class="tiny">Learned: ${learnedLabels.map(escapeHtml).join(", ")}</div>` : ""}</td>
+                <td>${displayStoneColor(color)}${learnedLabels.length ? `<div class="tiny">Learned: ${learnedLabels.map(escapeHtml).join(", ")}</div>` : ""}</td>
                 <td>Detected</td>
               `;
               refs.mainStoneTableBody.appendChild(row);
@@ -3941,7 +4167,7 @@
           mainStone.summary_entries.forEach(entry => {
             const row = document.createElement("tr");
               row.innerHTML = `
-                <td>${entry.color}${Array.isArray(entry.learned_labels) && entry.learned_labels.length ? `<div class="tiny">Learned: ${entry.learned_labels.map(escapeHtml).join(", ")}</div>` : ""}</td>
+                <td>${displayStoneColor(entry.color)}${Array.isArray(entry.learned_labels) && entry.learned_labels.length ? `<div class="tiny">Learned: ${entry.learned_labels.map(escapeHtml).join(", ")}</div>` : ""}</td>
                 <td>${Number(entry.region_count || 0)} region(s)</td>
               `;
             refs.mainStoneTableBody.appendChild(row);
@@ -3958,19 +4184,8 @@
 
       if (sideStone) {
         const sideStats = sideStone.stone_area_statistics;
-        const sideWeight = sideStone.weight_estimate || {};
-        const sideWeightText = stoneWeightText(sideWeight);
-        refs.sideStoneValue.textContent = stoneWeightHero(sideWeight);
-        if (sideStats && sideStats.success) {
-          refs.sideStoneSub.textContent = (sideStone.reflection_risk || sideStone.reflection_flagged)
-            ? `RISK JEWEL — ${sideStone.reflection_summary}`
-            : "Side stone analysis completed.";
-        } else {
-          refs.sideStoneSub.textContent = (sideStone.reflection_risk || sideStone.reflection_flagged)
-            ? `RISK JEWEL — ${sideStone.reflection_summary}`
-            : "Side stone detection completed. No dense reflection risk.";
-        }
-        refs.sideStoneSub.textContent = `${refs.sideStoneSub.textContent} ${sideWeightText} ${stoneSuperResolutionText(sideStone)}`;
+        refs.sideStoneValue.textContent = stoneSurfaceStatus(sideStone);
+        refs.sideStoneSub.textContent = `${stoneAnalysisText(sideStone)} ${stoneSuperResolutionText(sideStone)}`;
         renderArtifactStrip(refs.sideArtifacts, [
           (backendState.side_capture || {}).original_image,
           sideStone.gallery,
@@ -3989,7 +4204,7 @@
                 : [];
               const row = document.createElement("tr");
               row.innerHTML = `
-                <td>${color}${learnedLabels.length ? `<div class="tiny">Learned: ${learnedLabels.map(escapeHtml).join(", ")}</div>` : ""}</td>
+                <td>${displayStoneColor(color)}${learnedLabels.length ? `<div class="tiny">Learned: ${learnedLabels.map(escapeHtml).join(", ")}</div>` : ""}</td>
                 <td>Detected</td>
               `;
               refs.sideStoneTableBody.appendChild(row);
@@ -3999,7 +4214,7 @@
           sideStone.summary_entries.forEach(entry => {
             const row = document.createElement("tr");
               row.innerHTML = `
-                <td>${entry.color}${Array.isArray(entry.learned_labels) && entry.learned_labels.length ? `<div class="tiny">Learned: ${entry.learned_labels.map(escapeHtml).join(", ")}</div>` : ""}</td>
+                <td>${displayStoneColor(entry.color)}${Array.isArray(entry.learned_labels) && entry.learned_labels.length ? `<div class="tiny">Learned: ${entry.learned_labels.map(escapeHtml).join(", ")}</div>` : ""}</td>
                 <td>${Number(entry.region_count || 0)} region(s)</td>
               `;
             refs.sideStoneTableBody.appendChild(row);
@@ -4076,13 +4291,17 @@
       else if (flow.currentStage === "classification" && !sourceReady) nextId = "btnCaptureMainImage";
       else if (flow.currentStage === "classification" && !classification.predicted_label) nextId = "btnRunClassification";
       else if (flow.currentStage === "classification" && !classification.confirmed) nextId = "btnClassYes";
+      else if (flow.currentStage === "weight" && stageSkipped("weight_extraction")) nextId = "btnWeightNext";
+      else if (flow.currentStage === "weight" && (backendState.weight_extraction || {}).captured_at && !(backendState.weight_extraction || {}).success) nextId = "btnRetakeWeight";
+      else if (flow.currentStage === "weight" && !(backendState.weight_extraction || {}).success) nextId = "btnCaptureWeight";
+      else if (flow.currentStage === "weight") nextId = "btnWeightNext";
       else if (flow.currentStage === "final" && backendState && backendState.packet_sealing && backendState.packet_sealing.recording) {
         const striping = backendState.packet_sealing.striping || {};
         if (striping.hand_clear_enabled) nextId = "btnStripingHandClear";
       }
 
       const candidates = [
-        "btnClassificationNext", "btnRunDimension", "btnDimensionNext",
+        "btnClassificationNext", "btnCaptureWeight", "btnRetakeWeight", "btnSkipWeight", "btnWeightNext", "btnRunDimension", "btnDimensionNext",
         "btnCaptureSideLive", "btnRunSidePipeline", "btnShowFinalFromSide",
         "btnRunSegmentation", "btnSegmentationNext", "btnRunMainStoneDetection",
         "btnShowFinalFromMain", "btnStartPurityTest", "btnStopPurityTest",
@@ -4106,6 +4325,7 @@
       updateRoiSummaryText();
 
       refs.classificationPanel.classList.add("hidden");
+      refs.weightPanel.classList.add("hidden");
       refs.dimensionPanel.classList.add("hidden");
       refs.sidePanel.classList.add("hidden");
       refs.segmentationPanel.classList.add("hidden");
@@ -4114,11 +4334,11 @@
       refs.finalPanel.classList.add("hidden");
 
       const showMainStone =
-        (branchKey === "direct_stone" && classificationDone) ||
-        (branchKey === "segmentation" && flow.segmentationNext);
+        (branchKey === "direct_stone" && classificationDone && flow.weightNext) ||
+        (branchKey === "segmentation" && flow.weightNext && flow.segmentationNext);
 
-      refs.mainStoneTitle.textContent = branchKey === "segmentation" ? "STAGE 3 STONE DETECTION" : "STAGE 2 STONE DETECTION";
-      refs.purityTitle.textContent = branchKey === "dimension" || branchKey === "segmentation" ? "STAGE 4 ACID TEST" : "STAGE 3 ACID TEST";
+      refs.mainStoneTitle.textContent = branchKey === "segmentation" ? "STAGE 4 STONE DETECTION" : "STAGE 3 STONE DETECTION";
+      refs.purityTitle.textContent = branchKey === "dimension" || branchKey === "segmentation" ? "STAGE 5 ACID TEST" : "STAGE 4 ACID TEST";
 
       const finalReady = backendState && backendState.final && backendState.final.ready;
       const purityRunning = backendState && backendState.purity_test && backendState.purity_test.running;
@@ -4135,7 +4355,7 @@
       const closureComplete = countVerificationDone() && packetSealingDone();
 
       refs.btnClassificationNext.disabled = !classificationDone || !pledgeCountSaved();
-      refs.btnRunSegmentation.disabled = !(classificationDone && branchKey === "segmentation");
+      refs.btnRunSegmentation.disabled = !(classificationDone && flow.weightNext && branchKey === "segmentation");
       refs.btnSkipDimension.disabled = Boolean((state.dimension || {}).done) || stageSkipped("dimension");
       refs.btnSkipSide.disabled = Boolean((state.stone_detection || {}).side) || stageSkipped("side_stone");
       refs.btnSkipSegmentation.disabled = Boolean((state.segmentation || {}).done) || stageSkipped("jewellery_analysis");
@@ -4164,6 +4384,7 @@
       const currentIndex = getCurrentStageIndex();
 
       refs.btnDimensionPrev.disabled = currentIndex <= 0;
+      refs.btnWeightPrev.disabled = currentIndex <= 0;
       refs.btnSidePrev.disabled = currentIndex <= 0;
       refs.btnSegmentationPrev.disabled = currentIndex <= 0;
       refs.btnMainStonePrev.disabled = currentIndex <= 0;
@@ -4192,7 +4413,9 @@
         return;
       }
 
-      if (branchKey === "dimension" && flow.classificationNext && !flow.dimensionNext) {
+      if (flow.currentStage === "weight") {
+        refs.previewHint.textContent = "Use the Weight Scale ROI only as a placement guide. Keep the LCD steady and fully visible inside the Processing ROI.";
+      } else if (branchKey === "dimension" && flow.weightNext && !flow.dimensionNext) {
         refs.previewHint.textContent = "For manual line calibration, click Draw Calibration Line and set two points on the source image.";
       } else if (previewState.context === "segmentation") {
         refs.previewHint.textContent = "You are viewing the jewellery analysis input. Draw the correct pendant or tassel box, apply it, and then check the refreshed result.";
@@ -4212,6 +4435,7 @@
 
     function showCurrentStage() {
       refs.classificationPanel.classList.add("hidden");
+      refs.weightPanel.classList.add("hidden");
       refs.dimensionPanel.classList.add("hidden");
       refs.sidePanel.classList.add("hidden");
       refs.segmentationPanel.classList.add("hidden");
@@ -4225,8 +4449,8 @@
       const currentIndex = getCurrentStageIndex();
 
       const showMainStone =
-        (branchKey === "direct_stone" && classificationDone) ||
-        (branchKey === "segmentation" && flow.segmentationNext);
+        (branchKey === "direct_stone" && classificationDone && flow.weightNext) ||
+        (branchKey === "segmentation" && flow.weightNext && flow.segmentationNext);
       const showPurity =
         (branchKey === "dimension" && backendState && ((backendState.stone_detection && backendState.stone_detection.side) || stageSkipped("side_stone"))) ||
         (branchKey !== "dimension" && backendState && ((backendState.stone_detection && backendState.stone_detection.main) || stageSkipped("stone_detection")));
@@ -4242,10 +4466,20 @@
         const currentStage = order[currentIndex];
         switch (currentStage) {
           case "classification":
+            previewState.context = "source";
             refs.classificationPanel.classList.remove("hidden");
             break;
+          case "weight":
+            if (classificationDone && flow.classificationNext) {
+              previewState.context = "weight";
+              refs.previewModePill.textContent = "Preview: Weight Scale Live View";
+              refs.weightPanel.classList.remove("hidden");
+            } else {
+              refs.classificationPanel.classList.remove("hidden");
+            }
+            break;
           case "dimension":
-            if (branchKey === "dimension" && flow.classificationNext) {
+            if (branchKey === "dimension" && flow.weightNext) {
               refs.dimensionPanel.classList.remove("hidden");
             } else {
               // Fallback if somehow at wrong stage
@@ -4260,7 +4494,7 @@
             }
             break;
           case "segmentation":
-            if (branchKey === "segmentation" && flow.classificationNext) {
+            if (branchKey === "segmentation" && flow.weightNext) {
               refs.segmentationPanel.classList.remove("hidden");
             } else {
               refs.classificationPanel.classList.remove("hidden");
@@ -4427,6 +4661,9 @@
         drawRectOverlay(previewState.correctionBoxes.pendant, correctionConfig("pendant").color, correctionConfig("pendant").label);
         drawRectOverlay(previewState.correctionBoxes.tassel, correctionConfig("tassel").color, correctionConfig("tassel").label);
       }
+      if (flow.currentStage === "weight" || previewState.drawMode === "weight") {
+        drawRectOverlay(previewState.rois.weight, "#ec4899", "WEIGHT SCALE LCD");
+      }
 
       if (dragging && previewState.dragStart && previewState.dragCurrent) {
         const draft = normalizeDraggedRect(previewState.dragStart, previewState.dragCurrent);
@@ -4436,11 +4673,15 @@
             ? "#2563eb"
             : previewState.drawMode === "aruco"
               ? "#16a34a"
+              : previewState.drawMode === "weight"
+                ? "#ec4899"
               : draftConfig.color;
           const label = previewState.drawMode === "processing"
             ? "Processing ROI"
             : previewState.drawMode === "aruco"
               ? "Aruco ROI"
+              : previewState.drawMode === "weight"
+                ? "Weight Scale LCD"
               : draftConfig.label;
           drawRectOverlay(draft, color, label);
         }
@@ -4450,7 +4691,7 @@
     }
 
     refs.previewCanvas.addEventListener("mousedown", (event) => {
-      if (!["processing", "aruco", "pendant", "tassel"].includes(previewState.drawMode)) return;
+      if (!["processing", "aruco", "weight", "pendant", "tassel"].includes(previewState.drawMode)) return;
       const point = eventToImagePoint(event);
       if (!point) return;
       dragging = true;
@@ -4493,6 +4734,17 @@
               "Processing and ArUco ROIs are set. Enter the jewel weight, then run Jewel Type.",
               "success"
             );
+          }
+        } else if (previewState.drawMode === "weight") {
+          previewState.rois.weight = rect;
+          persistWeightRoi();
+          setDrawMode(null);
+          setStatusWithIndicator("Weight Scale ROI saved. Place the LCD inside this box during weight capture.", "success");
+          if (flow.currentStage !== "weight") {
+            previewState.context = "source";
+            refs.previewModePill.textContent = previewState.main.dataUrl
+              ? `Preview: ${previewState.main.kind === "upload" ? "Uploaded Image" : "Captured RPi Frame"}`
+              : "Preview: RPi Live Camera";
           }
         } else if (previewState.drawMode === "pendant" || previewState.drawMode === "tassel") {
           previewState.correctionBoxes[previewState.drawMode] = rect;
@@ -4754,8 +5006,7 @@
       refs.previewModePill.textContent = "Preview: RPi Live Camera";
       refs.pledgeStatus.textContent = "";
       refs.inputJewelCount.value = "";
-      refs.jewelWeight.value = "";
-      refs.appraiserStoneWeight.value = "";
+        refs.appraiserStoneWeight.value = "";
       refs.jewelCountStatus.textContent = "Set a Pledge ID, then save jewel count.";
       refs.btnPledgeSetupNext.disabled = true;
       resetFlow();
@@ -4773,6 +5024,19 @@
     refs.btnDrawArucoRoi.addEventListener("click", () => {
       previewState.context = "source";
       setDrawMode("aruco");
+    });
+
+    refs.btnDrawWeightRoi.addEventListener("click", () => {
+      previewState.context = "weight";
+      refs.previewModePill.textContent = "Preview: Weight Scale ROI Setup";
+      setDrawMode("weight");
+    });
+
+    refs.btnClearWeightRoi.addEventListener("click", () => {
+      previewState.rois.weight = null;
+      persistWeightRoi();
+      setDrawMode(null);
+      setStatusWithIndicator("Weight Scale ROI cleared.", "warning");
     });
 
     refs.btnEnableScaleLine.addEventListener("click", () => {
@@ -4892,9 +5156,40 @@
 
     refs.btnClassificationNext.addEventListener("click", () => {
       flow.classificationNext = true;
+      flow.weightNext = false;
       flow.dimensionNext = false;
       flow.segmentationNext = false;
       flow.finalVisible = false;
+      goToNextStage();
+    });
+
+    refs.btnCaptureWeight.addEventListener("click", captureWeight);
+    refs.btnRetakeWeight.addEventListener("click", captureWeight);
+    refs.btnSkipWeight.addEventListener("click", async () => {
+      if (refs.btnSkipWeight.disabled) return;
+      refs.btnSkipWeight.disabled = true;
+      if (await skipOptionalStage("weight_extraction", "Jewel weight extraction")) {
+        flow.weightNext = true;
+        goToNextStage();
+      } else {
+        refs.btnSkipWeight.disabled = false;
+      }
+    });
+    refs.btnWeightPrev.addEventListener("click", () => {
+      goToPreviousStage();
+    });
+    refs.btnWeightNext.addEventListener("click", () => {
+      const weightReady = Boolean(
+        backendState
+        && ((backendState.weight_extraction || {}).success || stageSkipped("weight_extraction"))
+      );
+      if (!weightReady) {
+        setStatusWithIndicator("Capture or skip the actual weight before continuing.", "warning");
+        return;
+      }
+      flow.weightNext = true;
+      previewState.context = "source";
+      setDrawMode(null);
       goToNextStage();
     });
 
@@ -5052,6 +5347,13 @@
     });
 
     refs.btnRunMainStoneDetection.addEventListener("click", withButtonGuard(refs.btnRunMainStoneDetection, runMainStoneDetection));
+    const changeStoneSettingProfile = (event) => {
+      pendingStoneSettingProfile = event.target.value;
+      refs.mainStoneSettingProfile.value = pendingStoneSettingProfile;
+      refs.sideStoneSettingProfile.value = pendingStoneSettingProfile;
+    };
+    refs.mainStoneSettingProfile.addEventListener("change", changeStoneSettingProfile);
+    refs.sideStoneSettingProfile.addEventListener("change", changeStoneSettingProfile);
     refs.btnSkipMainStone.addEventListener("click", withButtonGuard(refs.btnSkipMainStone, async () => {
       if (await skipOptionalStage("stone_detection", "Stone detection")) {
         previewState.context = "purity";
@@ -5126,6 +5428,7 @@
     async function initialize() {
       updateCalibrationFields();
       await loadConfig();
+      await pollBackendState();
       try {
         await loadPurityAudioDevices();
       } catch (error) {

@@ -1,0 +1,1203 @@
+{
+  "model": "en_PP-OCRv5_mobile_rec",
+  "sample_count": 55,
+  "variants": {
+    "digit_color": {
+      "scores": {
+        "0.00": {
+          "correct": 52,
+          "wrong": 3,
+          "failed": 0
+        },
+        "0.50": {
+          "correct": 52,
+          "wrong": 3,
+          "failed": 0
+        },
+        "0.70": {
+          "correct": 52,
+          "wrong": 3,
+          "failed": 0
+        },
+        "0.80": {
+          "correct": 52,
+          "wrong": 3,
+          "failed": 0
+        },
+        "0.90": {
+          "correct": 48,
+          "wrong": 1,
+          "failed": 6
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "20260808_153459_035520_443_normal",
+          "true_digits": "443",
+          "raw_text": "443",
+          "predicted_digits": "443",
+          "confidence": 0.997117280960083
+        },
+        {
+          "sample_id": "20260808_153531_699911_443_normal",
+          "true_digits": "443",
+          "raw_text": "443",
+          "predicted_digits": "443",
+          "confidence": 0.9989681243896484
+        },
+        {
+          "sample_id": "20260808_153548_622766_443_normal",
+          "true_digits": "443",
+          "raw_text": "443",
+          "predicted_digits": "443",
+          "confidence": 0.9986039996147156
+        },
+        {
+          "sample_id": "20260808_153607_283913_000_normal",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9867679476737976
+        },
+        {
+          "sample_id": "20260808_153621_424596_000_normal",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9898858666419983
+        },
+        {
+          "sample_id": "20260808_153645_367557_000_normal",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9884149432182312
+        },
+        {
+          "sample_id": "20260808_153657_788245_000_dark_lcd",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9817283749580383
+        },
+        {
+          "sample_id": "20260808_153715_799845_000_dark_lcd",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.8789718151092529
+        },
+        {
+          "sample_id": "20260808_153733_815991_000_dark_lcd",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9718900322914124
+        },
+        {
+          "sample_id": "20260808_153743_844811_000_dark_lcd",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9947406649589539
+        },
+        {
+          "sample_id": "20260808_153755_887433_000_dark_lcd",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9605215191841125
+        },
+        {
+          "sample_id": "20260808_153812_193243_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9990506172180176
+        },
+        {
+          "sample_id": "20260808_153834_452691_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9989593029022217
+        },
+        {
+          "sample_id": "20260808_153845_126601_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9969592094421387
+        },
+        {
+          "sample_id": "20260808_153859_375396_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9993353486061096
+        },
+        {
+          "sample_id": "20260808_153910_805364_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9999210834503174
+        },
+        {
+          "sample_id": "20260808_153919_079250_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9998629093170166
+        },
+        {
+          "sample_id": "20260808_153927_571495_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9818298816680908
+        },
+        {
+          "sample_id": "20260808_153937_986790_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9946094751358032
+        },
+        {
+          "sample_id": "20260808_153950_465764_9991_normal",
+          "true_digits": "9991",
+          "raw_text": "9991",
+          "predicted_digits": "9991",
+          "confidence": 0.9884098172187805
+        },
+        {
+          "sample_id": "20260808_154022_445440_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9856843948364258
+        },
+        {
+          "sample_id": "20260808_154038_865266_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9925665855407715
+        },
+        {
+          "sample_id": "20260808_154048_020678_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9782923460006714
+        },
+        {
+          "sample_id": "20260808_154059_889273_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9912539720535278
+        },
+        {
+          "sample_id": "20260808_154107_916352_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9970950484275818
+        },
+        {
+          "sample_id": "20260808_154116_119035_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9865020513534546
+        },
+        {
+          "sample_id": "20260808_154126_708470_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9850265383720398
+        },
+        {
+          "sample_id": "20260808_154136_146802_1000_bright_lcd",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9873014092445374
+        },
+        {
+          "sample_id": "20260808_154146_011878_1000_bright_lcd",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9910101294517517
+        },
+        {
+          "sample_id": "20260808_154212_914201_102_bright_lcd",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9666045308113098
+        },
+        {
+          "sample_id": "20260808_154231_476112_102_bright_lcd",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9899581074714661
+        },
+        {
+          "sample_id": "20260808_154240_972896_102_bright_lcd",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9908289909362793
+        },
+        {
+          "sample_id": "20260808_154251_827038_102_normal",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9965481162071228
+        },
+        {
+          "sample_id": "20260808_154301_231018_102_normal",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9893688559532166
+        },
+        {
+          "sample_id": "20260808_154311_020848_102_normal",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9906253814697266
+        },
+        {
+          "sample_id": "20260808_154319_484998_102_normal",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9780163168907166
+        },
+        {
+          "sample_id": "20260808_154326_382590_102_normal",
+          "true_digits": "102",
+          "raw_text": "702",
+          "predicted_digits": "702",
+          "confidence": 0.8385987877845764
+        },
+        {
+          "sample_id": "20260808_154343_724666_102_normal",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.8128037452697754
+        },
+        {
+          "sample_id": "20260808_154401_347183_501_normal",
+          "true_digits": "501",
+          "raw_text": "501",
+          "predicted_digits": "501",
+          "confidence": 0.93385249376297
+        },
+        {
+          "sample_id": "20260808_154417_056802_501_normal",
+          "true_digits": "501",
+          "raw_text": "501",
+          "predicted_digits": "501",
+          "confidence": 0.9711060523986816
+        },
+        {
+          "sample_id": "20260808_154428_736686_501_normal",
+          "true_digits": "501",
+          "raw_text": "501",
+          "predicted_digits": "501",
+          "confidence": 0.8826181292533875
+        },
+        {
+          "sample_id": "20260808_154437_318719_501_normal",
+          "true_digits": "501",
+          "raw_text": "501",
+          "predicted_digits": "501",
+          "confidence": 0.9433653354644775
+        },
+        {
+          "sample_id": "20260808_154446_576271_501_normal",
+          "true_digits": "501",
+          "raw_text": "507",
+          "predicted_digits": "507",
+          "confidence": 0.9126542210578918
+        },
+        {
+          "sample_id": "20260808_154455_544761_501_normal",
+          "true_digits": "501",
+          "raw_text": "501",
+          "predicted_digits": "501",
+          "confidence": 0.8416454195976257
+        },
+        {
+          "sample_id": "20260808_154504_831543_602_normal",
+          "true_digits": "602",
+          "raw_text": "602",
+          "predicted_digits": "602",
+          "confidence": 0.9764699339866638
+        },
+        {
+          "sample_id": "20260808_154517_677352_603_normal",
+          "true_digits": "603",
+          "raw_text": "603",
+          "predicted_digits": "603",
+          "confidence": 0.9850711822509766
+        },
+        {
+          "sample_id": "20260808_154530_658490_603_normal",
+          "true_digits": "603",
+          "raw_text": "603",
+          "predicted_digits": "603",
+          "confidence": 0.9965977668762207
+        },
+        {
+          "sample_id": "20260808_154539_948059_603_normal",
+          "true_digits": "603",
+          "raw_text": "603",
+          "predicted_digits": "603",
+          "confidence": 0.9224012494087219
+        },
+        {
+          "sample_id": "20260808_154549_306183_603_normal",
+          "true_digits": "603",
+          "raw_text": "603",
+          "predicted_digits": "603",
+          "confidence": 0.9970302581787109
+        },
+        {
+          "sample_id": "20260808_154559_357983_603_normal",
+          "true_digits": "603",
+          "raw_text": "603",
+          "predicted_digits": "603",
+          "confidence": 0.9956269264221191
+        },
+        {
+          "sample_id": "20260808_154620_278886_071_normal",
+          "true_digits": "071",
+          "raw_text": "071",
+          "predicted_digits": "071",
+          "confidence": 0.9786387085914612
+        },
+        {
+          "sample_id": "20260808_154642_811447_071_normal",
+          "true_digits": "071",
+          "raw_text": "071",
+          "predicted_digits": "071",
+          "confidence": 0.9952850937843323
+        },
+        {
+          "sample_id": "20260808_154650_571254_071_normal",
+          "true_digits": "071",
+          "raw_text": "871",
+          "predicted_digits": "871",
+          "confidence": 0.838381290435791
+        },
+        {
+          "sample_id": "20260808_154658_776949_071_normal",
+          "true_digits": "071",
+          "raw_text": "071",
+          "predicted_digits": "071",
+          "confidence": 0.9857239723205566
+        },
+        {
+          "sample_id": "20260808_154709_230489_071_normal",
+          "true_digits": "071",
+          "raw_text": "071",
+          "predicted_digits": "071",
+          "confidence": 0.9665428996086121
+        }
+      ]
+    },
+    "digit_top08": {
+      "scores": {
+        "0.00": {
+          "correct": 52,
+          "wrong": 3,
+          "failed": 0
+        },
+        "0.50": {
+          "correct": 52,
+          "wrong": 3,
+          "failed": 0
+        },
+        "0.70": {
+          "correct": 52,
+          "wrong": 2,
+          "failed": 1
+        },
+        "0.80": {
+          "correct": 51,
+          "wrong": 2,
+          "failed": 2
+        },
+        "0.90": {
+          "correct": 45,
+          "wrong": 0,
+          "failed": 10
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "20260808_153459_035520_443_normal",
+          "true_digits": "443",
+          "raw_text": "443",
+          "predicted_digits": "443",
+          "confidence": 0.9980276226997375
+        },
+        {
+          "sample_id": "20260808_153531_699911_443_normal",
+          "true_digits": "443",
+          "raw_text": "443",
+          "predicted_digits": "443",
+          "confidence": 0.9991486072540283
+        },
+        {
+          "sample_id": "20260808_153548_622766_443_normal",
+          "true_digits": "443",
+          "raw_text": "443",
+          "predicted_digits": "443",
+          "confidence": 0.9984083771705627
+        },
+        {
+          "sample_id": "20260808_153607_283913_000_normal",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9813173413276672
+        },
+        {
+          "sample_id": "20260808_153621_424596_000_normal",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9818651676177979
+        },
+        {
+          "sample_id": "20260808_153645_367557_000_normal",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9467986226081848
+        },
+        {
+          "sample_id": "20260808_153657_788245_000_dark_lcd",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9545817375183105
+        },
+        {
+          "sample_id": "20260808_153715_799845_000_dark_lcd",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9483380913734436
+        },
+        {
+          "sample_id": "20260808_153733_815991_000_dark_lcd",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9902625679969788
+        },
+        {
+          "sample_id": "20260808_153743_844811_000_dark_lcd",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9780060648918152
+        },
+        {
+          "sample_id": "20260808_153755_887433_000_dark_lcd",
+          "true_digits": "000",
+          "raw_text": "000",
+          "predicted_digits": "000",
+          "confidence": 0.9840130805969238
+        },
+        {
+          "sample_id": "20260808_153812_193243_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9991391897201538
+        },
+        {
+          "sample_id": "20260808_153834_452691_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9971446394920349
+        },
+        {
+          "sample_id": "20260808_153845_126601_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9928815960884094
+        },
+        {
+          "sample_id": "20260808_153859_375396_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9993924498558044
+        },
+        {
+          "sample_id": "20260808_153910_805364_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9999797344207764
+        },
+        {
+          "sample_id": "20260808_153919_079250_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.999652087688446
+        },
+        {
+          "sample_id": "20260808_153927_571495_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9979829788208008
+        },
+        {
+          "sample_id": "20260808_153937_986790_9990_normal",
+          "true_digits": "9990",
+          "raw_text": "9990",
+          "predicted_digits": "9990",
+          "confidence": 0.9972704648971558
+        },
+        {
+          "sample_id": "20260808_153950_465764_9991_normal",
+          "true_digits": "9991",
+          "raw_text": "9991",
+          "predicted_digits": "9991",
+          "confidence": 0.9887527227401733
+        },
+        {
+          "sample_id": "20260808_154022_445440_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "7000",
+          "predicted_digits": "7000",
+          "confidence": 0.8559640645980835
+        },
+        {
+          "sample_id": "20260808_154038_865266_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9906008243560791
+        },
+        {
+          "sample_id": "20260808_154048_020678_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.8681057691574097
+        },
+        {
+          "sample_id": "20260808_154059_889273_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "7000",
+          "predicted_digits": "7000",
+          "confidence": 0.8460255861282349
+        },
+        {
+          "sample_id": "20260808_154107_916352_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9827133417129517
+        },
+        {
+          "sample_id": "20260808_154116_119035_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9839317202568054
+        },
+        {
+          "sample_id": "20260808_154126_708470_1000_normal",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9887452721595764
+        },
+        {
+          "sample_id": "20260808_154136_146802_1000_bright_lcd",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.9850068092346191
+        },
+        {
+          "sample_id": "20260808_154146_011878_1000_bright_lcd",
+          "true_digits": "1000",
+          "raw_text": "1000",
+          "predicted_digits": "1000",
+          "confidence": 0.8881895542144775
+        },
+        {
+          "sample_id": "20260808_154212_914201_102_bright_lcd",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.961658775806427
+        },
+        {
+          "sample_id": "20260808_154231_476112_102_bright_lcd",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9796740412712097
+        },
+        {
+          "sample_id": "20260808_154240_972896_102_bright_lcd",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9910128116607666
+        },
+        {
+          "sample_id": "20260808_154251_827038_102_normal",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9482478499412537
+        },
+        {
+          "sample_id": "20260808_154301_231018_102_normal",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9636633396148682
+        },
+        {
+          "sample_id": "20260808_154311_020848_102_normal",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9893136620521545
+        },
+        {
+          "sample_id": "20260808_154319_484998_102_normal",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.9902829527854919
+        },
+        {
+          "sample_id": "20260808_154326_382590_102_normal",
+          "true_digits": "102",
+          "raw_text": " 1022",
+          "predicted_digits": "1022",
+          "confidence": 0.5984356999397278
+        },
+        {
+          "sample_id": "20260808_154343_724666_102_normal",
+          "true_digits": "102",
+          "raw_text": "102",
+          "predicted_digits": "102",
+          "confidence": 0.79067063331604
+        },
+        {
+          "sample_id": "20260808_154401_347183_501_normal",
+          "true_digits": "501",
+          "raw_text": "501",
+          "predicted_digits": "501",
+          "confidence": 0.9709761738777161
+        },
+        {
+          "sample_id": "20260808_154417_056802_501_normal",
+          "true_digits": "501",
+          "raw_text": "501",
+          "predicted_digits": "501",
+          "confidence": 0.9012446999549866
+        },
+        {
+          "sample_id": "20260808_154428_736686_501_normal",
+          "true_digits": "501",
+          "raw_text": "501",
+          "predicted_digits": "501",
+          "confidence": 0.8686992526054382
+        },
+        {
+          "sample_id": "20260808_154437_318719_501_normal",
+          "true_digits": "501",
+          "raw_text": "501",
+          "predicted_digits": "501",
+          "confidence": 0.9430252909660339
+        },
+        {
+          "sample_id": "20260808_154446_576271_501_normal",
+          "true_digits": "501",
+          "raw_text": "501",
+          "predicted_digits": "501",
+          "confidence": 0.8618641495704651
+        },
+        {
+          "sample_id": "20260808_154455_544761_501_normal",
+          "true_digits": "501",
+          "raw_text": "501",
+          "predicted_digits": "501",
+          "confidence": 0.8745902180671692
+        },
+        {
+          "sample_id": "20260808_154504_831543_602_normal",
+          "true_digits": "602",
+          "raw_text": "602",
+          "predicted_digits": "602",
+          "confidence": 0.9556655287742615
+        },
+        {
+          "sample_id": "20260808_154517_677352_603_normal",
+          "true_digits": "603",
+          "raw_text": "603",
+          "predicted_digits": "603",
+          "confidence": 0.9881157875061035
+        },
+        {
+          "sample_id": "20260808_154530_658490_603_normal",
+          "true_digits": "603",
+          "raw_text": "603",
+          "predicted_digits": "603",
+          "confidence": 0.9912132620811462
+        },
+        {
+          "sample_id": "20260808_154539_948059_603_normal",
+          "true_digits": "603",
+          "raw_text": "603",
+          "predicted_digits": "603",
+          "confidence": 0.9883607029914856
+        },
+        {
+          "sample_id": "20260808_154549_306183_603_normal",
+          "true_digits": "603",
+          "raw_text": "603",
+          "predicted_digits": "603",
+          "confidence": 0.9955351948738098
+        },
+        {
+          "sample_id": "20260808_154559_357983_603_normal",
+          "true_digits": "603",
+          "raw_text": "603",
+          "predicted_digits": "603",
+          "confidence": 0.9979231357574463
+        },
+        {
+          "sample_id": "20260808_154620_278886_071_normal",
+          "true_digits": "071",
+          "raw_text": "071",
+          "predicted_digits": "071",
+          "confidence": 0.9935622215270996
+        },
+        {
+          "sample_id": "20260808_154642_811447_071_normal",
+          "true_digits": "071",
+          "raw_text": "071",
+          "predicted_digits": "071",
+          "confidence": 0.986844003200531
+        },
+        {
+          "sample_id": "20260808_154650_571254_071_normal",
+          "true_digits": "071",
+          "raw_text": "071",
+          "predicted_digits": "071",
+          "confidence": 0.8684711456298828
+        },
+        {
+          "sample_id": "20260808_154658_776949_071_normal",
+          "true_digits": "071",
+          "raw_text": "071",
+          "predicted_digits": "071",
+          "confidence": 0.981461763381958
+        },
+        {
+          "sample_id": "20260808_154709_230489_071_normal",
+          "true_digits": "071",
+          "raw_text": "071",
+          "predicted_digits": "071",
+          "confidence": 0.988859236240387
+        }
+      ]
+    }
+  },
+  "agreement": {
+    "variants": [
+      "digit_color",
+      "digit_top08"
+    ],
+    "scores": {
+      "0.00": {
+        "correct": 50,
+        "wrong": 0,
+        "failed": 5
+      },
+      "0.50": {
+        "correct": 50,
+        "wrong": 0,
+        "failed": 5
+      },
+      "0.70": {
+        "correct": 50,
+        "wrong": 0,
+        "failed": 5
+      },
+      "0.80": {
+        "correct": 49,
+        "wrong": 0,
+        "failed": 6
+      },
+      "0.90": {
+        "correct": 44,
+        "wrong": 0,
+        "failed": 11
+      }
+    },
+    "samples": [
+      {
+        "sample_id": "20260808_153459_035520_443_normal",
+        "true_digits": "443",
+        "predicted_digits": "443",
+        "confidence": 0.997117280960083
+      },
+      {
+        "sample_id": "20260808_153531_699911_443_normal",
+        "true_digits": "443",
+        "predicted_digits": "443",
+        "confidence": 0.9989681243896484
+      },
+      {
+        "sample_id": "20260808_153548_622766_443_normal",
+        "true_digits": "443",
+        "predicted_digits": "443",
+        "confidence": 0.9984083771705627
+      },
+      {
+        "sample_id": "20260808_153607_283913_000_normal",
+        "true_digits": "000",
+        "predicted_digits": "000",
+        "confidence": 0.9813173413276672
+      },
+      {
+        "sample_id": "20260808_153621_424596_000_normal",
+        "true_digits": "000",
+        "predicted_digits": "000",
+        "confidence": 0.9818651676177979
+      },
+      {
+        "sample_id": "20260808_153645_367557_000_normal",
+        "true_digits": "000",
+        "predicted_digits": "000",
+        "confidence": 0.9467986226081848
+      },
+      {
+        "sample_id": "20260808_153657_788245_000_dark_lcd",
+        "true_digits": "000",
+        "predicted_digits": "000",
+        "confidence": 0.9545817375183105
+      },
+      {
+        "sample_id": "20260808_153715_799845_000_dark_lcd",
+        "true_digits": "000",
+        "predicted_digits": "000",
+        "confidence": 0.8789718151092529
+      },
+      {
+        "sample_id": "20260808_153733_815991_000_dark_lcd",
+        "true_digits": "000",
+        "predicted_digits": "000",
+        "confidence": 0.9718900322914124
+      },
+      {
+        "sample_id": "20260808_153743_844811_000_dark_lcd",
+        "true_digits": "000",
+        "predicted_digits": "000",
+        "confidence": 0.9780060648918152
+      },
+      {
+        "sample_id": "20260808_153755_887433_000_dark_lcd",
+        "true_digits": "000",
+        "predicted_digits": "000",
+        "confidence": 0.9605215191841125
+      },
+      {
+        "sample_id": "20260808_153812_193243_9990_normal",
+        "true_digits": "9990",
+        "predicted_digits": "9990",
+        "confidence": 0.9990506172180176
+      },
+      {
+        "sample_id": "20260808_153834_452691_9990_normal",
+        "true_digits": "9990",
+        "predicted_digits": "9990",
+        "confidence": 0.9971446394920349
+      },
+      {
+        "sample_id": "20260808_153845_126601_9990_normal",
+        "true_digits": "9990",
+        "predicted_digits": "9990",
+        "confidence": 0.9928815960884094
+      },
+      {
+        "sample_id": "20260808_153859_375396_9990_normal",
+        "true_digits": "9990",
+        "predicted_digits": "9990",
+        "confidence": 0.9993353486061096
+      },
+      {
+        "sample_id": "20260808_153910_805364_9990_normal",
+        "true_digits": "9990",
+        "predicted_digits": "9990",
+        "confidence": 0.9999210834503174
+      },
+      {
+        "sample_id": "20260808_153919_079250_9990_normal",
+        "true_digits": "9990",
+        "predicted_digits": "9990",
+        "confidence": 0.999652087688446
+      },
+      {
+        "sample_id": "20260808_153927_571495_9990_normal",
+        "true_digits": "9990",
+        "predicted_digits": "9990",
+        "confidence": 0.9818298816680908
+      },
+      {
+        "sample_id": "20260808_153937_986790_9990_normal",
+        "true_digits": "9990",
+        "predicted_digits": "9990",
+        "confidence": 0.9946094751358032
+      },
+      {
+        "sample_id": "20260808_153950_465764_9991_normal",
+        "true_digits": "9991",
+        "predicted_digits": "9991",
+        "confidence": 0.9884098172187805
+      },
+      {
+        "sample_id": "20260808_154022_445440_1000_normal",
+        "true_digits": "1000",
+        "predicted_digits": null,
+        "confidence": 0.8559640645980835
+      },
+      {
+        "sample_id": "20260808_154038_865266_1000_normal",
+        "true_digits": "1000",
+        "predicted_digits": "1000",
+        "confidence": 0.9906008243560791
+      },
+      {
+        "sample_id": "20260808_154048_020678_1000_normal",
+        "true_digits": "1000",
+        "predicted_digits": "1000",
+        "confidence": 0.8681057691574097
+      },
+      {
+        "sample_id": "20260808_154059_889273_1000_normal",
+        "true_digits": "1000",
+        "predicted_digits": null,
+        "confidence": 0.8460255861282349
+      },
+      {
+        "sample_id": "20260808_154107_916352_1000_normal",
+        "true_digits": "1000",
+        "predicted_digits": "1000",
+        "confidence": 0.9827133417129517
+      },
+      {
+        "sample_id": "20260808_154116_119035_1000_normal",
+        "true_digits": "1000",
+        "predicted_digits": "1000",
+        "confidence": 0.9839317202568054
+      },
+      {
+        "sample_id": "20260808_154126_708470_1000_normal",
+        "true_digits": "1000",
+        "predicted_digits": "1000",
+        "confidence": 0.9850265383720398
+      },
+      {
+        "sample_id": "20260808_154136_146802_1000_bright_lcd",
+        "true_digits": "1000",
+        "predicted_digits": "1000",
+        "confidence": 0.9850068092346191
+      },
+      {
+        "sample_id": "20260808_154146_011878_1000_bright_lcd",
+        "true_digits": "1000",
+        "predicted_digits": "1000",
+        "confidence": 0.8881895542144775
+      },
+      {
+        "sample_id": "20260808_154212_914201_102_bright_lcd",
+        "true_digits": "102",
+        "predicted_digits": "102",
+        "confidence": 0.961658775806427
+      },
+      {
+        "sample_id": "20260808_154231_476112_102_bright_lcd",
+        "true_digits": "102",
+        "predicted_digits": "102",
+        "confidence": 0.9796740412712097
+      },
+      {
+        "sample_id": "20260808_154240_972896_102_bright_lcd",
+        "true_digits": "102",
+        "predicted_digits": "102",
+        "confidence": 0.9908289909362793
+      },
+      {
+        "sample_id": "20260808_154251_827038_102_normal",
+        "true_digits": "102",
+        "predicted_digits": "102",
+        "confidence": 0.9482478499412537
+      },
+      {
+        "sample_id": "20260808_154301_231018_102_normal",
+        "true_digits": "102",
+        "predicted_digits": "102",
+        "confidence": 0.9636633396148682
+      },
+      {
+        "sample_id": "20260808_154311_020848_102_normal",
+        "true_digits": "102",
+        "predicted_digits": "102",
+        "confidence": 0.9893136620521545
+      },
+      {
+        "sample_id": "20260808_154319_484998_102_normal",
+        "true_digits": "102",
+        "predicted_digits": "102",
+        "confidence": 0.9780163168907166
+      },
+      {
+        "sample_id": "20260808_154326_382590_102_normal",
+        "true_digits": "102",
+        "predicted_digits": null,
+        "confidence": 0.5984356999397278
+      },
+      {
+        "sample_id": "20260808_154343_724666_102_normal",
+        "true_digits": "102",
+        "predicted_digits": "102",
+        "confidence": 0.79067063331604
+      },
+      {
+        "sample_id": "20260808_154401_347183_501_normal",
+        "true_digits": "501",
+        "predicted_digits": "501",
+        "confidence": 0.93385249376297
+      },
+      {
+        "sample_id": "20260808_154417_056802_501_normal",
+        "true_digits": "501",
+        "predicted_digits": "501",
+        "confidence": 0.9012446999549866
+      },
+      {
+        "sample_id": "20260808_154428_736686_501_normal",
+        "true_digits": "501",
+        "predicted_digits": "501",
+        "confidence": 0.8686992526054382
+      },
+      {
+        "sample_id": "20260808_154437_318719_501_normal",
+        "true_digits": "501",
+        "predicted_digits": "501",
+        "confidence": 0.9430252909660339
+      },
+      {
+        "sample_id": "20260808_154446_576271_501_normal",
+        "true_digits": "501",
+        "predicted_digits": null,
+        "confidence": 0.8618641495704651
+      },
+      {
+        "sample_id": "20260808_154455_544761_501_normal",
+        "true_digits": "501",
+        "predicted_digits": "501",
+        "confidence": 0.8416454195976257
+      },
+      {
+        "sample_id": "20260808_154504_831543_602_normal",
+        "true_digits": "602",
+        "predicted_digits": "602",
+        "confidence": 0.9556655287742615
+      },
+      {
+        "sample_id": "20260808_154517_677352_603_normal",
+        "true_digits": "603",
+        "predicted_digits": "603",
+        "confidence": 0.9850711822509766
+      },
+      {
+        "sample_id": "20260808_154530_658490_603_normal",
+        "true_digits": "603",
+        "predicted_digits": "603",
+        "confidence": 0.9912132620811462
+      },
+      {
+        "sample_id": "20260808_154539_948059_603_normal",
+        "true_digits": "603",
+        "predicted_digits": "603",
+        "confidence": 0.9224012494087219
+      },
+      {
+        "sample_id": "20260808_154549_306183_603_normal",
+        "true_digits": "603",
+        "predicted_digits": "603",
+        "confidence": 0.9955351948738098
+      },
+      {
+        "sample_id": "20260808_154559_357983_603_normal",
+        "true_digits": "603",
+        "predicted_digits": "603",
+        "confidence": 0.9956269264221191
+      },
+      {
+        "sample_id": "20260808_154620_278886_071_normal",
+        "true_digits": "071",
+        "predicted_digits": "071",
+        "confidence": 0.9786387085914612
+      },
+      {
+        "sample_id": "20260808_154642_811447_071_normal",
+        "true_digits": "071",
+        "predicted_digits": "071",
+        "confidence": 0.986844003200531
+      },
+      {
+        "sample_id": "20260808_154650_571254_071_normal",
+        "true_digits": "071",
+        "predicted_digits": null,
+        "confidence": 0.838381290435791
+      },
+      {
+        "sample_id": "20260808_154658_776949_071_normal",
+        "true_digits": "071",
+        "predicted_digits": "071",
+        "confidence": 0.981461763381958
+      },
+      {
+        "sample_id": "20260808_154709_230489_071_normal",
+        "true_digits": "071",
+        "predicted_digits": "071",
+        "confidence": 0.9665428996086121
+      }
+    ]
+  }
+}

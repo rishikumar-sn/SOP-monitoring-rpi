@@ -1,0 +1,13 @@
+{
+  "project_id": "bead_finder",
+  "hef_file": "bead_finder.hef",
+  "resnet_model": "beadcheck.pt",
+  "mobilenet_model": "beadcheck_mobilenet_v3_candidate.pt",
+  "mobilenet_report": "beadcheck_mobilenet_v3_candidate_training_report.json",
+  "input_height": 640,
+  "input_width": 640,
+  "input_channels": 3,
+  "output_format": "FormatOrder.HAILO_NMS_BY_CLASS",
+  "output_decoder": "hailo_nms",
+  "number_of_classes": 1
+}

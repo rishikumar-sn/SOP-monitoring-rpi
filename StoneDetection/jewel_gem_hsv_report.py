@@ -36,6 +36,13 @@ except ImportError:
     _stone_area_calc = None  # type: ignore[assignment]
     _STONE_AREA_CALC_AVAILABLE = False
 
+try:
+    import stone_analysis_v2 as _stone_v2
+    _STONE_V2_AVAILABLE = True
+except ImportError:
+    _stone_v2 = None  # type: ignore[assignment]
+    _STONE_V2_AVAILABLE = False
+
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
 
 # Minimum stone component area used for stone_area_calculator noise removal.
@@ -184,7 +191,7 @@ STONE_REGION_GROW_BLACK_MAX_SEED_MULTIPLIER = 24.0
 STONE_REGION_GROW_COLOR_MAX_SEED_MULTIPLIER = 12.0
 STONE_REGION_GROW_COLOR_MAX_RADIUS_PX = 18
 STONE_REGION_GROW_COLOR_MIN_SEED_AREA_PX = 12
-STONE_REGION_GROW_COLOR_MAX_GOLD_OVERLAP_SHARE = 0.60
+STONE_REGION_GROW_COLOR_MAX_GOLD_OVERLAP_SHARE = 0.25
 STONE_REGION_GROW_MIN_AREA_GAIN = 1.08
 STONE_REGION_GROW_MAX_GOLD_PIXELS = 0
 STONE_REGION_GROW_GRABCUT_ITERATIONS = 1
@@ -1103,6 +1110,12 @@ def build_candidates_from_component_mask(
         mask = np.where(labels == idx, 255, 0).astype(np.uint8)
         if reject_border_touching and mask_touches_image_border(mask, margin=2):
             continue
+        if not reject_border_touching and mask_touches_image_border(mask, margin=2):
+            width = int(stats[idx, cv2.CC_STAT_WIDTH])
+            height = int(stats[idx, cv2.CC_STAT_HEIGHT])
+            aspect_ratio = max(width, height) / max(1, min(width, height))
+            if aspect_ratio > 8.0:
+                continue
         append_candidate_from_mask(image_bgr, mask, candidates)
 
     candidates.sort(key=lambda item: (-item["area_px"], item["bbox_global"][1], item["bbox_global"][0]))
@@ -2742,6 +2755,11 @@ def classify_component(
     if learned_matches and learned_matches[0]["color"] in GEMSTONE_OPTIONS:
         dominant_color = learned_matches[0]["color"]
 
+    classification_seed_mask = cv2.bitwise_and(
+        classification_seed_mask,
+        component_mask,
+    )
+
     return {
         "region_id": region_id,
         "color": dominant_color,
@@ -2761,6 +2779,7 @@ def classify_component(
         "aspect_ratio": round(aspect_ratio, 3),
         "circularity": round(circularity, 3),
         "learned_matches": learned_matches,
+        "seed_mask": classification_seed_mask,
         "mask": component_mask,
         "contour": contour,
     }
@@ -3202,6 +3221,14 @@ def offset_region_to_full_roi(
         int(region["center"][0] + slice_x),
         int(region["center"][1] + slice_y),
     ]
+    if region.get("seed_mask") is not None:
+        seed_mask = region["seed_mask"]
+        full_seed_mask = np.zeros(full_shape[:2], dtype=np.uint8)
+        full_seed_mask[
+            slice_y:slice_y + seed_mask.shape[0],
+            slice_x:slice_x + seed_mask.shape[1],
+        ] = seed_mask
+        offset_region["seed_mask"] = full_seed_mask
     offset_region["mask"] = full_mask
     offset_region["contour"] = contour
     offset_region["source"] = "sahi_slice"
@@ -3954,6 +3981,273 @@ def suppress_reflective_artifact_regions(
     return filtered
 
 
+def separate_touching_stone_regions(
+    image_bgr: np.ndarray,
+    jewel_mask: np.ndarray,
+    regions: list[dict],
+) -> tuple[list[dict], dict[str, int | bool]]:
+    """Separate touching grown masks using their conservative HSV/LAB seeds.
+
+    Region growth is useful for recovering dim and reflective stone facets, but
+    neighbouring grown masks can touch and then be measured as one large stone.
+    Pixels shared by touching masks are assigned to the nearest original seed;
+    one boundary pixel is removed between competing assignments so connected-
+    component measurement preserves the individual stone instances.
+    """
+    diagnostics: dict[str, int | bool] = {
+        "enabled": True,
+        "input_region_count": len(regions),
+        "touching_cluster_count": 0,
+        "separated_region_count": 0,
+        "overlap_pixels_resolved": 0,
+        "boundary_pixels_removed": 0,
+        "disconnected_pixels_removed": 0,
+    }
+    if len(regions) < 2:
+        return regions, diagnostics
+
+    valid_indexes = [
+        index
+        for index, region in enumerate(regions)
+        if cv2.countNonZero(region["mask"]) > 0
+    ]
+    if len(valid_indexes) < 2:
+        return regions, diagnostics
+
+    parents = {index: index for index in valid_indexes}
+
+    def find(index: int) -> int:
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    def union(left: int, right: int) -> None:
+        root_left = find(left)
+        root_right = find(right)
+        if root_left != root_right:
+            parents[root_right] = root_left
+
+    touch_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    dilated_masks = {
+        index: cv2.dilate(regions[index]["mask"], touch_kernel, iterations=1)
+        for index in valid_indexes
+    }
+    for offset, left in enumerate(valid_indexes):
+        for right in valid_indexes[offset + 1:]:
+            if regions[left]["color"] != regions[right]["color"]:
+                continue
+            left_x, left_y, left_width, left_height = regions[left]["bbox"]
+            right_x, right_y, right_width, right_height = regions[right]["bbox"]
+            if (
+                left_x + left_width + 1 < right_x
+                or right_x + right_width + 1 < left_x
+                or left_y + left_height + 1 < right_y
+                or right_y + right_height + 1 < left_y
+            ):
+                continue
+            if cv2.countNonZero(
+                cv2.bitwise_and(dilated_masks[left], regions[right]["mask"])
+            ) > 0:
+                union(left, right)
+
+    clusters: dict[int, list[int]] = {}
+    for index in valid_indexes:
+        clusters.setdefault(find(index), []).append(index)
+    touching_clusters = [cluster for cluster in clusters.values() if len(cluster) > 1]
+    diagnostics["touching_cluster_count"] = len(touching_clusters)
+    if not touching_clusters:
+        return regions, diagnostics
+
+    hsv_image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
+    updated_regions = list(regions)
+    separated_indexes: set[int] = set()
+
+    for cluster in touching_clusters:
+        cluster_union = np.zeros(jewel_mask.shape, dtype=np.uint8)
+        input_area_sum = 0
+        for index in cluster:
+            cluster_union = cv2.bitwise_or(cluster_union, regions[index]["mask"])
+            input_area_sum += int(cv2.countNonZero(regions[index]["mask"]))
+        cluster_union = cv2.bitwise_and(cluster_union, jewel_mask)
+        union_area = int(cv2.countNonZero(cluster_union))
+        diagnostics["overlap_pixels_resolved"] += max(0, input_area_sum - union_area)
+
+        x, y, width, height = cv2.boundingRect(cluster_union)
+        local_union = cluster_union[y:y + height, x:x + width]
+        labels = np.zeros(local_union.shape, dtype=np.int32)
+        best_distance = np.full(local_union.shape, np.inf, dtype=np.float32)
+
+        for label, index in enumerate(cluster, start=1):
+            local_region = regions[index]["mask"][y:y + height, x:x + width]
+            seed_mask = regions[index].get("seed_mask")
+            if seed_mask is not None:
+                local_seed = cv2.bitwise_and(
+                    seed_mask[y:y + height, x:x + width],
+                    local_region,
+                )
+            else:
+                local_seed = np.zeros(local_region.shape, dtype=np.uint8)
+            if cv2.countNonZero(local_seed) == 0:
+                interior_distance = cv2.distanceTransform(
+                    local_region,
+                    cv2.DIST_L2,
+                    3,
+                )
+                center_y, center_x = np.unravel_index(
+                    int(np.argmax(interior_distance)),
+                    interior_distance.shape,
+                )
+                local_seed[center_y, center_x] = 255
+
+            distance_input = np.full(local_seed.shape, 255, dtype=np.uint8)
+            distance_input[local_seed > 0] = 0
+            seed_distance = cv2.distanceTransform(
+                distance_input,
+                cv2.DIST_L2,
+                3,
+            )
+            replace = (local_region > 0) & (seed_distance < best_distance)
+            labels[replace] = label
+            best_distance[replace] = seed_distance[replace]
+
+        remove_boundary = np.zeros(labels.shape, dtype=bool)
+        local_height, local_width = labels.shape
+        for delta_y, delta_x in ((0, 1), (1, -1), (1, 0), (1, 1)):
+            if delta_x >= 0:
+                left_x = slice(0, local_width - delta_x)
+                right_x = slice(delta_x, local_width)
+            else:
+                left_x = slice(-delta_x, local_width)
+                right_x = slice(0, local_width + delta_x)
+            left_y = slice(0, local_height - delta_y)
+            right_y = slice(delta_y, local_height)
+            left_labels = labels[left_y, left_x]
+            right_labels = labels[right_y, right_x]
+            competing = (
+                (left_labels > 0)
+                & (right_labels > 0)
+                & (left_labels != right_labels)
+            )
+            if not np.any(competing):
+                continue
+            left_distances = best_distance[left_y, left_x]
+            right_distances = best_distance[right_y, right_x]
+            remove_left = competing & (left_distances >= right_distances)
+            remove_right = competing & ~remove_left
+            left_removal = remove_boundary[left_y, left_x]
+            right_removal = remove_boundary[right_y, right_x]
+            left_removal[remove_left] = True
+            right_removal[remove_right] = True
+
+        labels[remove_boundary] = 0
+        diagnostics["boundary_pixels_removed"] += int(np.count_nonzero(remove_boundary))
+
+        for label, index in enumerate(cluster, start=1):
+            local_mask = np.where(labels == label, 255, 0).astype(np.uint8)
+            updated_mask = np.zeros(jewel_mask.shape, dtype=np.uint8)
+            updated_mask[y:y + height, x:x + width] = local_mask
+            if cv2.countNonZero(updated_mask) == 0:
+                continue
+
+            component_count, component_labels, component_stats, _ = (
+                cv2.connectedComponentsWithStats(
+                    updated_mask,
+                    connectivity=8,
+                )
+            )
+            if component_count > 2:
+                seed_mask = regions[index].get("seed_mask")
+                best_component = 1
+                best_score = (-1, -1)
+                for component_id in range(1, component_count):
+                    component_area = int(
+                        component_stats[component_id, cv2.CC_STAT_AREA]
+                    )
+                    seed_overlap = 0
+                    if seed_mask is not None:
+                        seed_overlap = int(
+                            np.count_nonzero(
+                                (component_labels == component_id)
+                                & (seed_mask > 0)
+                            )
+                        )
+                    score = (seed_overlap, component_area)
+                    if score > best_score:
+                        best_component = component_id
+                        best_score = score
+                retained_mask = np.where(
+                    component_labels == best_component,
+                    255,
+                    0,
+                ).astype(np.uint8)
+                diagnostics["disconnected_pixels_removed"] += max(
+                    0,
+                    int(cv2.countNonZero(updated_mask))
+                    - int(cv2.countNonZero(retained_mask)),
+                )
+                updated_mask = retained_mask
+
+            updated_region = dict(regions[index])
+            previous_area = int(updated_region.get("area_px", 0))
+            updated_region["mask"] = updated_mask
+            area_px = int(cv2.countNonZero(updated_mask))
+            contours, _ = cv2.findContours(
+                updated_mask,
+                cv2.RETR_EXTERNAL,
+                cv2.CHAIN_APPROX_SIMPLE,
+            )
+            contour = max(contours, key=cv2.contourArea)
+            region_x, region_y, region_width, region_height = cv2.boundingRect(updated_mask)
+            moments = cv2.moments(updated_mask, binaryImage=True)
+            center_x = int(moments["m10"] / moments["m00"])
+            center_y = int(moments["m01"] / moments["m00"])
+            mean_h, mean_s, mean_v = mean_hsv_for_mask(hsv_image, updated_mask)
+            mean_lab_a, mean_lab_b, mean_lab_chroma = mean_lab_ab_for_mask(
+                image_bgr,
+                updated_mask,
+            )
+            seed_area = max(1, int(updated_region.get("seed_area_px", area_px)))
+            expansion = dict(updated_region.get("stone_region_expansion") or {})
+            expansion.update(
+                {
+                    "expanded_area_px": area_px,
+                    "area_gain": round(area_px / float(seed_area), 3),
+                    "seeded_instance_separation": True,
+                    "pre_separation_area_px": previous_area,
+                }
+            )
+            updated_region.update(
+                {
+                    "area_px": area_px,
+                    "bbox": [region_x, region_y, region_width, region_height],
+                    "center": [center_x, center_y],
+                    "mean_hsv": [round(mean_h, 1), round(mean_s, 1), round(mean_v, 1)],
+                    "mean_lab_ab": [round(mean_lab_a, 1), round(mean_lab_b, 1)],
+                    "lab_chroma_mean": round(mean_lab_chroma, 1),
+                    "extent": round(
+                        area_px / max(1, region_width * region_height),
+                        3,
+                    ),
+                    "aspect_ratio": round(
+                        max(region_width, region_height)
+                        / max(1, min(region_width, region_height)),
+                        3,
+                    ),
+                    "circularity": round(contour_circularity(contour), 3),
+                    "stone_region_expansion": expansion,
+                    "contour": contour,
+                }
+            )
+            updated_regions[index] = updated_region
+            separated_indexes.add(index)
+
+    diagnostics["separated_region_count"] = len(separated_indexes)
+    for region_id, region in enumerate(updated_regions, start=1):
+        region["region_id"] = region_id
+    return updated_regions, diagnostics
+
+
 def serialize_regions(regions: list[dict]) -> list[dict]:
     serialized_regions = []
     for region in regions:
@@ -3961,7 +4255,7 @@ def serialize_regions(regions: list[dict]) -> list[dict]:
             {
                 key: value
                 for key, value in region.items()
-                if key not in {"mask", "contour", "source"}
+                if key not in {"mask", "seed_mask", "contour", "source"}
             }
         )
     return serialized_regions
@@ -4050,7 +4344,12 @@ def resize_to_fit(image_bgr: np.ndarray, max_width: int, max_height: int) -> np.
 
 def gallery_summary_text(detected_colors: list[dict], reflection: dict | None = None) -> str:
     color_text = (
-        ", ".join(entry["color"] for entry in detected_colors[:3])
+        ", ".join(
+            "Multicolor / Mixed Appearance"
+            if entry["color"] == "Multicolor/Color-changing"
+            else entry["color"]
+            for entry in detected_colors[:3]
+        )
         if detected_colors
         else "No gemstone-colored regions"
     )
@@ -4230,8 +4529,13 @@ def build_report_text(report: dict) -> str:
         else:
             lines.append("  Detected colors")
             for entry in jewel["detected_colors"]:
+                display_color = (
+                    "Multicolor / Mixed Appearance"
+                    if entry["color"] == "Multicolor/Color-changing"
+                    else entry["color"]
+                )
                 lines.append(
-                    f"  - {entry['color']}: {entry['region_count']} region(s), {entry['area_px']} px"
+                    f"  - {display_color}: {entry['region_count']} region(s), {entry['area_px']} px"
                 )
                 lines.append(f"    Possible gemstones: {', '.join(entry['possible_gemstones'])}")
                 if entry.get("learned_labels"):
@@ -4274,6 +4578,9 @@ def analyze_jewel_candidate(
     analysis_normalization: dict | None,
     measurement_scale: dict | None,
     learned_stone_profiles: list[dict] | None,
+    fastsam_model: object | None = None,
+    fastsam_lock: object | None = None,
+    stone_v2_debug_dir: Path | None = None,
 ) -> tuple[dict, dict]:
     refined_crop_mask, mask_cleanup = remove_enclosed_background_from_jewel_mask(
         jewel["crop_bgr"],
@@ -4526,6 +4833,138 @@ def analyze_jewel_candidate(
                 ]
 
     regions = suppress_reflective_artifact_regions(regions, jewel_area)
+    _stone_v2_diagnostics: dict = {
+        "enabled": False,
+        "fallback": "legacy_regions",
+        "candidate_count": len(regions),
+        "stone_instance_count": len(regions),
+        "segmentation_method_counts": {"legacy": len(regions)} if regions else {},
+    }
+    _stone_v2_debug_artifacts: dict[str, str] = {}
+    if _STONE_V2_AVAILABLE:
+        try:
+            v2_gold_mask = build_gold_mask(
+                cv2.cvtColor(glare_processed_bgr, cv2.COLOR_BGR2HSV),
+                zoomed_mask,
+                strict=False,
+            )
+            v2_strict_gold_mask = build_gold_mask(
+                cv2.cvtColor(glare_processed_bgr, cv2.COLOR_BGR2HSV),
+                zoomed_mask,
+                strict=True,
+            )
+            color_measurement_bgr = _stone_v2.build_color_measurement_image(
+                raw_zoomed_bgr,
+                zoomed_mask,
+                background_calibration,
+            )
+            v2_candidates = _stone_v2.generate_stone_candidates(
+                glare_processed_bgr,
+                zoomed_mask,
+                regions,
+                v2_gold_mask,
+                glare_mask=glare_white_exclude_mask,
+            )
+            v2_regions, _stone_v2_diagnostics = (
+                _stone_v2.build_final_stone_instances(
+                    glare_processed_bgr,
+                    zoomed_mask,
+                    v2_candidates,
+                    v2_gold_mask,
+                    v2_strict_gold_mask,
+                    fastsam_model=fastsam_model,
+                    inference_lock=fastsam_lock,
+                )
+            )
+            for region in v2_regions:
+                mask = region["mask"]
+                classification = _stone_v2.classify_stone_instance_color(
+                    color_measurement_bgr,
+                    mask,
+                    gold_mask=v2_gold_mask,
+                )
+                color = str(classification["color"])
+                contours, _ = cv2.findContours(
+                    mask,
+                    cv2.RETR_EXTERNAL,
+                    cv2.CHAIN_APPROX_SIMPLE,
+                )
+                if not contours:
+                    continue
+                contour = max(contours, key=cv2.contourArea)
+                area_px = int(cv2.countNonZero(mask))
+                x, y, width, height = cv2.boundingRect(contour)
+                moments = cv2.moments(mask, binaryImage=True)
+                center = (
+                    [
+                        int(round(moments["m10"] / moments["m00"])),
+                        int(round(moments["m01"] / moments["m00"])),
+                    ]
+                    if moments["m00"] > 0
+                    else [x + width // 2, y + height // 2]
+                )
+                mean_h, mean_s, mean_v = mean_hsv_for_mask(
+                    cv2.cvtColor(color_measurement_bgr, cv2.COLOR_BGR2HSV),
+                    mask,
+                )
+                mean_lab_a, mean_lab_b, mean_lab_chroma = mean_lab_ab_for_mask(
+                    color_measurement_bgr,
+                    mask,
+                )
+                region.update(
+                    {
+                        "color": color,
+                        "display_color": classification["display_color"],
+                        "possible_gemstones": GEMSTONE_OPTIONS[color],
+                        "color_confidence": classification["color_confidence"],
+                        "color_classification": classification,
+                        "area_px": area_px,
+                        "bbox": [int(x), int(y), int(width), int(height)],
+                        "center": center,
+                        "contour": contour,
+                        "mean_hsv": [round(mean_h, 1), round(mean_s, 1), round(mean_v, 1)],
+                        "mean_lab_ab": [round(mean_lab_a, 1), round(mean_lab_b, 1)],
+                        "lab_chroma_mean": round(mean_lab_chroma, 1),
+                        "color_mix_percent": {color: 100.0},
+                        "dominant_share_percent": round(
+                            float(classification["color_confidence"]) * 100.0,
+                            1,
+                        ),
+                        "extent": round(area_px / float(max(1, width * height)), 3),
+                        "aspect_ratio": round(
+                            max(width, height) / float(max(1, min(width, height))),
+                            3,
+                        ),
+                        "circularity": round(contour_circularity(contour), 3),
+                    }
+                )
+            regions = v2_regions
+            _stone_v2_diagnostics["enabled"] = True
+            _stone_v2_diagnostics["color_measurement_image"] = (
+                "captured_original_with_conservative_white_reference"
+            )
+            if stone_v2_debug_dir is not None:
+                _stone_v2_debug_artifacts = _stone_v2.save_debug_artifacts(
+                    stone_v2_debug_dir,
+                    color_measurement_bgr,
+                    zoomed_mask,
+                    v2_candidates,
+                    regions,
+                )
+        except Exception as _exc:
+            _stone_v2_diagnostics = {
+                "enabled": False,
+                "fallback": "legacy_regions",
+                "error": str(_exc),
+                "candidate_count": len(regions),
+                "stone_instance_count": len(regions),
+                "segmentation_method_counts": {"legacy": len(regions)} if regions else {},
+            }
+    regions, _seeded_separation = separate_touching_stone_regions(
+        glare_processed_bgr,
+        zoomed_mask,
+        regions,
+    )
 
     # Calculate accurate stone-area statistics from filled masks BEFORE
     # visualization so contour lines and overlays do not affect pixel counts.
@@ -4603,6 +5042,13 @@ def analyze_jewel_candidate(
         )
         jewel_report["area_denominator"] = "segmented_jewel_mask"
     jewel_report["mask_cleanup"] = mask_cleanup
+    jewel_report["seeded_instance_separation"] = _seeded_separation
+    jewel_report["stone_analysis_v2"] = _stone_v2_diagnostics
+    jewel_report["stone_instance_count"] = len(regions)
+    jewel_report["segmentation_method_counts"] = dict(
+        _stone_v2_diagnostics.get("segmentation_method_counts") or {}
+    )
+    jewel_report["debug_artifacts"] = _stone_v2_debug_artifacts
     jewel_report["stone_measurements"] = _stone_measurements
     jewel_report["glare_mask_px"] = int(glare_stats["glare_mask_px"])
     jewel_report["glare_region_count"] = int(glare_stats["glare_region_count"])
@@ -4643,6 +5089,9 @@ def analyze_image_bgr(
     analysis_normalization: dict | None = None,
     measurement_scale: dict | None = None,
     learned_stone_profiles: list[dict] | None = None,
+    fastsam_model: object | None = None,
+    fastsam_lock: object | None = None,
+    stone_v2_debug_dir: Path | None = None,
 ) -> dict:
     working_bgr, normalized_ignore_regions = apply_ignore_regions_to_image(image_bgr, ignore_regions)
     if preset_candidates is not None:
@@ -4705,10 +5154,44 @@ def analyze_image_bgr(
             analysis_normalization=analysis_normalization,
             measurement_scale=measurement_scale,
             learned_stone_profiles=learned_stone_profiles,
+            fastsam_model=fastsam_model,
+            fastsam_lock=fastsam_lock,
+            stone_v2_debug_dir=(
+                stone_v2_debug_dir / f"jewel_{jewel_index:02d}"
+                if stone_v2_debug_dir is not None
+                else None
+            ),
         )
         report["jewels"].append(jewel_report)
         jewel_views.append(jewel_view)
 
+    separation_results = [
+        jewel.get("seeded_instance_separation") or {}
+        for jewel in report["jewels"]
+    ]
+    report["seeded_instance_separation"] = {
+        "enabled": True,
+        "touching_cluster_count": sum(
+            int(item.get("touching_cluster_count", 0))
+            for item in separation_results
+        ),
+        "separated_region_count": sum(
+            int(item.get("separated_region_count", 0))
+            for item in separation_results
+        ),
+        "overlap_pixels_resolved": sum(
+            int(item.get("overlap_pixels_resolved", 0))
+            for item in separation_results
+        ),
+        "boundary_pixels_removed": sum(
+            int(item.get("boundary_pixels_removed", 0))
+            for item in separation_results
+        ),
+        "disconnected_pixels_removed": sum(
+            int(item.get("disconnected_pixels_removed", 0))
+            for item in separation_results
+        ),
+    }
     report["jewel_area_px_total"] = sum(
         int(jewel.get("jewel_area_px", 0))
         for jewel in report["jewels"]
@@ -4735,6 +5218,18 @@ def analyze_image_bgr(
         2,
     )
     report["area_denominator"] = "sum_of_segmented_jewel_masks"
+    report["stone_surface_coverage_percent"] = report["stone_percentage"]
+    report["stone_instance_count"] = sum(
+        int(jewel.get("stone_instance_count", 0))
+        for jewel in report["jewels"]
+    )
+    segmentation_method_counts: dict[str, int] = {}
+    for jewel in report["jewels"]:
+        for method, count in (jewel.get("segmentation_method_counts") or {}).items():
+            segmentation_method_counts[str(method)] = (
+                segmentation_method_counts.get(str(method), 0) + int(count)
+            )
+    report["segmentation_method_counts"] = segmentation_method_counts
     report["background_hole_pixels_removed"] = sum(
         int(
             (jewel.get("mask_cleanup") or {}).get(
@@ -4759,6 +5254,29 @@ def analyze_image_bgr(
         if report["reflection_flagged"]
         else []
     )
+    if _STONE_V2_AVAILABLE:
+        report["stone_surface_risk"] = _stone_v2.calculate_stone_surface_risk(
+            report["stone_percentage"],
+            report["stone_instance_count"],
+            reflection_risk=report["reflection_risk"],
+        )
+    else:
+        report["stone_surface_risk"] = {
+            "level": "HIGH" if report["stone_percentage"] > 40.0 else "LOW",
+            "status": (
+                "HIGH STONE AREA — RISK"
+                if report["stone_percentage"] > 40.0
+                else "LOW STONE AREA — NORMAL"
+            ),
+            "stone_surface_coverage_percent": report["stone_percentage"],
+            "stone_instance_count": report["stone_instance_count"],
+            "high_risk": report["stone_percentage"] > 40.0,
+        }
+    report["stone_surface_risk_level"] = report["stone_surface_risk"]["level"]
+    report["stone_surface_status"] = report["stone_surface_risk"]["status"]
+    if report["stone_surface_risk"].get("high_risk"):
+        report["risk_jewel"] = True
+        report["risk_reasons"].append("high stone surface coverage")
     measurement_results = [
         jewel.get("stone_measurements") or {}
         for jewel in report["jewels"]
@@ -4803,6 +5321,21 @@ def analyze_image_bgr(
             ),
             4,
         ),
+        "estimated_total_typical_g": round(
+            sum(
+                float(
+                    item.get(
+                        "estimated_total_typical_g",
+                        item.get(
+                            "estimated_total_average_g",
+                            float(item.get("estimated_total_average_ct", 0.0)) * 0.2,
+                        ),
+                    )
+                )
+                for item in measurement_results
+            ),
+            4,
+        ),
         "estimated_total_minimum_g": round(
             sum(
                 float(
@@ -4833,8 +5366,8 @@ def analyze_image_bgr(
             for instance in item.get("instances", [])
         ],
         "note": (
-            "Estimated average weight from calibrated face-up masks; gemstone "
-            "depth and density are not measured."
+            "Face-up geometry is measured; hidden depth and material density "
+            "remain uncertain."
         ),
     }
 

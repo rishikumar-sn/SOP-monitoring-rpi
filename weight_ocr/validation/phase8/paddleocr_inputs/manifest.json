@@ -1,0 +1,607 @@
+[
+  {
+    "sample_id": "20260808_153459_035520_443_normal",
+    "true_digits": "443",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153459_035520_443_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153459_035520_443_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153459_035520_443_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153459_035520_443_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153459_035520_443_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153531_699911_443_normal",
+    "true_digits": "443",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153531_699911_443_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153531_699911_443_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153531_699911_443_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153531_699911_443_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153531_699911_443_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153548_622766_443_normal",
+    "true_digits": "443",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153548_622766_443_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153548_622766_443_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153548_622766_443_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153548_622766_443_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153548_622766_443_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153607_283913_000_normal",
+    "true_digits": "000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153607_283913_000_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153607_283913_000_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153607_283913_000_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153607_283913_000_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153607_283913_000_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153621_424596_000_normal",
+    "true_digits": "000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153621_424596_000_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153621_424596_000_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153621_424596_000_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153621_424596_000_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153621_424596_000_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153645_367557_000_normal",
+    "true_digits": "000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153645_367557_000_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153645_367557_000_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153645_367557_000_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153645_367557_000_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153645_367557_000_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153657_788245_000_dark_lcd",
+    "true_digits": "000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153657_788245_000_dark_lcd.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153657_788245_000_dark_lcd.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153657_788245_000_dark_lcd.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153657_788245_000_dark_lcd.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153657_788245_000_dark_lcd.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153715_799845_000_dark_lcd",
+    "true_digits": "000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153715_799845_000_dark_lcd.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153715_799845_000_dark_lcd.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153715_799845_000_dark_lcd.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153715_799845_000_dark_lcd.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153715_799845_000_dark_lcd.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153733_815991_000_dark_lcd",
+    "true_digits": "000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153733_815991_000_dark_lcd.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153733_815991_000_dark_lcd.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153733_815991_000_dark_lcd.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153733_815991_000_dark_lcd.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153733_815991_000_dark_lcd.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153743_844811_000_dark_lcd",
+    "true_digits": "000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153743_844811_000_dark_lcd.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153743_844811_000_dark_lcd.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153743_844811_000_dark_lcd.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153743_844811_000_dark_lcd.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153743_844811_000_dark_lcd.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153755_887433_000_dark_lcd",
+    "true_digits": "000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153755_887433_000_dark_lcd.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153755_887433_000_dark_lcd.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153755_887433_000_dark_lcd.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153755_887433_000_dark_lcd.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153755_887433_000_dark_lcd.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153812_193243_9990_normal",
+    "true_digits": "9990",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153812_193243_9990_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153812_193243_9990_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153812_193243_9990_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153812_193243_9990_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153812_193243_9990_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153834_452691_9990_normal",
+    "true_digits": "9990",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153834_452691_9990_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153834_452691_9990_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153834_452691_9990_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153834_452691_9990_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153834_452691_9990_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153845_126601_9990_normal",
+    "true_digits": "9990",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153845_126601_9990_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153845_126601_9990_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153845_126601_9990_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153845_126601_9990_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153845_126601_9990_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153859_375396_9990_normal",
+    "true_digits": "9990",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153859_375396_9990_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153859_375396_9990_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153859_375396_9990_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153859_375396_9990_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153859_375396_9990_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153910_805364_9990_normal",
+    "true_digits": "9990",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153910_805364_9990_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153910_805364_9990_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153910_805364_9990_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153910_805364_9990_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153910_805364_9990_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153919_079250_9990_normal",
+    "true_digits": "9990",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153919_079250_9990_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153919_079250_9990_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153919_079250_9990_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153919_079250_9990_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153919_079250_9990_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153927_571495_9990_normal",
+    "true_digits": "9990",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153927_571495_9990_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153927_571495_9990_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153927_571495_9990_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153927_571495_9990_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153927_571495_9990_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153937_986790_9990_normal",
+    "true_digits": "9990",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153937_986790_9990_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153937_986790_9990_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153937_986790_9990_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153937_986790_9990_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153937_986790_9990_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_153950_465764_9991_normal",
+    "true_digits": "9991",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_153950_465764_9991_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_153950_465764_9991_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_153950_465764_9991_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_153950_465764_9991_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_153950_465764_9991_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154022_445440_1000_normal",
+    "true_digits": "1000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154022_445440_1000_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154022_445440_1000_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154022_445440_1000_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154022_445440_1000_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154022_445440_1000_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154038_865266_1000_normal",
+    "true_digits": "1000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154038_865266_1000_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154038_865266_1000_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154038_865266_1000_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154038_865266_1000_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154038_865266_1000_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154048_020678_1000_normal",
+    "true_digits": "1000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154048_020678_1000_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154048_020678_1000_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154048_020678_1000_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154048_020678_1000_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154048_020678_1000_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154059_889273_1000_normal",
+    "true_digits": "1000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154059_889273_1000_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154059_889273_1000_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154059_889273_1000_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154059_889273_1000_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154059_889273_1000_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154107_916352_1000_normal",
+    "true_digits": "1000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154107_916352_1000_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154107_916352_1000_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154107_916352_1000_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154107_916352_1000_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154107_916352_1000_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154116_119035_1000_normal",
+    "true_digits": "1000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154116_119035_1000_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154116_119035_1000_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154116_119035_1000_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154116_119035_1000_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154116_119035_1000_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154126_708470_1000_normal",
+    "true_digits": "1000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154126_708470_1000_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154126_708470_1000_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154126_708470_1000_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154126_708470_1000_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154126_708470_1000_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154136_146802_1000_bright_lcd",
+    "true_digits": "1000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154136_146802_1000_bright_lcd.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154136_146802_1000_bright_lcd.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154136_146802_1000_bright_lcd.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154136_146802_1000_bright_lcd.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154136_146802_1000_bright_lcd.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154146_011878_1000_bright_lcd",
+    "true_digits": "1000",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154146_011878_1000_bright_lcd.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154146_011878_1000_bright_lcd.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154146_011878_1000_bright_lcd.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154146_011878_1000_bright_lcd.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154146_011878_1000_bright_lcd.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154212_914201_102_bright_lcd",
+    "true_digits": "102",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154212_914201_102_bright_lcd.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154212_914201_102_bright_lcd.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154212_914201_102_bright_lcd.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154212_914201_102_bright_lcd.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154212_914201_102_bright_lcd.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154231_476112_102_bright_lcd",
+    "true_digits": "102",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154231_476112_102_bright_lcd.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154231_476112_102_bright_lcd.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154231_476112_102_bright_lcd.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154231_476112_102_bright_lcd.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154231_476112_102_bright_lcd.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154240_972896_102_bright_lcd",
+    "true_digits": "102",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154240_972896_102_bright_lcd.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154240_972896_102_bright_lcd.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154240_972896_102_bright_lcd.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154240_972896_102_bright_lcd.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154240_972896_102_bright_lcd.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154251_827038_102_normal",
+    "true_digits": "102",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154251_827038_102_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154251_827038_102_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154251_827038_102_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154251_827038_102_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154251_827038_102_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154301_231018_102_normal",
+    "true_digits": "102",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154301_231018_102_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154301_231018_102_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154301_231018_102_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154301_231018_102_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154301_231018_102_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154311_020848_102_normal",
+    "true_digits": "102",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154311_020848_102_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154311_020848_102_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154311_020848_102_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154311_020848_102_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154311_020848_102_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154319_484998_102_normal",
+    "true_digits": "102",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154319_484998_102_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154319_484998_102_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154319_484998_102_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154319_484998_102_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154319_484998_102_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154326_382590_102_normal",
+    "true_digits": "102",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154326_382590_102_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154326_382590_102_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154326_382590_102_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154326_382590_102_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154326_382590_102_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154343_724666_102_normal",
+    "true_digits": "102",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154343_724666_102_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154343_724666_102_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154343_724666_102_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154343_724666_102_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154343_724666_102_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154401_347183_501_normal",
+    "true_digits": "501",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154401_347183_501_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154401_347183_501_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154401_347183_501_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154401_347183_501_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154401_347183_501_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154417_056802_501_normal",
+    "true_digits": "501",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154417_056802_501_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154417_056802_501_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154417_056802_501_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154417_056802_501_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154417_056802_501_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154428_736686_501_normal",
+    "true_digits": "501",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154428_736686_501_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154428_736686_501_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154428_736686_501_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154428_736686_501_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154428_736686_501_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154437_318719_501_normal",
+    "true_digits": "501",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154437_318719_501_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154437_318719_501_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154437_318719_501_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154437_318719_501_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154437_318719_501_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154446_576271_501_normal",
+    "true_digits": "501",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154446_576271_501_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154446_576271_501_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154446_576271_501_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154446_576271_501_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154446_576271_501_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154455_544761_501_normal",
+    "true_digits": "501",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154455_544761_501_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154455_544761_501_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154455_544761_501_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154455_544761_501_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154455_544761_501_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154504_831543_602_normal",
+    "true_digits": "602",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154504_831543_602_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154504_831543_602_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154504_831543_602_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154504_831543_602_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154504_831543_602_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154517_677352_603_normal",
+    "true_digits": "603",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154517_677352_603_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154517_677352_603_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154517_677352_603_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154517_677352_603_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154517_677352_603_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154530_658490_603_normal",
+    "true_digits": "603",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154530_658490_603_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154530_658490_603_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154530_658490_603_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154530_658490_603_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154530_658490_603_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154539_948059_603_normal",
+    "true_digits": "603",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154539_948059_603_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154539_948059_603_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154539_948059_603_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154539_948059_603_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154539_948059_603_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154549_306183_603_normal",
+    "true_digits": "603",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154549_306183_603_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154549_306183_603_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154549_306183_603_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154549_306183_603_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154549_306183_603_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154559_357983_603_normal",
+    "true_digits": "603",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154559_357983_603_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154559_357983_603_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154559_357983_603_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154559_357983_603_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154559_357983_603_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154620_278886_071_normal",
+    "true_digits": "071",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154620_278886_071_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154620_278886_071_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154620_278886_071_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154620_278886_071_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154620_278886_071_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154642_811447_071_normal",
+    "true_digits": "071",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154642_811447_071_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154642_811447_071_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154642_811447_071_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154642_811447_071_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154642_811447_071_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154650_571254_071_normal",
+    "true_digits": "071",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154650_571254_071_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154650_571254_071_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154650_571254_071_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154650_571254_071_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154650_571254_071_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154658_776949_071_normal",
+    "true_digits": "071",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154658_776949_071_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154658_776949_071_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154658_776949_071_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154658_776949_071_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154658_776949_071_normal.png"
+    }
+  },
+  {
+    "sample_id": "20260808_154709_230489_071_normal",
+    "true_digits": "071",
+    "files": {
+      "full_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/full_color/20260808_154709_230489_071_normal.png",
+      "digit_color": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_color/20260808_154709_230489_071_normal.png",
+      "digit_top08": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_top08/20260808_154709_230489_071_normal.png",
+      "digit_clahe": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_clahe/20260808_154709_230489_071_normal.png",
+      "digit_otsu": "/home/pi/Desktop/EMBSYS-AI/weight_ocr/validation/phase8/paddleocr_inputs/digit_otsu/20260808_154709_230489_071_normal.png"
+    }
+  }
+]

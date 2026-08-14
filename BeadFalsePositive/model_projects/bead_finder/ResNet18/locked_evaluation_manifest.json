@@ -1,0 +1,187 @@
+{
+  "warning": "Do not train on or replace these locked evaluation sessions.",
+  "samples": [
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260808_110844_cdfec1a2",
+      "source_path": "false_positive/20260808_110844_cdfec1a2_candidate_001.png",
+      "locked_path": "false_positive/20260808_110844_cdfec1a2_candidate_001.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260808_110844_cdfec1a2",
+      "source_path": "false_positive/20260808_110844_cdfec1a2_candidate_002.png",
+      "locked_path": "false_positive/20260808_110844_cdfec1a2_candidate_002.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260808_110844_cdfec1a2",
+      "source_path": "false_positive/20260808_110844_cdfec1a2_candidate_003.png",
+      "locked_path": "false_positive/20260808_110844_cdfec1a2_candidate_003.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260808_110844_cdfec1a2",
+      "source_path": "false_positive/20260808_110844_cdfec1a2_candidate_004.png",
+      "locked_path": "false_positive/20260808_110844_cdfec1a2_candidate_004.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_001.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_001.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_002.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_002.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_003.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_003.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_004.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_004.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_005.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_005.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_006.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_006.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_007.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_007.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_008.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_008.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_009.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_009.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_010.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_010.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_011.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_011.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_012.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_012.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_013.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_013.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_014.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_014.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_015.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_015.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_115507_196c5710",
+      "source_path": "false_positive/20260811_115507_196c5710_candidate_001.png",
+      "locked_path": "false_positive/20260811_115507_196c5710_candidate_001.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_115507_196c5710",
+      "source_path": "false_positive/20260811_115507_196c5710_candidate_002.png",
+      "locked_path": "false_positive/20260811_115507_196c5710_candidate_002.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_115507_196c5710",
+      "source_path": "false_positive/20260811_115507_196c5710_candidate_003.png",
+      "locked_path": "false_positive/20260811_115507_196c5710_candidate_003.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_115507_196c5710",
+      "source_path": "false_positive/20260811_115507_196c5710_candidate_004.png",
+      "locked_path": "false_positive/20260811_115507_196c5710_candidate_004.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_115507_196c5710",
+      "source_path": "false_positive/20260811_115507_196c5710_candidate_005.png",
+      "locked_path": "false_positive/20260811_115507_196c5710_candidate_005.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_115507_196c5710",
+      "source_path": "false_positive/20260811_115507_196c5710_candidate_006.png",
+      "locked_path": "false_positive/20260811_115507_196c5710_candidate_006.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_115507_196c5710",
+      "source_path": "false_positive/20260811_115507_196c5710_candidate_007.png",
+      "locked_path": "false_positive/20260811_115507_196c5710_candidate_007.png"
+    }
+  ]
+}

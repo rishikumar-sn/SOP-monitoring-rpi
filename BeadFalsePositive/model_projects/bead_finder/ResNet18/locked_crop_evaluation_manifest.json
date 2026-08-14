@@ -1,0 +1,222 @@
+{
+  "warning": "Do not train on or replace these locked evaluation crops.",
+  "samples": [
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260811_113632_ea36ff45",
+      "source_path": "true_detection/20260811_113632_ea36ff45_candidate_004.png",
+      "locked_path": "true_detection/20260811_113632_ea36ff45_candidate_004.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_125058_1408431a",
+      "source_path": "false_positive/20260811_125058_1408431a_candidate_005.png",
+      "locked_path": "false_positive/20260811_125058_1408431a_candidate_005.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_115935_6976896a",
+      "source_path": "false_positive/20260811_115935_6976896a_candidate_002.png",
+      "locked_path": "false_positive/20260811_115935_6976896a_candidate_002.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_114605_63e443c3",
+      "source_path": "false_positive/20260811_114605_63e443c3_candidate_002.png",
+      "locked_path": "false_positive/20260811_114605_63e443c3_candidate_002.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260808_110844_cdfec1a2",
+      "source_path": "false_positive/20260808_110844_cdfec1a2_candidate_003.png",
+      "locked_path": "false_positive/20260808_110844_cdfec1a2_candidate_003.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260810_102646_0ec54b77",
+      "source_path": "false_positive/20260810_102646_0ec54b77_candidate_005.png",
+      "locked_path": "false_positive/20260810_102646_0ec54b77_candidate_005.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_012.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_012.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260810_102627_64ed1194",
+      "source_path": "false_positive/20260810_102627_64ed1194_candidate_003.png",
+      "locked_path": "false_positive/20260810_102627_64ed1194_candidate_003.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260810_102627_64ed1194",
+      "source_path": "false_positive/20260810_102627_64ed1194_candidate_004.png",
+      "locked_path": "false_positive/20260810_102627_64ed1194_candidate_004.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260811_113632_ea36ff45",
+      "source_path": "true_detection/20260811_113632_ea36ff45_candidate_023.png",
+      "locked_path": "true_detection/20260811_113632_ea36ff45_candidate_023.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260808_110911_c8c35144",
+      "source_path": "false_positive/20260808_110911_c8c35144_candidate_002.png",
+      "locked_path": "false_positive/20260808_110911_c8c35144_candidate_002.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260807_170005_bc865379",
+      "source_path": "false_positive/20260807_170005_bc865379_candidate_015.png",
+      "locked_path": "false_positive/20260807_170005_bc865379_candidate_015.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_113028_b3d1085c",
+      "source_path": "false_positive/20260811_113028_b3d1085c_candidate_004.png",
+      "locked_path": "false_positive/20260811_113028_b3d1085c_candidate_004.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260807_170005_bc865379",
+      "source_path": "false_positive/20260807_170005_bc865379_candidate_009.png",
+      "locked_path": "false_positive/20260807_170005_bc865379_candidate_009.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260807_170005_bc865379",
+      "source_path": "false_positive/20260807_170005_bc865379_candidate_014.png",
+      "locked_path": "false_positive/20260807_170005_bc865379_candidate_014.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_114605_63e443c3",
+      "source_path": "false_positive/20260811_114605_63e443c3_candidate_004.png",
+      "locked_path": "false_positive/20260811_114605_63e443c3_candidate_004.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_113028_b3d1085c",
+      "source_path": "false_positive/20260811_113028_b3d1085c_candidate_010.png",
+      "locked_path": "false_positive/20260811_113028_b3d1085c_candidate_010.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260811_113632_ea36ff45",
+      "source_path": "true_detection/20260811_113632_ea36ff45_candidate_001.png",
+      "locked_path": "true_detection/20260811_113632_ea36ff45_candidate_001.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260811_113632_ea36ff45",
+      "source_path": "true_detection/20260811_113632_ea36ff45_candidate_022.png",
+      "locked_path": "true_detection/20260811_113632_ea36ff45_candidate_022.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260811_113632_ea36ff45",
+      "source_path": "true_detection/20260811_113632_ea36ff45_candidate_028.png",
+      "locked_path": "true_detection/20260811_113632_ea36ff45_candidate_028.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260807_170005_bc865379",
+      "source_path": "false_positive/20260807_170005_bc865379_candidate_013.png",
+      "locked_path": "false_positive/20260807_170005_bc865379_candidate_013.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260808_120302_2dc0c670",
+      "source_path": "true_detection/20260808_120302_2dc0c670_candidate_002.png",
+      "locked_path": "true_detection/20260808_120302_2dc0c670_candidate_002.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260808_162948_e8865544",
+      "source_path": "true_detection/20260808_162948_e8865544_candidate_010.png",
+      "locked_path": "true_detection/20260808_162948_e8865544_candidate_010.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_101536_8ae7cf06",
+      "source_path": "true_detection/20260810_101536_8ae7cf06_candidate_026.png",
+      "locked_path": "true_detection/20260810_101536_8ae7cf06_candidate_026.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260808_162948_e8865544",
+      "source_path": "true_detection/20260808_162948_e8865544_candidate_003.png",
+      "locked_path": "true_detection/20260808_162948_e8865544_candidate_003.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_114605_63e443c3",
+      "source_path": "false_positive/20260811_114605_63e443c3_candidate_003.png",
+      "locked_path": "false_positive/20260811_114605_63e443c3_candidate_003.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_101536_8ae7cf06",
+      "source_path": "true_detection/20260810_101536_8ae7cf06_candidate_021.png",
+      "locked_path": "true_detection/20260810_101536_8ae7cf06_candidate_021.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260811_113632_ea36ff45",
+      "source_path": "true_detection/20260811_113632_ea36ff45_candidate_027.png",
+      "locked_path": "true_detection/20260811_113632_ea36ff45_candidate_027.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_014.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_014.png"
+    },
+    {
+      "class_name": "true_detection",
+      "class_index": 1,
+      "session_id": "20260810_162158_f333f6e2",
+      "source_path": "true_detection/20260810_162158_f333f6e2_candidate_015.png",
+      "locked_path": "true_detection/20260810_162158_f333f6e2_candidate_015.png"
+    },
+    {
+      "class_name": "false_positive",
+      "class_index": 0,
+      "session_id": "20260811_123144_23bfb8eb",
+      "source_path": "false_positive/20260811_123144_23bfb8eb_candidate_003.png",
+      "locked_path": "false_positive/20260811_123144_23bfb8eb_candidate_003.png"
+    }
+  ]
+}
