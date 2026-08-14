@@ -37,6 +37,12 @@ TASSEL_AUTO_MIN_SCORE_HARAM = 9.0
 TASSEL_AUTO_MIN_SCORE_NECKLACE = 9.0
 TASSEL_AUTO_MIN_SCORE_OTHER = 11.5
 TASSEL_AUTO_DISABLED_TYPES = frozenset({"dollar chain", "dollar"})
+TASSEL_CLASSIFIER_PATH = Path(__file__).resolve().parent / "tassel_mobilenet_v3_small.pt"
+TASSEL_CLASSIFIER_THRESHOLD = 0.5
+
+_TASSEL_CLASSIFIER = None
+_TASSEL_CLASSIFIER_TRANSFORM = None
+_TASSEL_CLASSIFIER_ERROR: str | None = None
 
 # FastSAM is class-agnostic, so these prompts are also the explicit policy used
 # by the geometric/color evidence gates below and are exposed in debug output.
@@ -48,9 +54,9 @@ PART_DETECTION_PROMPTS = {
         "compact hanging ornament."
     ),
     "tassel": (
-        "Tassel/thread: detect a sparse terminal bundle with repeated strand "
-        "evidence for Necklace and Haram, including colorful or pale thread. "
-        "Dollar chain remains disabled. Manual correction remains authoritative."
+        "Tassel/thread: first require a terminal bundle with repeated strand "
+        "evidence, then segment that bundle for Necklace and Haram. Gold, "
+        "colorful, and pale thread are valid. Dollar chain remains disabled."
     ),
 }
 
@@ -2514,6 +2520,97 @@ def _tassel_auto_policy(jewel_type: str | None) -> str:
     return "very_low"
 
 
+def _load_tassel_classifier():
+    global _TASSEL_CLASSIFIER
+    global _TASSEL_CLASSIFIER_TRANSFORM
+    global _TASSEL_CLASSIFIER_ERROR
+
+    if _TASSEL_CLASSIFIER is not None or _TASSEL_CLASSIFIER_ERROR is not None:
+        return _TASSEL_CLASSIFIER, _TASSEL_CLASSIFIER_TRANSFORM
+
+    try:
+        import torch
+        from torchvision.models import MobileNet_V3_Small_Weights, mobilenet_v3_small
+
+        payload = torch.load(
+            TASSEL_CLASSIFIER_PATH,
+            map_location="cpu",
+            weights_only=True,
+        )
+        model = mobilenet_v3_small(weights=None)
+        input_features = model.classifier[0].in_features
+        model.classifier = torch.nn.Linear(input_features, 1)
+        model.load_state_dict(payload["state_dict"])
+        model.eval()
+        _TASSEL_CLASSIFIER = model
+        _TASSEL_CLASSIFIER_TRANSFORM = (
+            MobileNet_V3_Small_Weights.DEFAULT.transforms()
+        )
+    except Exception as exc:
+        _TASSEL_CLASSIFIER_ERROR = str(exc)
+
+    return _TASSEL_CLASSIFIER, _TASSEL_CLASSIFIER_TRANSFORM
+
+
+def classify_tassel_candidate(
+    image: np.ndarray,
+    candidate_mask: np.ndarray,
+) -> Dict[str, object]:
+    model, transform = _load_tassel_classifier()
+    if model is None or transform is None:
+        return {
+            "available": False,
+            "accepted": False,
+            "probability": 0.0,
+            "threshold": TASSEL_CLASSIFIER_THRESHOLD,
+            "model": TASSEL_CLASSIFIER_PATH.name,
+            "error": _TASSEL_CLASSIFIER_ERROR or "classifier unavailable",
+        }
+
+    ys, xs = np.where(candidate_mask > 0)
+    if xs.size == 0:
+        return {
+            "available": True,
+            "accepted": False,
+            "probability": 0.0,
+            "threshold": TASSEL_CLASSIFIER_THRESHOLD,
+            "model": TASSEL_CLASSIFIER_PATH.name,
+        }
+
+    x1, x2 = int(xs.min()), int(xs.max()) + 1
+    y1, y2 = int(ys.min()), int(ys.max()) + 1
+    padding = max(3, int(round(0.12 * max(x2 - x1, y2 - y1))))
+    x1 = max(0, x1 - padding)
+    y1 = max(0, y1 - padding)
+    x2 = min(image.shape[1], x2 + padding)
+    y2 = min(image.shape[0], y2 + padding)
+
+    crop = image[y1:y2, x1:x2].copy()
+    crop_mask = candidate_mask[y1:y2, x1:x2] > 0
+    crop[~crop_mask] = 255
+
+    import torch
+
+    rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+    tensor = (
+        torch.from_numpy(rgb)
+        .permute(2, 0, 1)
+        .to(dtype=torch.float32)
+        .div_(255.0)
+    )
+    with torch.inference_mode():
+        logit = model(transform(tensor).unsqueeze(0)).reshape(-1)[0]
+        probability = float(torch.sigmoid(logit).item())
+
+    return {
+        "available": True,
+        "accepted": probability >= TASSEL_CLASSIFIER_THRESHOLD,
+        "probability": round(probability, 4),
+        "threshold": TASSEL_CLASSIFIER_THRESHOLD,
+        "model": TASSEL_CLASSIFIER_PATH.name,
+    }
+
+
 def _largest_contour_shape_metrics(mask: np.ndarray) -> Tuple[float, float]:
     contours = contour_from_mask(mask.astype(np.uint8))
     if not contours:
@@ -2956,6 +3053,7 @@ def tassel_candidate_evidence(
     center_y = float(ys.mean())
     x_fraction = (center_x - necklace_x1) / range_x
     y_fraction = (center_y - necklace_y1) / range_y
+    tie_end_region = y_fraction <= 0.65
     terminal_distance = min(
         x_fraction,
         1.0 - x_fraction,
@@ -2963,8 +3061,28 @@ def tassel_candidate_evidence(
         1.0 - y_fraction,
     )
     pale_fan_bundle = pale_fan_shape and terminal_distance <= 0.10
+    terminal_fan_structure = bool(
+        tie_end_region
+        and terminal_distance <= 0.32
+        and 0.05 <= area_ratio <= 0.38
+        and fill_ratio <= 0.62
+        and solidity <= 0.86
+        and edge_ratio >= 0.18
+        and (
+            (long_line_count >= 8 and line_concentration >= 0.42)
+            or (endpoint_count >= 12 and skeleton_ratio >= 0.10)
+        )
+    )
+    gold_thread_bundle = bool(
+        gold_ratio >= 0.45
+        and terminal_fan_structure
+    )
     if pale_fan_bundle:
         score += 7.0
+    if terminal_fan_structure:
+        score += 2.0
+    if gold_thread_bundle:
+        score += 2.0
     if terminal_distance <= 0.16:
         score += 1.15
     elif terminal_distance <= 0.28:
@@ -2988,6 +3106,7 @@ def tassel_candidate_evidence(
         and textile_ratio < 0.16
         and not pale_thread_bundle
         and not pale_fan_bundle
+        and not gold_thread_bundle
     ):
         score -= 3.0
     if fill_ratio > 0.58 or solidity > 0.82:
@@ -3012,31 +3131,51 @@ def tassel_candidate_evidence(
     elif auto_policy == "necklace":
         colorful_threads = textile_ratio >= 0.22 and saturated_ratio >= 0.34
         filament_bundle = (
-            long_line_count >= 4
-            and line_concentration >= 0.30
-            and (skeleton_ratio >= 0.04 or endpoint_count >= 8)
+            terminal_fan_structure
+            or (
+                long_line_count >= 4
+                and line_concentration >= 0.30
+                and (skeleton_ratio >= 0.04 or endpoint_count >= 8)
+            )
         )
         sparse_bundle = (
             (fill_ratio <= 0.48 and solidity <= 0.72)
             or pale_fan_bundle
+            or terminal_fan_structure
         )
-        terminal_region = terminal_distance <= 0.28
+        terminal_region = terminal_distance <= 0.32
         max_area_ratio = 0.40
-        material_bundle = colorful_threads or pale_thread_bundle or pale_fan_bundle
+        material_bundle = (
+            colorful_threads
+            or pale_thread_bundle
+            or pale_fan_bundle
+            or gold_thread_bundle
+            or terminal_fan_structure
+        )
     else:
         colorful_threads = textile_ratio >= 0.16 and saturated_ratio >= 0.30
         filament_bundle = (
-            long_line_count >= 4
-            and line_concentration >= 0.38
-            and (skeleton_ratio >= 0.045 or endpoint_count >= 4)
+            terminal_fan_structure
+            or (
+                long_line_count >= 4
+                and line_concentration >= 0.38
+                and (skeleton_ratio >= 0.045 or endpoint_count >= 4)
+            )
         )
         sparse_bundle = (
             (fill_ratio <= 0.52 and solidity <= 0.78)
             or pale_fan_bundle
+            or terminal_fan_structure
         )
-        terminal_region = terminal_distance <= 0.30
+        terminal_region = terminal_distance <= 0.32
         max_area_ratio = 0.62
-        material_bundle = colorful_threads or pale_thread_bundle or pale_fan_bundle
+        material_bundle = (
+            colorful_threads
+            or pale_thread_bundle
+            or pale_fan_bundle
+            or gold_thread_bundle
+            or terminal_fan_structure
+        )
     accepted = bool(
         auto_policy != "disabled"
         and 0.012 <= area_ratio <= max_area_ratio
@@ -3044,14 +3183,12 @@ def tassel_candidate_evidence(
         and filament_bundle
         and sparse_bundle
         and terminal_region
+        and tie_end_region
         and score >= threshold
     )
 
     if auto_policy == "disabled":
-        reason = (
-            "Automatic tassel detection is disabled for this jewel type; "
-            "use a manual correction when a tassel is present."
-        )
+        reason = "Automatic tassel detection is disabled for this jewel type."
     elif accepted:
         reason = "Terminal bundle with multiple aligned thread-like strands."
     elif not material_bundle:
@@ -3075,6 +3212,7 @@ def tassel_candidate_evidence(
             "auto_policy": auto_policy,
             "haram_prior": _is_haram_type(jewel_type),
             "area_ratio": round(float(area_ratio), 4),
+            "bbox": [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())],
             "aspect_ratio": round(float(aspect_ratio), 3),
             "fill_ratio": round(float(fill_ratio), 3),
             "solidity": round(float(solidity), 3),
@@ -3084,12 +3222,17 @@ def tassel_candidate_evidence(
             "hue_diversity": hue_diversity,
             "pale_thread_bundle": pale_thread_bundle,
             "pale_fan_bundle": pale_fan_bundle,
+            "terminal_fan_structure": terminal_fan_structure,
+            "gold_thread_bundle": gold_thread_bundle,
             "edge_ratio": round(float(edge_ratio), 3),
             "skeleton_ratio": round(float(skeleton_ratio), 4),
             "skeleton_endpoints": endpoint_count,
             "long_line_count": long_line_count,
             "line_concentration": round(float(line_concentration), 3),
             "terminal_distance": round(float(terminal_distance), 3),
+            "x_center_fraction": round(float(x_fraction), 3),
+            "y_center_fraction": round(float(y_fraction), 3),
+            "tie_end_region": tie_end_region,
         }
     )
     return evidence
@@ -3112,9 +3255,14 @@ def is_likely_tassel(
     image: np.ndarray,
     jewel_type: str | None = None,
 ) -> bool:
-    return bool(
-        tassel_candidate_evidence(mask, necklace_mask, image, jewel_type)["accepted"]
+    geometry_accepted = bool(
+        tassel_candidate_evidence(mask, necklace_mask, image, jewel_type)[
+            "accepted"
+        ]
     )
+    if not geometry_accepted:
+        return False
+    return bool(classify_tassel_candidate(image, mask)["accepted"])
 
 
 def _legacy_score_pendant_candidate(
@@ -3409,13 +3557,14 @@ def detect_tassel_seed(
     image: np.ndarray,
     textile_mask: np.ndarray,
     jewel_type: str | None = None,
-) -> Tuple[np.ndarray, np.ndarray, float]:
+) -> Tuple[np.ndarray, np.ndarray, float, Dict[str, object] | None]:
     h, w = necklace_mask.shape
     if _tassel_auto_policy(jewel_type) == "disabled":
         return (
             np.zeros_like(necklace_mask, dtype=np.uint8),
             necklace_mask.copy().astype(np.uint8),
             -999.0,
+            None,
         )
 
     topology_seed, chain_hint = build_run_based_seeds(necklace_mask, textile_mask)
@@ -3540,6 +3689,24 @@ def detect_tassel_seed(
             image,
             jewel_type,
         )
+        geometry_accepted = bool(evidence["accepted"])
+        classifier = classify_tassel_candidate(image, cand)
+        evidence["geometry_accepted"] = geometry_accepted
+        evidence["classifier"] = classifier
+        evidence["accepted"] = bool(
+            geometry_accepted and classifier["accepted"]
+        )
+        if geometry_accepted and not classifier["accepted"]:
+            if classifier["available"]:
+                evidence["reason"] = (
+                    "MobileNetV3 rejected the terminal region as jewellery "
+                    "rather than tassel/thread."
+                )
+            else:
+                evidence["reason"] = (
+                    "Tassel classifier is unavailable; autonomous detection "
+                    "failed closed."
+                )
         score = float(evidence["score"])
         if (
             best_evidence is None
@@ -3557,12 +3724,17 @@ def detect_tassel_seed(
             best_evidence = evidence
 
     if best_evidence is None or not best_evidence["accepted"]:
-        return np.zeros_like(necklace_mask, dtype=np.uint8), chain_hint, best_score
+        return (
+            np.zeros_like(necklace_mask, dtype=np.uint8),
+            chain_hint,
+            best_score,
+            best_evidence,
+        )
 
     best_seed = close(best_seed, 9) & necklace_mask
     best_seed = remove_small_components(best_seed, max(80, (h * w) // 20000))
     chain_hint = (chain_hint & (1 - dilate(best_seed, 5))).astype(np.uint8)
-    return best_seed.astype(np.uint8), chain_hint, best_score
+    return best_seed.astype(np.uint8), chain_hint, best_score, best_evidence
 
 
 def distance_to_seed(seed: np.ndarray) -> np.ndarray:
@@ -4318,7 +4490,7 @@ def segment_necklace(
     elif necklace_mask.any():
         necklace_mask = keep_primary_jewelry_components(necklace_mask)
 
-    tassel_seed, chain_seed_hint, tassel_score = detect_tassel_seed(
+    tassel_seed, chain_seed_hint, tassel_score, tassel_presence_evidence = detect_tassel_seed(
         necklace_mask,
         image,
         color_maps.get("textile_mask", color_maps["red_mask"]),
@@ -4522,6 +4694,11 @@ def segment_necklace(
         "tassel_absent": not bool(parts["tassel"].any()),
         "pendant_evidence": pendant_evidence,
         "tassel_evidence": tassel_evidence,
+        "tassel_presence": {
+            "detected": bool(parts["tassel"].any()),
+            "score": round(float(tassel_score), 3),
+            "candidate_evidence": tassel_presence_evidence,
+        },
         "detections": len(detections),
         "selected_detections": len(selected_detections),
         "primary_mask_area": int(primary_mask.sum()),
@@ -4631,13 +4808,16 @@ def run_segmentation(
         if raw_image is None:
             raise RuntimeError(f"Could not read image: {image_path}")
         prepared = prepare_segmentation_input(raw_image)
-    feedback = load_manual_feedback(
-        image_path,
-        Path(args.feedback_dir),
-        prepared.working_image.shape[:2],
-        prepared.working_image,
-        prepared.working_mask,
-    )
+    autonomous_mode = bool(getattr(args, "autonomous_mode", False))
+    feedback = None
+    if not autonomous_mode:
+        feedback = load_manual_feedback(
+            image_path,
+            Path(args.feedback_dir),
+            prepared.working_image.shape[:2],
+            prepared.working_image,
+            prepared.working_mask,
+        )
     output_dir = get_output_dir(image_path, args.output_dir)
     parts, debug = segment_necklace(
         prepared.working_image,
@@ -4646,6 +4826,7 @@ def run_segmentation(
         args,
         manual_feedback=feedback,
     )
+    debug["autonomous_mode"] = autonomous_mode
     if bead_analysis_override is not None:
         existing_bead_analysis = debug.get("bead_analysis") or {}
         bead_visualization = existing_bead_analysis.get("visualization")

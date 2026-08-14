@@ -5433,6 +5433,8 @@ def build_final_summary(state: dict[str, Any]) -> None:
     elif branch_key == "segmentation":
         if segmentation.get("done"):
             lines.append("Jewellery analysis completed.")
+            if segmentation.get("autonomous_mode"):
+                lines.append("Tassel presence and segmentation decided autonomously.")
             if segmentation.get("no_pendant"):
                 lines.append("Pendant excluded by operator feedback.")
             elif segmentation.get("pendant_absent"):
@@ -6092,6 +6094,11 @@ def generate_pdf_report(
             story.append(Paragraph("Jewellery Analysis", heading_style))
             
             story.append(Paragraph("Jewellery analysis completed.", normal_style))
+            if segmentation.get("autonomous_mode"):
+                story.append(Paragraph(
+                    "Tassel presence and segmentation decided autonomously.",
+                    normal_style,
+                ))
             if segmentation.get("no_pendant"):
                 story.append(Paragraph("Pendant excluded by operator feedback.", normal_style))
             elif segmentation.get("pendant_absent"):
@@ -7619,6 +7626,7 @@ def segmentation_args_for(state: dict[str, Any]) -> SimpleNamespace:
         providers=["CPUExecutionProvider"],
         gui=False,
         feedback_dir=str(SEGMENTATION_FEEDBACK_DIR),
+        autonomous_mode=True,
         jewel_type=str(jewel_type),
     )
 
@@ -7671,6 +7679,8 @@ def run_segmentation_pipeline(state: dict[str, Any]) -> dict[str, Any]:
         "tassel_absent": bool(debug.get("tassel_absent", False)),
         "pendant_evidence": debug.get("pendant_evidence"),
         "tassel_evidence": debug.get("tassel_evidence"),
+        "tassel_presence": debug.get("tassel_presence"),
+        "autonomous_mode": bool(debug.get("autonomous_mode", False)),
         "part_detection_prompts": debug.get("part_detection_prompts"),
         "part_summary": summary_payload.get("parts", {}),
         "summary_json": artifact_payload(state, summary_path),
@@ -10253,92 +10263,17 @@ def api_segmentation_run():
 
 @app.route("/api/segmentation/correct", methods=["POST"])
 def api_segmentation_correct():
-    with STATE_LOCK:
-        state = ensure_state()
-        label = state["classification"].get("confirmed_label")
-        if label not in SEGMENTATION_CLASSES:
-            return fail("This correction is only relevant for the jewellery analysis workflow.")
-        try:
-            payload = parse_post_payload()
-            segmentation = state.get("segmentation") or {}
-            preprocessed = segmentation.get("preprocessed_image")
-            if not preprocessed:
-                return fail("Run jewellery analysis once before applying a correction.")
-
-            image_path = Path(preprocessed["path"])
-            image_bgr = cv2.imread(str(image_path))
-            if image_bgr is None:
-                return fail("Could not load the jewellery analysis input image.")
-
-            part = str(payload.get("part") or "pendant").strip().lower()
-            if part not in {"pendant", "tassel"}:
-                return fail("Correction part must be either pendant or tassel.")
-
-            raw_bbox = payload.get("bbox")
-            if raw_bbox is None:
-                raw_bbox = payload.get(f"{part}_bbox")
-
-            bbox = normalize_rect(raw_bbox, image_bgr.shape[1], image_bgr.shape[0])
-            if not bbox:
-                return fail(f"Draw a valid {part} correction box.")
-
-            state["segmentation"] = apply_segmentation_feedback(state, part, bbox)
-            state["stone_detection"]["main"] = None
-            state["status"] = (
-                f"{part.title()} correction learned as a position-invariant visual template; "
-                "jewellery analysis rerun."
-            )
-            state["updated_at"] = now_stamp()
-            reset_purity_state(state)
-            build_final_summary(state)
-        except Exception as exc:  # noqa: BLE001
-            return fail(str(exc))
-
-    return jsonify({"ok": True, "state": snapshot_state()})
+    return fail("Jewellery analysis is autonomous; manual corrections are disabled.")
 
 
 @app.route("/api/segmentation/no-pendant", methods=["POST"])
 def api_segmentation_no_pendant():
-    with STATE_LOCK:
-        state = ensure_state()
-        label = state["classification"].get("confirmed_label")
-        if label not in SEGMENTATION_CLASSES:
-            return fail("This action is only relevant for the jewellery analysis workflow.")
-        if not (state.get("segmentation") or {}).get("done"):
-            return fail("Run jewellery analysis once before excluding pendant.")
-        try:
-            state["segmentation"] = apply_segmentation_no_part(state, "pendant")
-            state["stone_detection"]["main"] = None
-            state["status"] = "Pendant excluded; region merged into chain. Jewellery analysis rerun."
-            state["updated_at"] = now_stamp()
-            reset_purity_state(state)
-            build_final_summary(state)
-        except Exception as exc:  # noqa: BLE001
-            return fail(str(exc))
-
-    return jsonify({"ok": True, "state": snapshot_state()})
+    return fail("Jewellery analysis is autonomous; manual exclusions are disabled.")
 
 
 @app.route("/api/segmentation/no-tassel", methods=["POST"])
 def api_segmentation_no_tassel():
-    with STATE_LOCK:
-        state = ensure_state()
-        label = state["classification"].get("confirmed_label")
-        if label not in SEGMENTATION_CLASSES:
-            return fail("This action is only relevant for the jewellery analysis workflow.")
-        if not (state.get("segmentation") or {}).get("done"):
-            return fail("Run jewellery analysis once before excluding tassel.")
-        try:
-            state["segmentation"] = apply_segmentation_no_part(state, "tassel")
-            state["stone_detection"]["main"] = None
-            state["status"] = "Tassel excluded; region merged into chain. Jewellery analysis rerun."
-            state["updated_at"] = now_stamp()
-            reset_purity_state(state)
-            build_final_summary(state)
-        except Exception as exc:  # noqa: BLE001
-            return fail(str(exc))
-
-    return jsonify({"ok": True, "state": snapshot_state()})
+    return fail("Jewellery analysis is autonomous; manual exclusions are disabled.")
 
 
 @app.route("/api/stone-detection/main", methods=["POST"])

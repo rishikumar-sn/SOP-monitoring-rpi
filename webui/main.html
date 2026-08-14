@@ -1179,10 +1179,10 @@
 
           <div class="buttonRow" style="margin-top: 12px;">
             <button id="btnRunSegmentation" class="btn">Start Jewellery Analysis</button>
-            <button id="btnNoPendant" class="btn secondary" disabled>No Pendant</button>
-            <button id="btnNoTassel" class="btn secondary" disabled>No Tassel</button>
+            <button id="btnNoPendant" class="btn secondary hidden" disabled>No Pendant</button>
+            <button id="btnNoTassel" class="btn secondary hidden" disabled>No Tassel</button>
           </div>
-          <div class="buttonRow" style="margin-top: 12px;">
+          <div class="buttonRow hidden" style="margin-top: 12px;">
             <button id="btnStartPendantCorrection" class="btn secondary" disabled>Draw Correct Pendant</button>
             <button id="btnApplyPendantCorrection" class="btn secondary" disabled>Apply Pendant Box</button>
             <button id="btnStartTasselCorrection" class="btn secondary" disabled>Draw Correct Tassel</button>
@@ -4096,7 +4096,9 @@
         } else if (feedbackMatchType === "exact_signature" || feedbackMatchType === "legacy_path") {
           feedbackSourceText = " from saved feedback";
         }
-          refs.segmentationValue.textContent = "Jewellery analysis completed";
+          refs.segmentationValue.textContent = segmentation.autonomous_mode
+            ? "Autonomous jewellery analysis completed"
+            : "Jewellery analysis completed";
           if (beadRiskHigh) {
             refs.segmentationSub.textContent = `RISK JEWEL: Round beads/decorative elements detected in chain.${tasselPresent ? " Tassel region detected; estimated weight 1.5000 g." : ""}`;
           } else {
