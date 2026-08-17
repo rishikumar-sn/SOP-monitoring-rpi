@@ -48,6 +48,14 @@ DIMENSION_DIR = BASE_DIR / "Dimension"
 HANDREMOVER_DIR = BASE_DIR / "HandRemover"
 SEGMENTATION_DIR = BASE_DIR / "Segmentation"
 STONE_DIR = BASE_DIR / "StoneDetection"
+TASSEL_PRODUCTION_MODEL_PATH = SEGMENTATION_DIR / "tassel_mobilenet_v3_small.pt"
+TASSEL_CANDIDATE_MODEL_PATH = BASE_DIR / "TasselTraining" / "checkpoints" / "latest.pt"
+TASSEL_MODEL_SOURCES = {
+    "production": TASSEL_PRODUCTION_MODEL_PATH,
+    "candidate": TASSEL_CANDIDATE_MODEL_PATH,
+}
+_TASSEL_MODEL_INSPECTION_CACHE: dict[tuple[str, int, int], dict[str, Any]] = {}
+TASSEL_MODEL_LAST_WARNING = ""
 
 for module_dir in (
     CLASSIFICATION_DIR,
@@ -889,7 +897,7 @@ HAND_MODEL_PATH = HANDREMOVER_DIR / "handremover.hef"
 BEAD_MODEL_PATH = BASE_DIR / "models" / "bead_finder.hef"
 BEAD_YOLO_SCORE_THRESHOLD = 0.50
 BEAD_CLASSIFIER_MODEL_PATH = BASE_DIR / "models" / "beadcheck_mobilenet_v3.pt"
-BEAD_CLASSIFIER_TRUE_THRESHOLD = 0.50
+BEAD_CLASSIFIER_TRUE_THRESHOLD = 0.75
 CLASS_MODEL_PATH = CLASSIFICATION_DIR / "siglip2-base-patch32-256_vision_encoder.sim.onnx"
 SEGMENTATION_FEEDBACK_DIR = SEGMENTATION_DIR / "feedback"
 SEGMENTATION_FEEDBACK_DIR.mkdir(parents=True, exist_ok=True)
@@ -962,7 +970,7 @@ SEGMENTATION_CLASSES = {
     "Kasu Malai",
     "Mangalsutra",
 }
-HIGH_RISK_STONE_THRESHOLD = 40.0
+HIGH_RISK_STONE_WEIGHT_G = 1.0
 STONE_ANALYSIS_V2_DEBUG = os.environ.get(
     "STONE_ANALYSIS_V2_DEBUG",
     "false",
@@ -1079,6 +1087,7 @@ PERSISTENT_ROIS = {
     "learned_stone_profiles": [],
     "stone_super_resolution": dict(DEFAULT_STONE_SUPER_RESOLUTION),
     "audio_settings": dict(DEFAULT_PURITY_AUDIO_SETTINGS),
+    "tassel_classifier_source": "production",
     "calibration_config": {
         "aruco_dict": "AprilTag_36h11",
         "marker_id": APRILTAG_DEFAULT_ID,
@@ -1191,6 +1200,139 @@ def normalize_purity_audio_settings(settings: dict | None) -> dict[str, Any]:
     }
 
 
+def normalize_tassel_model_source(value: Any) -> str:
+    return "candidate" if str(value or "").strip().lower() == "candidate" else "production"
+
+
+def inspect_tassel_classifier_checkpoint(path: Path) -> dict[str, Any]:
+    resolved = path.resolve()
+    info: dict[str, Any] = {
+        "available": False,
+        "name": resolved.name,
+        "path": str(resolved),
+        "trained_at": None,
+        "class_counts": None,
+        "validation_metrics": None,
+        "threshold": 0.5,
+        "error": None,
+    }
+    if not resolved.is_file():
+        info["error"] = f"Checkpoint not found: {resolved.name}"
+        return info
+
+    stat = resolved.stat()
+    cache_key = (str(resolved), int(stat.st_mtime_ns), int(stat.st_size))
+    cached = _TASSEL_MODEL_INSPECTION_CACHE.get(cache_key)
+    if cached is not None:
+        return copy.deepcopy(cached)
+
+    try:
+        import torch
+        from torchvision.models import mobilenet_v3_small
+
+        payload = torch.load(resolved, map_location="cpu", weights_only=True)
+        if str(payload.get("architecture")) != "mobilenet_v3_small":
+            raise ValueError("checkpoint architecture is not mobilenet_v3_small")
+        state_dict = payload.get("state_dict")
+        if not isinstance(state_dict, dict):
+            raise ValueError("checkpoint has no state_dict")
+        model = mobilenet_v3_small(weights=None)
+        input_features = model.classifier[0].in_features
+        model.classifier = torch.nn.Linear(input_features, 1)
+        model.load_state_dict(state_dict)
+        threshold = max(0.05, min(0.95, float(payload.get("threshold", 0.5))))
+        info.update(
+            {
+                "available": True,
+                "trained_at": payload.get("trained_at"),
+                "class_counts": payload.get("class_counts"),
+                "validation_metrics": payload.get("validation_metrics"),
+                "threshold": threshold,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        info["error"] = str(exc)
+
+    for existing_key in list(_TASSEL_MODEL_INSPECTION_CACHE):
+        if existing_key[0] == str(resolved) and existing_key != cache_key:
+            _TASSEL_MODEL_INSPECTION_CACHE.pop(existing_key, None)
+    _TASSEL_MODEL_INSPECTION_CACHE[cache_key] = copy.deepcopy(info)
+    return info
+
+
+def tassel_model_settings() -> dict[str, Any]:
+    selected_source = normalize_tassel_model_source(
+        PERSISTENT_ROIS.get("tassel_classifier_source")
+    )
+    active_path = Path(necklace_segmentation.TASSEL_CLASSIFIER_PATH).resolve()
+    active_source = (
+        "candidate"
+        if active_path == TASSEL_CANDIDATE_MODEL_PATH.resolve()
+        else "production"
+    )
+    active_info = inspect_tassel_classifier_checkpoint(
+        TASSEL_MODEL_SOURCES[active_source]
+    )
+    return {
+        "selected_source": selected_source,
+        "active_source": active_source,
+        "active_model": active_info["name"],
+        "threshold": active_info["threshold"],
+        "production": inspect_tassel_classifier_checkpoint(
+            TASSEL_PRODUCTION_MODEL_PATH
+        ),
+        "candidate": inspect_tassel_classifier_checkpoint(
+            TASSEL_CANDIDATE_MODEL_PATH
+        ),
+        "warning": TASSEL_MODEL_LAST_WARNING or None,
+    }
+
+
+def apply_tassel_model_source(source: str, persist: bool = True) -> dict[str, Any]:
+    global TASSEL_MODEL_LAST_WARNING
+
+    requested_source = str(source or "").strip().lower()
+    if requested_source not in TASSEL_MODEL_SOURCES:
+        raise ValueError("Tassel model must be production or candidate.")
+
+    model_info = inspect_tassel_classifier_checkpoint(
+        TASSEL_MODEL_SOURCES[requested_source]
+    )
+    fallback = False
+    if not model_info["available"]:
+        if requested_source == "production":
+            raise RuntimeError(
+                model_info["error"] or "Production tassel model is unavailable."
+            )
+        production_info = inspect_tassel_classifier_checkpoint(
+            TASSEL_PRODUCTION_MODEL_PATH
+        )
+        if not production_info["available"]:
+            raise RuntimeError(
+                production_info["error"] or "Production tassel model is unavailable."
+            )
+        requested_source = "production"
+        model_info = production_info
+        fallback = True
+        TASSEL_MODEL_LAST_WARNING = (
+            "Latest trained tassel model is unavailable or invalid; Production is active. "
+            f"{inspect_tassel_classifier_checkpoint(TASSEL_CANDIDATE_MODEL_PATH)['error']}"
+        )
+    else:
+        TASSEL_MODEL_LAST_WARNING = ""
+
+    necklace_segmentation.configure_tassel_classifier(
+        TASSEL_MODEL_SOURCES[requested_source],
+        model_info["threshold"],
+    )
+    PERSISTENT_ROIS["tassel_classifier_source"] = requested_source
+    if persist:
+        save_persistent_rois()
+    settings = tassel_model_settings()
+    settings["fallback"] = fallback
+    return settings
+
+
 def get_lcd() -> I2CLcd16x2 | None:
     """Return the optional 16x2 LCD instance, initializing it once."""
     global LCD_DISPLAY, LCD_INIT_ATTEMPTED
@@ -1275,6 +1417,11 @@ def load_persistent_rois() -> None:
                 )
                 PERSISTENT_ROIS["audio_settings"] = normalize_purity_audio_settings(
                     data.get("audio_settings")
+                )
+                PERSISTENT_ROIS["tassel_classifier_source"] = (
+                    normalize_tassel_model_source(
+                        data.get("tassel_classifier_source")
+                    )
                 )
                 PERSISTENT_ROIS["calibration_config"] = normalize_metric_calibration_config(
                     data.get("calibration_config")
@@ -4897,17 +5044,21 @@ def run_full_image_bead_detection(
     ]
     classifier_predictions = get_bead_classifier_filter().predict_crops(crops)
     detections: list[dict[str, Any]] = []
-    annotated = image_bgr.copy()
+    annotated = detection_image.copy()
     for candidate, prediction in zip(yolo_candidates, classifier_predictions):
         if prediction["resnet_prediction"] != "true_bead":
             continue
         detection = {**candidate, **prediction}
         detections.append(detection)
         box_x1, box_y1, box_x2, box_y2 = detection["bbox"]
+        draw_x1 = box_x1 - offset_x
+        draw_y1 = box_y1 - offset_y
+        draw_x2 = box_x2 - offset_x
+        draw_y2 = box_y2 - offset_y
         cv2.rectangle(
             annotated,
-            (box_x1, box_y1),
-            (box_x2, box_y2),
+            (draw_x1, draw_y1),
+            (draw_x2, draw_y2),
             (0, 200, 0),
             3,
             cv2.LINE_AA,
@@ -4915,7 +5066,7 @@ def run_full_image_bead_detection(
         cv2.putText(
             annotated,
             str(len(detections)),
-            (box_x1, max(24, box_y1 - 8)),
+            (draw_x1, max(24, draw_y1 - 8)),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.75,
             (0, 200, 0),
@@ -5368,6 +5519,52 @@ def weight_summary_for_state(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def risk_factors_for_state(
+    state: dict[str, Any],
+    weight_summary: dict[str, Any] | None = None,
+) -> dict[str, dict[str, Any]]:
+    summary = weight_summary or weight_summary_for_state(state)
+    segmentation = state.get("segmentation") or {}
+    segmentation_assessed = bool(segmentation.get("done"))
+    thread_high = bool(segmentation_assessed and summary["tassel_present"])
+    bead_high = bool(segmentation_assessed and _segmentation_bead_risk_high(segmentation))
+    minimum_g = summary["estimated_stone_weight_minimum_g"]
+    maximum_g = summary["estimated_stone_weight_maximum_g"]
+    if maximum_g is None and summary["estimated_stone_weight_g"] is not None:
+        minimum_g = summary["estimated_stone_weight_g"]
+        maximum_g = summary["estimated_stone_weight_g"]
+    stone_assessed = maximum_g is not None
+    stone_high = bool(stone_assessed and float(maximum_g) > HIGH_RISK_STONE_WEIGHT_G)
+
+    return {
+        "thread": {
+            "label": "Thread",
+            "assessed": segmentation_assessed,
+            "high": thread_high,
+            "status": "HIGH RISK" if thread_high else ("LOW RISK" if segmentation_assessed else "NOT ASSESSED"),
+            "result": "Detected" if thread_high else ("Not detected" if segmentation_assessed else "Analysis not run"),
+        },
+        "beads": {
+            "label": "Beads",
+            "assessed": segmentation_assessed,
+            "high": bead_high,
+            "status": "HIGH RISK" if bead_high else ("LOW RISK" if segmentation_assessed else "NOT ASSESSED"),
+            "result": "Detected" if bead_high else ("Not detected" if segmentation_assessed else "Analysis not run"),
+        },
+        "stones": {
+            "label": "Stones",
+            "assessed": stone_assessed,
+            "high": stone_high,
+            "status": "HIGH RISK" if stone_high else ("LOW RISK" if stone_assessed else "NOT ASSESSED"),
+            "result": (
+                f"{float(minimum_g):.2f}-{float(maximum_g):.2f} g"
+                if stone_assessed
+                else "Weight unavailable"
+            ),
+        },
+    }
+
+
 def build_final_summary(state: dict[str, Any]) -> None:
     classification = state["classification"]
     source = state["source"]
@@ -5395,8 +5592,11 @@ def build_final_summary(state: dict[str, Any]) -> None:
     
     branch_key = branch.get("key")
     total_stone_coverage = _stone_coverage_for_state(state)
-    stone_risk_high = total_stone_coverage > HIGH_RISK_STONE_THRESHOLD
-    bead_risk_high = _segmentation_bead_risk_high(segmentation) if branch_key == "segmentation" else False
+    weight_summary = weight_summary_for_state(state)
+    risk_factors = risk_factors_for_state(state, weight_summary)
+    thread_risk_high = bool(risk_factors["thread"]["high"])
+    bead_risk_high = bool(risk_factors["beads"]["high"])
+    stone_risk_high = bool(risk_factors["stones"]["high"])
     reflective_surface_flag = any(
         bool(
             (stones.get(key) or {}).get("reflection_risk")
@@ -5405,6 +5605,12 @@ def build_final_summary(state: dict[str, Any]) -> None:
         for key in ("main", "side")
     )
     risk_reasons: list[str] = []
+    if thread_risk_high:
+        risk_reasons.append("thread detected")
+    if bead_risk_high:
+        risk_reasons.append("beads detected")
+    if stone_risk_high:
+        risk_reasons.append("stone weight range exceeds 1.00 g")
     if branch_key == "dimension":
         if dimension.get("done"):
             if dimension.get("od_mm") is not None:
@@ -5417,13 +5623,11 @@ def build_final_summary(state: dict[str, Any]) -> None:
                 artifacts.append(dimension["result_image"])
 
         if stones.get("side"):
-            lines.append("Side stone analysis completed.")
             if stones["side"].get("gallery"):
                 artifacts.append(stones["side"]["gallery"])
             upstream_ready = True
 
         if stones.get("main"):
-            lines.append("Top stone analysis completed.")
             if stones["main"].get("gallery"):
                 artifacts.append(stones["main"]["gallery"])
 
@@ -5432,28 +5636,10 @@ def build_final_summary(state: dict[str, Any]) -> None:
 
     elif branch_key == "segmentation":
         if segmentation.get("done"):
-            lines.append("Jewellery analysis completed.")
-            if segmentation.get("autonomous_mode"):
-                lines.append("Tassel presence and segmentation decided autonomously.")
-            if segmentation.get("no_pendant"):
-                lines.append("Pendant excluded by operator feedback.")
-            elif segmentation.get("pendant_absent"):
-                lines.append("No distinct pendant region detected.")
-            if segmentation.get("no_tassel"):
-                lines.append("Tassel excluded by operator feedback.")
-            elif segmentation.get("tassel_absent"):
-                lines.append("No tassel region detected.")
-            bead_risk = segmentation.get("bead_risk")
-            if bead_risk_high:
-                lines.append("RISK JEWEL: Round beads/decorative elements detected in chain")
-                risk_reasons.append("round beads detected in chain")
-            elif bead_risk:
-                lines.append(f"Chain bead risk: {bead_risk}")
             if segmentation.get("composite_layout"):
                 artifacts.append(segmentation["composite_layout"])
 
         if stones.get("main"):
-            lines.append("Stone analysis completed.")
             if stones["main"].get("gallery"):
                 artifacts.append(stones["main"]["gallery"])
             upstream_ready = True
@@ -5463,7 +5649,6 @@ def build_final_summary(state: dict[str, Any]) -> None:
     else:
         # Direct stone branch
         if stones.get("main"):
-            lines.append("Stone analysis completed.")
             if stones["main"].get("gallery"):
                 artifacts.append(stones["main"]["gallery"])
             upstream_ready = True
@@ -5473,44 +5658,19 @@ def build_final_summary(state: dict[str, Any]) -> None:
             # The disposition is complete, but this is not an appraised jewel.
             upstream_ready = True
 
-    weight_summary = weight_summary_for_state(state)
     if weight_summary["jewel_weight_g"] is not None:
-        lines.append(f"Actual OCR jewel weight: {weight_summary['jewel_weight_g']:.2f} g")
-    if stones.get("main") or stones.get("side"):
-        lines.append(
-            f"Stone setting type: {weight_summary['stone_setting_profile_label']}"
-        )
-        total_stone_instances = sum(
-            int((stones.get(key) or {}).get("stone_instance_count", 0))
-            for key in ("main", "side")
-        )
-        surface_risk = stone_analysis_v2.calculate_stone_surface_risk(
-            total_stone_coverage,
-            total_stone_instances,
-            reflection_risk=reflective_surface_flag,
-            high_threshold=HIGH_RISK_STONE_THRESHOLD,
-        )
-        lines.append(f"Stone Surface Status: {surface_risk['status']}")
-        lines.append(f"Visible Stone Coverage: {total_stone_coverage:.1f}%")
-        lines.append(f"Detected Stone Regions: {total_stone_instances}")
+        lines.append(f"Jewel Weight: {weight_summary['jewel_weight_g']:.2f} g")
     if weight_summary["estimated_stone_weight_g"] is not None:
         minimum_g = weight_summary["estimated_stone_weight_minimum_g"]
         maximum_g = weight_summary["estimated_stone_weight_maximum_g"]
         minimum_g = weight_summary["estimated_stone_weight_g"] if minimum_g is None else minimum_g
         maximum_g = weight_summary["estimated_stone_weight_g"] if maximum_g is None else maximum_g
-        typical_g = weight_summary["estimated_stone_weight_g"]
-        lines.append(f"Estimated stone weight range: {minimum_g:.2f}-{maximum_g:.2f} g")
-        lines.append(f"Typical stone weight estimate: {typical_g:.2f} g")
-        lines.append(
-            f"Stone weight confidence: {weight_summary['weight_confidence'] or 'Low'}"
-        )
+        lines.append(f"Stone Weight: {minimum_g:.2f}-{maximum_g:.2f} g")
+        lines.append(f"Stone Risk: {risk_factors['stones']['status']}")
     if weight_summary["appraiser_stone_weight_g"] is not None:
         lines.append(f"Appraiser stone weight: {weight_summary['appraiser_stone_weight_g']:.4f} g")
     if weight_summary["tassel_present"]:
-        lines.append(
-            f"Tassel region detected; estimated tassel weight: "
-            f"{weight_summary['estimated_tassel_weight_g']:.4f} g"
-        )
+        lines.append(f"Thread Weight: {weight_summary['estimated_tassel_weight_g']:.2f} g")
     if weight_summary["estimated_total_deduction_g"] is not None:
         lines.append(
             f"Estimated deductions (stone + tassel): {weight_summary['estimated_total_deduction_g']:.4f} g"
@@ -5521,9 +5681,6 @@ def build_final_summary(state: dict[str, Any]) -> None:
         lines.append(
             f"Net weight using appraiser stone weight: {weight_summary['appraiser_net_weight_g']:.4f} g"
         )
-    if weight_summary["jewel_weight_g"] is not None:
-        lines.append("Stone and tassel deductions are estimated weights.")
-
     for stage_key, skipped in (state.get("stage_skips") or {}).items():
         if stage_key in {"acid_test", "final_count", "packet_sealing"}:
             continue
@@ -5534,17 +5691,6 @@ def build_final_summary(state: dict[str, Any]) -> None:
         slot_text = f" for Jewel {current_index}" if current_index > 0 else ""
         lines.append(
             f"Not counted as an appraised jewel{slot_text}. Capture another item for the same slot."
-        )
-
-    if stone_risk_high:
-        lines.append("RISK JEWEL: High stone coverage detected")
-        risk_reasons.append("high stone coverage detected")
-    if reflective_surface_flag:
-        lines.append(
-            "RISK JEWEL: Dense reflection indicates possible additional transparent/colorless gemstones."
-        )
-        risk_reasons.append(
-            "dense reflection indicates possible additional transparent/colorless gemstones"
         )
 
     if purity.get("running"):
@@ -5573,12 +5719,14 @@ def build_final_summary(state: dict[str, Any]) -> None:
         "lines": lines,
         "artifacts": artifacts,
         "risk_jewel": bool(
-            stone_risk_high or bead_risk_high or reflective_surface_flag
+            thread_risk_high or bead_risk_high or stone_risk_high
         ),
         "risk_reasons": risk_reasons,
         "high_risk": bool(
-            stone_risk_high or bead_risk_high or reflective_surface_flag
+            thread_risk_high or bead_risk_high or stone_risk_high
         ),
+        "risk_factors": risk_factors,
+        "thread_risk_high": thread_risk_high,
         "stone_risk_high": bool(stone_risk_high),
         "total_stone_coverage": round(total_stone_coverage, 2),
         "bead_risk_high": bool(bead_risk_high),
@@ -5880,18 +6028,9 @@ def generate_pdf_report(
         if not state:
             summary_data.append([f"Jewel {index}", "-", "-", "-", "-", "-"])
             continue
-        stones = state.get("stone_detection") or {}
-        reflection_risk = any(
-            bool(
-                (stones.get(key) or {}).get("reflection_risk")
-                or (stones.get(key) or {}).get("reflection_flagged")
-            )
-            for key in ("main", "side")
-        )
-        risk_jewel = bool(
-            (state.get("final") or {}).get("risk_jewel")
-            or reflection_risk
-        )
+        factors = risk_factors_for_state(state)
+        risk_jewel = any(bool(factor["high"]) for factor in factors.values())
+        risk_assessed = any(bool(factor["assessed"]) for factor in factors.values())
         actual_weight = (state.get("weight_details") or {}).get("jewel_weight_g")
         skipped_names = [
             str(value.get("display_name") or STAGE_DISPLAY_NAMES.get(key, key))
@@ -5905,7 +6044,7 @@ def generate_pdf_report(
                 f"{float(actual_weight):.2f} g" if actual_weight is not None else "-",
                 _acid_status_for_state(state),
                 ", ".join(skipped_names) if skipped_names else "None",
-                "RISK" if risk_jewel else "NORMAL",
+                "RISK" if risk_jewel else ("NORMAL" if risk_assessed else "NOT ASSESSED"),
             ]
         )
 
@@ -5972,46 +6111,65 @@ def generate_pdf_report(
             story.append(Spacer(1, 0.2 * inch))
 
         weight_summary = weight_summary_for_state(state)
+        risk_factors = risk_factors_for_state(state, weight_summary)
+        story.append(Paragraph("Risk Summary", heading_style))
+        risk_rows = [["Risk Factor", "Status", "Result"]]
+        for factor_key in ("thread", "beads", "stones"):
+            factor = risk_factors[factor_key]
+            risk_rows.append([factor["label"], factor["status"], factor["result"]])
+        risk_table = Table(risk_rows, colWidths=[1.6 * inch, 1.4 * inch, 3.5 * inch])
+        risk_style = [
+            ("BACKGROUND", (0, 0), (-1, 0), (0.12, 0.29, 0.48)),
+            ("TEXTCOLOR", (0, 0), (-1, 0), (1, 1, 1)),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.5, (0.72, 0.77, 0.82)),
+            ("BACKGROUND", (0, 1), (-1, -1), (0.97, 0.98, 0.99)),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("PADDING", (0, 0), (-1, -1), 7),
+        ]
+        for row_index, factor_key in enumerate(("thread", "beads", "stones"), start=1):
+            factor = risk_factors[factor_key]
+            risk_style.extend([
+                (
+                    "TEXTCOLOR",
+                    (1, row_index),
+                    (1, row_index),
+                    (
+                        (0.80, 0.0, 0.0)
+                        if factor["high"]
+                        else ((0.08, 0.45, 0.18) if factor["assessed"] else (0.38, 0.42, 0.48))
+                    ),
+                ),
+                ("FONTNAME", (1, row_index), (1, row_index), "Helvetica-Bold"),
+            ])
+        risk_table.setStyle(TableStyle(risk_style))
+        story.append(risk_table)
+        story.append(Spacer(1, 0.2 * inch))
+
         story.append(Paragraph("Weight Summary", heading_style))
-        weight_rows = [["Weight Item", "Value", "Basis"]]
+        weight_rows = [["Weight Item", "Result"]]
         if weight_summary["jewel_weight_g"] is not None:
-            weight_rows.append(["Actual Jewel Weight", f"{weight_summary['jewel_weight_g']:.2f} g", "OCR scale reading"])
+            weight_rows.append(["Jewel Weight", f"{weight_summary['jewel_weight_g']:.2f} g"])
         if weight_summary["estimated_stone_weight_g"] is not None:
             minimum_g = weight_summary["estimated_stone_weight_minimum_g"]
             maximum_g = weight_summary["estimated_stone_weight_maximum_g"]
             minimum_g = weight_summary["estimated_stone_weight_g"] if minimum_g is None else minimum_g
             maximum_g = weight_summary["estimated_stone_weight_g"] if maximum_g is None else maximum_g
-            basis_parts = ["Estimated"]
-            if weight_summary["weight_method"]:
-                basis_parts.append(weight_summary["weight_method"])
-            if weight_summary["stone_weight_calibration_applied"]:
-                basis_parts.append("OCR-weight constrained")
-            basis = "; ".join(basis_parts)
-            weight_rows.append(["Stone Weight Range", f"{minimum_g:.2f}-{maximum_g:.2f} g", basis])
-            weight_rows.append([
-                "Typical Stone Weight",
-                f"{weight_summary['estimated_stone_weight_g']:.2f} g",
-                f"Confidence: {weight_summary['weight_confidence'] or 'Low'}",
-            ])
+            weight_rows.append(["Stone Weight", f"{minimum_g:.2f}-{maximum_g:.2f} g"])
         else:
-            unavailable_basis = (
-                "Unknown setting; visible area only"
-                if weight_summary["stone_setting_profile"]
-                == stone_area_calculator.STONE_SETTING_PROFILE_UNKNOWN
-                else "Analysis skipped or metric unavailable"
-            )
-            weight_rows.append(["Stone Weight", "Unavailable", unavailable_basis])
+            weight_rows.append(["Stone Weight", "Not available"])
         if weight_summary["appraiser_stone_weight_g"] is not None:
-            weight_rows.append(["Appraiser Stone Weight", f"{weight_summary['appraiser_stone_weight_g']:.4f} g", "Appraiser input"])
+            weight_rows.append(["Appraiser Stone Weight", f"{weight_summary['appraiser_stone_weight_g']:.2f} g"])
         if weight_summary["tassel_present"]:
-            weight_rows.append(["Tassel Region Weight", f"{weight_summary['estimated_tassel_weight_g']:.4f} g", "Estimated"])
+            weight_rows.append(["Thread Weight", f"{weight_summary['estimated_tassel_weight_g']:.2f} g"])
         if weight_summary["estimated_total_deduction_g"] is not None:
-            weight_rows.append(["Total Deduction", f"{weight_summary['estimated_total_deduction_g']:.4f} g", "Estimated stone + tassel"])
+            weight_rows.append(["Total Deduction", f"{weight_summary['estimated_total_deduction_g']:.2f} g"])
         if weight_summary["estimated_net_weight_g"] is not None:
-            weight_rows.append(["Net Jewel Weight", f"{weight_summary['estimated_net_weight_g']:.4f} g", "Estimated"])
+            weight_rows.append(["Net Jewel Weight", f"{weight_summary['estimated_net_weight_g']:.2f} g"])
         if weight_summary["appraiser_net_weight_g"] is not None:
-            weight_rows.append(["Net Weight Using Appraiser Stone Weight", f"{weight_summary['appraiser_net_weight_g']:.4f} g", "Appraiser stone + estimated tassel"])
-        weight_table = Table(weight_rows, colWidths=[2.5 * inch, 1.4 * inch, 2.6 * inch])
+            weight_rows.append(["Net Weight Using Appraiser Stone Weight", f"{weight_summary['appraiser_net_weight_g']:.2f} g"])
+        weight_table = Table(weight_rows, colWidths=[3.25 * inch, 3.25 * inch])
         weight_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), (0.12, 0.29, 0.48)),
             ("TEXTCOLOR", (0, 0), (-1, 0), (1, 1, 1)),
@@ -6024,7 +6182,7 @@ def generate_pdf_report(
         ]))
         story.append(weight_table)
         story.append(Paragraph(
-            "Stone and tassel values are estimated weights and should be reviewed by the appraiser.",
+            "Stone and thread values are estimated weights and should be reviewed by the appraiser.",
             normal_style,
         ))
         weight_capture = (state.get("weight_extraction") or {}).get("captured_image")
@@ -6092,29 +6250,14 @@ def generate_pdf_report(
         if segmentation.get("done"):
             story.append(PageBreak())
             story.append(Paragraph("Jewellery Analysis", heading_style))
-            
-            story.append(Paragraph("Jewellery analysis completed.", normal_style))
-            if segmentation.get("autonomous_mode"):
-                story.append(Paragraph(
-                    "Tassel presence and segmentation decided autonomously.",
-                    normal_style,
-                ))
-            if segmentation.get("no_pendant"):
-                story.append(Paragraph("Pendant excluded by operator feedback.", normal_style))
-            elif segmentation.get("pendant_absent"):
-                story.append(Paragraph("No distinct pendant region detected.", normal_style))
-            if segmentation.get("no_tassel"):
-                story.append(Paragraph("Tassel excluded by operator feedback.", normal_style))
-            elif segmentation.get("tassel_absent"):
-                story.append(Paragraph("No tassel region detected.", normal_style))
-            bead_risk = segmentation.get("bead_risk")
-            if _segmentation_bead_risk_high(segmentation):
-                story.append(Paragraph(
-                    '<font color="red"><b>RISK JEWEL: Round beads/decorative elements detected in chain</b></font>',
-                    normal_style,
-                ))
-            elif bead_risk:
-                story.append(Paragraph(f"<b>Chain Bead Risk:</b> {_pdf_text(bead_risk)}", normal_style))
+            story.append(Paragraph(
+                f"<b>Thread:</b> {risk_factors['thread']['status']}",
+                normal_style,
+            ))
+            story.append(Paragraph(
+                f"<b>Beads:</b> {risk_factors['beads']['status']}",
+                normal_style,
+            ))
             
             if segmentation.get("composite_layout"):
                 try:
@@ -6133,32 +6276,6 @@ def generate_pdf_report(
         if main_stones:
             story.append(PageBreak())
             story.append(Paragraph("Stone Analysis - Main Image", heading_style))
-            story.append(Paragraph(
-                f"<b>Stone Setting Type:</b> "
-                f"{_pdf_text(weight_summary['stone_setting_profile_label'])}",
-                normal_style,
-            ))
-            
-            story.append(Paragraph("Stone Surface Assessment", heading_style))
-            main_surface = main_stones.get("stone_surface_risk") or {}
-            main_surface_status = (
-                main_stones.get("stone_surface_status")
-                or main_surface.get("status")
-                or "NO SIGNIFICANT STONES DETECTED"
-            )
-            story.append(Paragraph(
-                f"<b>Status:</b> {_pdf_text(main_surface_status)}",
-                normal_style,
-            ))
-            story.append(Paragraph(
-                f"<b>Visible Stone Coverage:</b> "
-                f"{float(main_stones.get('stone_surface_coverage_percent', main_stones.get('stone_percentage', 0.0))):.1f}%",
-                normal_style,
-            ))
-            story.append(Paragraph(
-                f"<b>Stone Instances:</b> {int(main_stones.get('stone_instance_count', 0))}",
-                normal_style,
-            ))
             main_weight = stone_area_calculator.calibrate_weight_estimate_to_jewel_weight(
                 main_stones.get("weight_estimate") or {},
                 weight_summary["jewel_weight_g"],
@@ -6177,81 +6294,17 @@ def generate_pdf_report(
                     )
                 )
                 story.append(Paragraph(
-                    f"<b>Estimated Stone Weight Range:</b> "
+                    f"<b>Stone Weight:</b> "
                     f"{main_minimum_g:.2f}-{main_maximum_g:.2f} g",
                     normal_style,
                 ))
-                main_typical_g = float(
-                    main_weight.get(
-                        "estimated_total_typical_g",
-                        main_weight.get("estimated_total_average_g", 0.0),
-                    )
-                )
-                story.append(Paragraph(
-                    f"<b>Typical Estimate:</b> {main_typical_g:.2f} g",
-                    normal_style,
-                ))
-                story.append(Paragraph(
-                    f"<b>Weight Confidence:</b> "
-                    f"{_pdf_text(main_weight.get('weight_confidence', 'Low'))}",
-                    normal_style,
-                ))
-                if main_weight.get("calibration_applied"):
-                    story.append(Paragraph(
-                        "Range constrained by the captured OCR jewel weight; raw model values remain in the saved analysis data.",
-                        normal_style,
-                    ))
+                main_risk = "HIGH RISK" if main_maximum_g > HIGH_RISK_STONE_WEIGHT_G else "LOW RISK"
+                story.append(Paragraph(f"<b>Result:</b> {main_risk}", normal_style))
             else:
                 story.append(Paragraph(
-                    "<b>Estimated Stone Weight:</b> Unavailable for the selected setting or metric calibration.",
+                    "<b>Stone Weight:</b> Not available",
                     normal_style,
                 ))
-            if main_stones.get("reflection_risk") or main_stones.get("reflection_flagged"):
-                story.append(Paragraph(
-                    '<font color="red"><b>RISK JEWEL: Dense reflection indicates possible '
-                    'additional transparent/colorless gemstones.</b></font>',
-                    normal_style,
-                ))
-                story.append(Paragraph(
-                    f"<b>Reflection Analysis:</b> "
-                    f"{_pdf_text(main_stones.get('reflection_summary', 'Dense reflection detected.'))}",
-                    normal_style,
-                ))
-            
-            summary_entries = main_stones.get("summary_entries", [])
-            if summary_entries:
-                story.append(Spacer(1, 0.1 * inch))
-                story.append(Paragraph("<b>Stone Details:</b>", normal_style))
-                
-                table_data = [["Detected Stone Color", "Detected Regions"]]
-                for entry in summary_entries:
-                    table_data.append([
-                        (
-                            "Multicolor / Mixed Appearance"
-                            if entry.get("color") == "Multicolor/Color-changing"
-                            else entry.get("color", "N/A")
-                        ),
-                        str(entry.get("region_count", 0)),
-                    ])
-                
-                table = Table(table_data, colWidths=[2.5 * inch, 1.5 * inch])
-                table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), (0.7, 0.7, 0.7)),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), (0, 0, 0)),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 10),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, 1), (-1, -1), (0.95, 0.95, 0.95)),
-                    ('GRID', (0, 0), (-1, -1), 1, (0.7, 0.7, 0.7)),
-                ]))
-                story.append(table)
-                story.append(Spacer(1, 0.1 * inch))
-            story.append(Paragraph(
-                "Stone weight is an approximate image-based estimate. Actual weight "
-                "varies with hidden depth, cut and material density.",
-                normal_style,
-            ))
             
             if main_stones.get("gallery"):
                 try:
@@ -6269,32 +6322,6 @@ def generate_pdf_report(
         if side_stones:
             story.append(PageBreak())
             story.append(Paragraph("Stone Analysis - Side Image", heading_style))
-            story.append(Paragraph(
-                f"<b>Stone Setting Type:</b> "
-                f"{_pdf_text(weight_summary['stone_setting_profile_label'])}",
-                normal_style,
-            ))
-            
-            story.append(Paragraph("Stone Surface Assessment", heading_style))
-            side_surface = side_stones.get("stone_surface_risk") or {}
-            side_surface_status = (
-                side_stones.get("stone_surface_status")
-                or side_surface.get("status")
-                or "NO SIGNIFICANT STONES DETECTED"
-            )
-            story.append(Paragraph(
-                f"<b>Status:</b> {_pdf_text(side_surface_status)}",
-                normal_style,
-            ))
-            story.append(Paragraph(
-                f"<b>Visible Stone Coverage:</b> "
-                f"{float(side_stones.get('stone_surface_coverage_percent', side_stones.get('stone_percentage', 0.0))):.1f}%",
-                normal_style,
-            ))
-            story.append(Paragraph(
-                f"<b>Stone Instances:</b> {int(side_stones.get('stone_instance_count', 0))}",
-                normal_style,
-            ))
             side_weight = stone_area_calculator.calibrate_weight_estimate_to_jewel_weight(
                 side_stones.get("weight_estimate") or {},
                 weight_summary["jewel_weight_g"],
@@ -6313,81 +6340,17 @@ def generate_pdf_report(
                     )
                 )
                 story.append(Paragraph(
-                    f"<b>Estimated Stone Weight Range:</b> "
+                    f"<b>Stone Weight:</b> "
                     f"{side_minimum_g:.2f}-{side_maximum_g:.2f} g",
                     normal_style,
                 ))
-                side_typical_g = float(
-                    side_weight.get(
-                        "estimated_total_typical_g",
-                        side_weight.get("estimated_total_average_g", 0.0),
-                    )
-                )
-                story.append(Paragraph(
-                    f"<b>Typical Estimate:</b> {side_typical_g:.2f} g",
-                    normal_style,
-                ))
-                story.append(Paragraph(
-                    f"<b>Weight Confidence:</b> "
-                    f"{_pdf_text(side_weight.get('weight_confidence', 'Low'))}",
-                    normal_style,
-                ))
-                if side_weight.get("calibration_applied"):
-                    story.append(Paragraph(
-                        "Range constrained by the captured OCR jewel weight; raw model values remain in the saved analysis data.",
-                        normal_style,
-                    ))
+                side_risk = "HIGH RISK" if side_maximum_g > HIGH_RISK_STONE_WEIGHT_G else "LOW RISK"
+                story.append(Paragraph(f"<b>Result:</b> {side_risk}", normal_style))
             else:
                 story.append(Paragraph(
-                    "<b>Estimated Stone Weight:</b> Unavailable for the selected setting or metric calibration.",
+                    "<b>Stone Weight:</b> Not available",
                     normal_style,
                 ))
-            if side_stones.get("reflection_risk") or side_stones.get("reflection_flagged"):
-                story.append(Paragraph(
-                    '<font color="red"><b>RISK JEWEL: Dense reflection indicates possible '
-                    'additional transparent/colorless gemstones.</b></font>',
-                    normal_style,
-                ))
-                story.append(Paragraph(
-                    f"<b>Reflection Analysis:</b> "
-                    f"{_pdf_text(side_stones.get('reflection_summary', 'Dense reflection detected.'))}",
-                    normal_style,
-                ))
-            
-            summary_entries = side_stones.get("summary_entries", [])
-            if summary_entries:
-                story.append(Spacer(1, 0.1 * inch))
-                story.append(Paragraph("<b>Stone Details:</b>", normal_style))
-                
-                table_data = [["Detected Stone Color", "Detected Regions"]]
-                for entry in summary_entries:
-                    table_data.append([
-                        (
-                            "Multicolor / Mixed Appearance"
-                            if entry.get("color") == "Multicolor/Color-changing"
-                            else entry.get("color", "N/A")
-                        ),
-                        str(entry.get("region_count", 0)),
-                    ])
-                
-                table = Table(table_data, colWidths=[2.5 * inch, 1.5 * inch])
-                table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), (0.7, 0.7, 0.7)),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), (0, 0, 0)),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 10),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, 1), (-1, -1), (0.95, 0.95, 0.95)),
-                    ('GRID', (0, 0), (-1, -1), 1, (0.7, 0.7, 0.7)),
-                ]))
-                story.append(table)
-                story.append(Spacer(1, 0.1 * inch))
-            story.append(Paragraph(
-                "Stone weight is an approximate image-based estimate. Actual weight "
-                "varies with hidden depth, cut and material density.",
-                normal_style,
-            ))
             
             if side_stones.get("gallery"):
                 try:
@@ -6451,19 +6414,21 @@ def generate_pdf_report(
             story.append(PageBreak())
             story.append(Paragraph("Final Summary", heading_style))
             story.append(Paragraph(f"<b>{final.get('headline', 'N/A')}</b>", normal_style))
-            
-            lines = final.get("lines", [])
-            if lines:
-                story.append(Spacer(1, 0.1 * inch))
-                for line in lines:
-                    story.append(Paragraph(f"• {line}", normal_style))
-            if final.get("risk_jewel"):
-                reasons = ", ".join(final.get("risk_reasons") or ["risk condition detected"])
+            high_factors = [
+                factor["label"]
+                for factor in risk_factors.values()
+                if factor["high"]
+            ]
+            if high_factors:
                 story.append(Spacer(1, 0.1 * inch))
                 story.append(Paragraph(
-                    f'<font color="red"><b>RISK JEWEL: {_pdf_text(reasons)}</b></font>',
+                    f'<font color="red"><b>HIGH RISK: {_pdf_text(", ".join(high_factors))}</b></font>',
                     normal_style,
                 ))
+            elif any(factor["assessed"] for factor in risk_factors.values()):
+                story.append(Paragraph("<b>OVERALL RESULT: LOW RISK</b>", normal_style))
+            else:
+                story.append(Paragraph("<b>OVERALL RESULT: NOT ASSESSED</b>", normal_style))
             
             story.append(Spacer(1, 0.2 * inch))
 
@@ -7655,9 +7620,18 @@ def run_segmentation_pipeline(state: dict[str, Any]) -> dict[str, Any]:
         preprocessed_mask=preprocessed_mask,
         bead_analysis_override=bead_analysis,
     )
-    bead_detection_path = save_bgr(output_dir / "bead_finder_full_image.png", bead_detection_image)
+    bead_detection_filename = (
+        "bead_finder_processing_roi.png"
+        if bead_analysis.get("prediction_source") == "processing_roi"
+        else "bead_finder_full_image.png"
+    )
+    bead_detection_path = save_bgr(
+        output_dir / bead_detection_filename,
+        bead_detection_image,
+    )
     summary_path = output_dir / "summary.json"
     summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    selected_tassel_model = tassel_model_settings()
     bead_analysis = debug.get("bead_analysis") or (summary_payload.get("debug") or {}).get("bead_analysis") or {}
     bead_risk = str(bead_analysis.get("risk", "Low")) if bead_analysis else None
     bead_risk_high = str(bead_risk or "").strip().lower() == "high" or bool((bead_analysis or {}).get("beads_detected"))
@@ -7679,6 +7653,11 @@ def run_segmentation_pipeline(state: dict[str, Any]) -> dict[str, Any]:
         "tassel_absent": bool(debug.get("tassel_absent", False)),
         "pendant_evidence": debug.get("pendant_evidence"),
         "tassel_evidence": debug.get("tassel_evidence"),
+        "tassel_classifier": {
+            "source": selected_tassel_model["active_source"],
+            "model": selected_tassel_model["active_model"],
+            "threshold": selected_tassel_model["threshold"],
+        },
         "tassel_presence": debug.get("tassel_presence"),
         "autonomous_mode": bool(debug.get("autonomous_mode", False)),
         "part_detection_prompts": debug.get("part_detection_prompts"),
@@ -8493,6 +8472,7 @@ def api_config():
             "persistent_rois": PERSISTENT_ROIS,
             "stone_settings": stone_settings_for_state(),
             "audio_settings": purity_audio_settings(),
+            "tassel_model": tassel_model_settings(),
             "camera": {
                 "transport": "server-frame",
                 "device": CAM_DEVICE,
@@ -8564,6 +8544,25 @@ def api_purity_audio_settings():
                 "ok": True,
                 "audio_settings": settings,
                 "state": snapshot_state(),
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        return fail(str(exc))
+
+
+@app.route("/api/tassel-model", methods=["POST"])
+def api_tassel_model():
+    try:
+        payload = parse_post_payload()
+        with STATE_LOCK:
+            settings = apply_tassel_model_source(
+                str(payload.get("source") or "")
+            )
+        return jsonify(
+            {
+                "ok": True,
+                "tassel_model": settings,
+                "warning": settings.get("warning"),
             }
         )
     except Exception as exc:  # noqa: BLE001
@@ -10674,6 +10673,20 @@ def api_generate_pdf():
 
 if __name__ == "__main__":
     load_persistent_rois()
+    initial_tassel_source = normalize_tassel_model_source(
+        PERSISTENT_ROIS.get("tassel_classifier_source")
+    )
+    initial_tassel_settings = apply_tassel_model_source(
+        initial_tassel_source,
+        persist=False,
+    )
+    if initial_tassel_settings.get("fallback"):
+        save_persistent_rois()
+    print(
+        "Tassel classifier: "
+        f"{initial_tassel_settings['active_source']} "
+        f"({initial_tassel_settings['active_model']})"
+    )
     load_project_camera_calibration()
     preload_ocr_model()
     with STATE_LOCK:

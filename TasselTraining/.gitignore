@@ -1,0 +1,4 @@
+__pycache__/
+test_bed_roi.json
+dataset/
+checkpoints/

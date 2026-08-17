@@ -44,6 +44,24 @@ _TASSEL_CLASSIFIER = None
 _TASSEL_CLASSIFIER_TRANSFORM = None
 _TASSEL_CLASSIFIER_ERROR: str | None = None
 
+
+def configure_tassel_classifier(
+    checkpoint_path: Path | str,
+    threshold: float = 0.5,
+) -> None:
+    """Select a checkpoint and clear the cached classifier for the next analysis."""
+    global TASSEL_CLASSIFIER_PATH
+    global TASSEL_CLASSIFIER_THRESHOLD
+    global _TASSEL_CLASSIFIER
+    global _TASSEL_CLASSIFIER_TRANSFORM
+    global _TASSEL_CLASSIFIER_ERROR
+
+    TASSEL_CLASSIFIER_PATH = Path(checkpoint_path).resolve()
+    TASSEL_CLASSIFIER_THRESHOLD = max(0.05, min(0.95, float(threshold)))
+    _TASSEL_CLASSIFIER = None
+    _TASSEL_CLASSIFIER_TRANSFORM = None
+    _TASSEL_CLASSIFIER_ERROR = None
+
 # FastSAM is class-agnostic, so these prompts are also the explicit policy used
 # by the geometric/color evidence gates below and are exposed in debug output.
 PART_DETECTION_PROMPTS = {
@@ -3557,6 +3575,7 @@ def detect_tassel_seed(
     image: np.ndarray,
     textile_mask: np.ndarray,
     jewel_type: str | None = None,
+    use_classifier: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray, float, Dict[str, object] | None]:
     h, w = necklace_mask.shape
     if _tassel_auto_policy(jewel_type) == "disabled":
@@ -3690,7 +3709,17 @@ def detect_tassel_seed(
             jewel_type,
         )
         geometry_accepted = bool(evidence["accepted"])
-        classifier = classify_tassel_candidate(image, cand)
+        classifier = (
+            classify_tassel_candidate(image, cand)
+            if use_classifier
+            else {
+                "available": False,
+                "accepted": True,
+                "probability": None,
+                "threshold": None,
+                "model": "external_classifier",
+            }
+        )
         evidence["geometry_accepted"] = geometry_accepted
         evidence["classifier"] = classifier
         evidence["accepted"] = bool(
@@ -3799,6 +3828,49 @@ def post_refine_parts(parts: Dict[str, np.ndarray], necklace_mask: np.ndarray) -
     refined["chain"] = remove_small_components(refined["chain"], 40)
 
     return refined
+
+
+def absorb_terminal_tassel_fragments(
+    parts: Dict[str, np.ndarray],
+    necklace_mask: np.ndarray,
+) -> int:
+    tassel = parts["tassel"].astype(np.uint8)
+    chain = parts["chain"].astype(np.uint8)
+    if not tassel.any() or not chain.any():
+        return 0
+
+    label_count, labels, stats, _ = cv2.connectedComponentsWithStats(chain, 8)
+    if label_count <= 2:
+        return 0
+
+    main_chain_label = max(
+        range(1, label_count),
+        key=lambda label: int(stats[label, cv2.CC_STAT_AREA]),
+    )
+    remaining_labels = set(range(1, label_count)) - {main_chain_label}
+    absorbed = np.zeros_like(chain, dtype=np.uint8)
+
+    while remaining_labels:
+        nearby = dilate(tassel | absorbed, 11)
+        touching = {
+            label
+            for label in remaining_labels
+            if np.any((labels == label) & (nearby > 0))
+        }
+        if not touching:
+            break
+        for label in touching:
+            absorbed[labels == label] = 1
+        remaining_labels -= touching
+
+    if not absorbed.any():
+        return 0
+
+    parts["tassel"] = ((tassel | absorbed) & necklace_mask).astype(np.uint8)
+    parts["chain"] = (
+        necklace_mask & (1 - parts["pendant"]) & (1 - parts["tassel"])
+    ).astype(np.uint8)
+    return int(absorbed.sum())
 
 
 def make_cutout(image: np.ndarray, mask: np.ndarray, pad: int = 20, bg_color: Tuple[int, int, int] = (255, 255, 255)) -> np.ndarray:
@@ -4666,6 +4738,7 @@ def segment_necklace(
     parts["chain"] = (
         necklace_mask & (1 - parts["pendant"]) & (1 - parts["tassel"])
     ).astype(np.uint8)
+    tassel_fragment_area = absorb_terminal_tassel_fragments(parts, necklace_mask)
 
     if not parts["pendant"].any() and not parts["tassel"].any():
         parts["chain"] = necklace_mask.copy()
@@ -4704,6 +4777,7 @@ def segment_necklace(
         "primary_mask_area": int(primary_mask.sum()),
         "necklace_mask_area": int(necklace_mask.sum()),
         "tassel_seed_area": int(tassel_seed.sum()),
+        "tassel_fragment_area": tassel_fragment_area,
         "chain_seed_area": int(chain_seed.sum()),
         "pendant_seed_area": int(pendant_seed.sum()),
         "tassel_score": round(float(tassel_score), 3),

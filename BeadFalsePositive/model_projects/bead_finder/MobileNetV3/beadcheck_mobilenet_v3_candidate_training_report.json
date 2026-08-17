@@ -28,20 +28,20 @@
   "seed": 42,
   "split_counts": {
     "train": {
-      "false_positive": 91,
-      "true_detection": 63
+      "false_positive": 107,
+      "true_detection": 70
     },
     "validation": {
-      "false_positive": 19,
-      "true_detection": 14
+      "false_positive": 23,
+      "true_detection": 15
     },
     "test": {
-      "false_positive": 19,
-      "true_detection": 14
+      "false_positive": 23,
+      "true_detection": 15
     }
   },
   "validation_metrics": {
-    "loss": 0.01505795746440223,
+    "loss": 0.035817540789905344,
     "accuracy": 1.0,
     "true_detection_precision": 1.0,
     "true_detection_recall": 1.0,
@@ -51,31 +51,31 @@
     "true_detection_rejection_rate": 0.0,
     "confusion_matrix": [
       [
-        19,
+        23,
         0
       ],
       [
         0,
-        14
+        15
       ]
     ]
   },
   "test_metrics": {
-    "loss": 0.15593491517233127,
-    "accuracy": 0.9090909090909091,
+    "loss": 0.21893516996581303,
+    "accuracy": 0.8947368421052632,
     "true_detection_precision": 0.9230769230769231,
-    "true_detection_recall": 0.8571428571428571,
-    "true_detection_f1": 0.888888888888889,
-    "true_detection_f0_5": 0.9090909090909092,
-    "false_positive_acceptance_rate": 0.05263157894736842,
-    "true_detection_rejection_rate": 0.14285714285714285,
+    "true_detection_recall": 0.8,
+    "true_detection_f1": 0.8571428571428571,
+    "true_detection_f0_5": 0.8955223880597015,
+    "false_positive_acceptance_rate": 0.043478260869565216,
+    "true_detection_rejection_rate": 0.2,
     "confusion_matrix": [
       [
-        18,
+        22,
         1
       ],
       [
-        2,
+        3,
         12
       ]
     ]
@@ -87,22 +87,22 @@
   },
   "baseline_locked_metrics": null,
   "candidate_locked_metrics": {
-    "loss": 0.07688231658070319,
-    "accuracy": 0.967741935483871,
+    "loss": 0.05517425736592662,
+    "accuracy": 1.0,
     "true_detection_precision": 1.0,
-    "true_detection_recall": 0.9285714285714286,
-    "true_detection_f1": 0.962962962962963,
-    "true_detection_f0_5": 0.9848484848484849,
+    "true_detection_recall": 1.0,
+    "true_detection_f1": 1.0,
+    "true_detection_f0_5": 1.0,
     "false_positive_acceptance_rate": 0.0,
-    "true_detection_rejection_rate": 0.07142857142857142,
+    "true_detection_rejection_rate": 0.0,
     "confusion_matrix": [
       [
         17,
         0
       ],
       [
-        1,
-        13
+        0,
+        14
       ]
     ]
   },

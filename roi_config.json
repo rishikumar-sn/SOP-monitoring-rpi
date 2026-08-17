@@ -1,21 +1,21 @@
 {
   "processing_roi": {
-    "x": 469,
-    "y": 81,
-    "w": 1621,
-    "h": 1295
+    "x": 385,
+    "y": 3,
+    "w": 1801,
+    "h": 1410
   },
   "aruco_roi": {
-    "x": 481,
-    "y": 87,
-    "w": 182,
-    "h": 179
+    "x": 449,
+    "y": 17,
+    "w": 185,
+    "h": 199
   },
   "weight_roi": {
-    "x": 963,
-    "y": 457,
-    "w": 567,
-    "h": 445
+    "x": 960,
+    "y": 624,
+    "w": 703,
+    "h": 500
   },
   "color_correction": {
     "saturation": 1.15,
@@ -74,6 +74,7 @@
   "audio_settings": {
     "ok_confidence_threshold": 0.7
   },
+  "tassel_classifier_source": "candidate",
   "calibration_config": {
     "aruco_dict": "AprilTag_36h11",
     "marker_id": 1,

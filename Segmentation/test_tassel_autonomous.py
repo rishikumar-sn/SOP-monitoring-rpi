@@ -18,6 +18,33 @@ def decode_png(value: str, flags: int) -> np.ndarray:
 
 
 class TasselAutonomousTests(unittest.TestCase):
+    def test_absorbs_smaller_chain_fragment_touching_detected_tassel(self) -> None:
+        necklace_mask = np.zeros((80, 140), dtype=np.uint8)
+        necklace_mask[25:55, 10:75] = 1
+        necklace_mask[30:50, 75:100] = 1
+        necklace_mask[32:48, 104:132] = 1
+        necklace_mask[65:70, 115:120] = 1
+        parts = {
+            "pendant": np.zeros_like(necklace_mask),
+            "chain": np.zeros_like(necklace_mask),
+            "tassel": np.zeros_like(necklace_mask),
+        }
+        parts["chain"][25:55, 10:75] = 1
+        parts["chain"][32:48, 104:132] = 1
+        parts["chain"][65:70, 115:120] = 1
+        parts["tassel"][30:50, 75:100] = 1
+
+        absorbed_area = segmentation.absorb_terminal_tassel_fragments(
+            parts,
+            necklace_mask,
+        )
+
+        self.assertEqual(absorbed_area, 16 * 28)
+        self.assertTrue(parts["chain"][40, 30])
+        self.assertTrue(parts["tassel"][40, 110])
+        self.assertTrue(parts["chain"][67, 117])
+        self.assertFalse(np.any(parts["chain"] & parts["tassel"]))
+
     def test_retained_templates_require_geometry_and_mobilenet(self) -> None:
         positives = 0
         negatives = 0

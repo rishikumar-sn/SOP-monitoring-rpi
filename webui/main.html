@@ -510,12 +510,7 @@
     }
 
     .artifactCaption {
-      padding: 9px 12px;
-      border-top: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: capitalize;
+      display: none;
     }
 
     .artifactNav {
@@ -577,6 +572,29 @@
       letter-spacing: 0.06em;
       font-size: 11px;
     }
+
+    .riskTable {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+    }
+
+    .riskTable th,
+    .riskTable td {
+      padding: 9px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .riskTable tr:last-child td { border-bottom: 0; }
+    .riskTable th { background: #eaf1f8; color: var(--muted); }
+    .risk-high { color: var(--danger) !important; }
+    .risk-low { color: var(--success) !important; }
+    .risk-unavailable { color: var(--muted) !important; }
 
     .hidden {
       display: none !important;
@@ -696,7 +714,8 @@
     .rightColumn::-webkit-scrollbar, .leftColumn::-webkit-scrollbar { display:none; }
     .heroValue { font-size: 25px; }
     .heroSub { margin-top: 4px; font-size: 13px; }
-    .summaryGrid { grid-template-columns: repeat(4, 1fr); }
+    .summaryGrid { grid-template-columns: repeat(2, 1fr); }
+    .summaryGrid .statBox:nth-child(2), .summaryGrid .statBox:nth-child(3) { display:none; }
     .statBox { padding: 3px 6px; border-radius: 7px; }
     .statBox .v { font-size: 11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .artifactStrip { gap: 7px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
@@ -715,7 +734,6 @@
     .purityAudioCard { padding:8px; }
     .purityAudioMeta { font-size:11px; }
     .buttonRow, .actionRow, .toolRow { gap:6px; }
-    #btnDimensionPrev, #btnSidePrev, #btnSegmentationPrev, #btnMainStonePrev, #btnPurityPrev, #btnFinalPrev { display:none; }
     @media (prefers-reduced-motion: reduce) {
       .next-action { animation:none !important; }
       .liveDot { animation:none; }
@@ -786,6 +804,17 @@
                 <label for="ttsOutputStatus">Speaker Status</label>
                 <div id="ttsOutputStatus" class="heroSub">Checking speaker...</div>
               </div>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+              <div class="field" style="min-width: 280px; flex: 1 1 280px;">
+                <label for="tasselModelSource">Tassel Detection Model</label>
+                <select id="tasselModelSource">
+                  <option value="production">Production Model</option>
+                  <option value="candidate">Latest Trained Model</option>
+                </select>
+              </div>
+              <button id="btnApplyTasselModel" class="btn secondary">Apply Tassel Model</button>
+              <span id="tasselModelStatus" class="tiny" style="flex: 2 1 360px; color: var(--muted);">Checking tassel models...</span>
             </div>
             <div class="hidden" aria-hidden="true" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; width: 100%; align-items: end; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
               <div class="field">
@@ -1012,10 +1041,11 @@
             <h3>STAGE 1 JEWEL TYPE</h3>
           </div>
           <div class="buttonRow">
+            <button id="btnClassificationPrev" class="btn prev">Previous</button>
             <button id="btnCaptureMainImage" class="btn secondary">Capture Image</button>
             <button id="btnRunClassification" class="btn">Run Jewel Type</button>
           </div>
-          <div class="heroSub" id="classificationFocusStatus" style="margin-top: 10px;">Focus gate: waiting for the Processing ROI.</div>
+          <div class="heroSub" id="classificationFocusStatus" style="margin-top: 10px;">Ready to capture.</div>
           <div class="heroValue" id="classificationValue" style="margin-top: 14px;">--</div>
           <div class="heroSub" id="classificationSub">Capture or load the main jewellery image, then run jewel type.
           </div>
@@ -1060,14 +1090,14 @@
             <input id="appraiserStoneWeight" type="number" min="0.0001" step="0.0001" placeholder="Optional appraiser estimate" />
           </div>
           <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnWeightPrev" class="btn secondary">Previous</button>
+            <button id="btnWeightPrev" class="btn prev">Previous</button>
             <button id="btnCaptureWeight" class="btn">Capture Weight</button>
             <button id="btnRetakeWeight" class="btn secondary" disabled>Retake</button>
             <button id="btnSkipWeight" class="btn secondary">Skip Stage</button>
             <button id="btnWeightNext" class="btn gold" disabled>Next</button>
           </div>
           <div class="heroValue" id="weightValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="weightSub">The Weight Scale ROI is a placement guide; OCR reads the Processing ROI.</div>
+          <div class="heroSub" id="weightSub">Place the scale display clearly inside the guide.</div>
           <div id="weightArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
         </div>
 
@@ -1124,7 +1154,7 @@
           </div>
 
           <div class="heroValue" id="dimensionValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="dimensionSub">Run OD/ID measurement after actual weight is captured.</div>
+          <div class="heroSub" id="dimensionSub">Select an option and start measurement.</div>
           <div id="dimensionArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
         </div>
 
@@ -1157,7 +1187,7 @@
           </div>
 
           <div class="heroValue" id="sideStoneValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="sideStoneSub">Awaiting side image.</div>
+          <div class="heroSub" id="sideStoneSub">Capture the side image to continue.</div>
 
           <table class="scoreTable hidden" id="sideStoneTable" style="margin-top: 14px;">
             <thead>
@@ -1195,7 +1225,7 @@
           </div>
 
           <div class="heroValue" id="segmentationValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="segmentationSub">Start jewellery analysis after actual weight is captured.</div>
+          <div class="heroSub" id="segmentationSub">Start jewellery analysis.</div>
           <div id="segmentationArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
         </div>
 
@@ -1223,7 +1253,7 @@
           </div>
 
           <div class="heroValue" id="mainStoneValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="mainStoneSub">Run stone detection for the confirmed workflow branch.</div>
+          <div class="heroSub" id="mainStoneSub">Select the stone type and start analysis.</div>
 
           <table class="scoreTable hidden" id="mainStoneTable" style="margin-top: 14px;">
             <thead>
@@ -1291,6 +1321,10 @@
             <h3 id="finalTitle">PLEDGE CLOSURE</h3>
           </div>
           <div class="heroValue" id="finalHeadline">--</div>
+          <table id="finalRiskTable" class="riskTable hidden" style="margin-top: 12px;">
+            <thead><tr><th>Risk Factor</th><th>Status</th><th>Result</th></tr></thead>
+            <tbody id="finalRiskTableBody"></tbody>
+          </table>
           <ol id="finalLines" class="lineList" style="margin-top: 12px;"></ol>
           <div id="finalArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
           <div id="pledgeClosurePanel" class="hidden" style="margin-top: 16px; display: grid; gap: 14px;">
@@ -1617,6 +1651,9 @@
       learnedStoneStatus: document.getElementById("learnedStoneStatus"),
       ttsOutputSelect: document.getElementById("ttsOutputSelect"),
       ttsOutputStatus: document.getElementById("ttsOutputStatus"),
+      tasselModelSource: document.getElementById("tasselModelSource"),
+      btnApplyTasselModel: document.getElementById("btnApplyTasselModel"),
+      tasselModelStatus: document.getElementById("tasselModelStatus"),
       audioOkThreshold: document.getElementById("audioOkThreshold"),
       audioOkThresholdValue: document.getElementById("audioOkThresholdValue"),
       audioOkThresholdNumber: document.getElementById("audioOkThresholdNumber"),
@@ -1640,6 +1677,7 @@
       workflowBranch: document.getElementById("workflowBranch"),
       workflowSource: document.getElementById("workflowSource"),
       workflowSize: document.getElementById("workflowSize"),
+      btnClassificationPrev: document.getElementById("btnClassificationPrev"),
       btnRunClassification: document.getElementById("btnRunClassification"),
       appraiserStoneWeight: document.getElementById("appraiserStoneWeight"),
       classificationValue: document.getElementById("classificationValue"),
@@ -1745,6 +1783,8 @@
       finalPanel: document.getElementById("finalPanel"),
       finalTitle: document.getElementById("finalTitle"),
       finalHeadline: document.getElementById("finalHeadline"),
+      finalRiskTable: document.getElementById("finalRiskTable"),
+      finalRiskTableBody: document.getElementById("finalRiskTableBody"),
       finalLines: document.getElementById("finalLines"),
       finalArtifacts: document.getElementById("finalArtifacts"),
       pledgeClosurePanel: document.getElementById("pledgeClosurePanel"),
@@ -1798,6 +1838,7 @@
       audio_settings: {
         ok_confidence_threshold: 0.90,
       },
+      tassel_model: null,
     };
 
     let backendState = null;
@@ -1860,6 +1901,7 @@
 
     const flow = {
       pledgeSetupComplete: false,
+      pledgeSetupReview: false,
       classificationConfirmed: false,
       classificationNext: false,
       weightNext: false,
@@ -1959,6 +2001,7 @@
     function resetFlow() {
       initialFlowRestored = false;
       flow.pledgeSetupComplete = false;
+      flow.pledgeSetupReview = false;
       flow.classificationConfirmed = false;
       flow.classificationNext = false;
       flow.weightNext = false;
@@ -2353,8 +2396,8 @@
         (pendingCameraSource && !focusReady)
       );
       refs.classificationFocusStatus.textContent = uploaded
-        ? "Focus gate: uploaded image does not require camera autofocus."
-        : `Focus gate: ${(cameraFocusState && cameraFocusState.status) || "Waiting for camera focus."}`;
+        ? "Image ready."
+        : (focusReady ? "Camera ready." : "Preparing camera...");
     }
 
     function stonePreviewFilter() {
@@ -2698,6 +2741,31 @@
       final: "Pledge Closure stage. Review the final result.",
     };
 
+    function applyTasselModelSettings(settings) {
+      if (!settings) return;
+      config.tassel_model = settings;
+      const candidate = settings.candidate || {};
+      const candidateOption = refs.tasselModelSource.querySelector('option[value="candidate"]');
+      if (candidateOption) candidateOption.disabled = !candidate.available;
+      refs.tasselModelSource.value = settings.selected_source || "production";
+      const activeLabel = settings.active_source === "candidate"
+        ? "Latest Trained Model"
+        : "Production Model";
+      let candidateDetail = "Candidate unavailable.";
+      if (candidate.available) {
+        const counts = candidate.class_counts || {};
+        const countText = Number.isFinite(Number(counts.tassel)) && Number.isFinite(Number(counts.false_positive))
+          ? `; trained with ${Number(counts.tassel)} tassel / ${Number(counts.false_positive)} false-positive samples`
+          : "";
+        candidateDetail = `Candidate ready${countText}.`;
+      } else if (candidate.error) {
+        candidateDetail = `Candidate unavailable: ${candidate.error}`;
+      }
+      refs.tasselModelStatus.textContent = settings.warning
+        ? settings.warning
+        : `Active: ${activeLabel} (${settings.active_model}). ${candidateDetail}`;
+    }
+
     async function loadConfig() {
       const response = await fetch("/api/config");
       const data = await response.json();
@@ -2705,6 +2773,7 @@
         left.localeCompare(right, undefined, { sensitivity: "base" })
       );
       config.aruco_dicts = data.aruco_dicts || [];
+      applyTasselModelSettings(data.tassel_model);
 
       if (data.persistent_rois) {
         previewState.rois.processing = data.persistent_rois.processing_roi;
@@ -3627,7 +3696,7 @@
         refs.classificationTable.classList.add("hidden");
 
         refs.weightValue.textContent = "--";
-        refs.weightSub.textContent = "The Weight Scale ROI is a placement guide; OCR reads the Processing ROI.";
+        refs.weightSub.textContent = "Place the scale display clearly inside the guide.";
         refs.weightArtifacts.innerHTML = "";
         refs.btnCaptureWeight.textContent = "Capture Weight";
         refs.btnCaptureWeight.disabled = false;
@@ -3662,12 +3731,10 @@
 
     function stoneWeightText(weight) {
       if (weight && weight.weight_estimate_suppressed) {
-        const area = Number(weight.visible_stone_area_mm2);
-        const areaText = Number.isFinite(area) ? ` Visible stone area: ${area.toFixed(2)} mm².` : "";
-        return `Stone weight not estimated for an unknown setting type.${areaText}`;
+        return "Stone weight not available.";
       }
       if (!weight || !weight.success) {
-        return "Metric weight estimate unavailable; check AprilTag calibration.";
+        return "Stone weight not available.";
       }
       const minimumG = Number(
         weight.estimated_total_minimum_g ??
@@ -3677,18 +3744,7 @@
         weight.estimated_total_maximum_g ??
         (Number(weight.estimated_total_maximum_ct || 0) * 0.2)
       );
-      const typicalG = Number(
-        weight.estimated_total_typical_g ??
-        weight.estimated_total_average_g ??
-        (Number(weight.estimated_total_average_ct || 0) * 0.2)
-      );
-      const notes = [];
-      if (weight.calibration_applied) {
-        notes.push("OCR-weight sanity bound applied");
-      }
-      const noteText = notes.length ? ` ${notes.join(". ")}.` : "";
-      const confidence = weight.weight_confidence || "Low";
-      return `Estimated stone weight: ${formatStoneWeight(minimumG)}-${formatStoneWeight(maximumG)} g; typical ${formatStoneWeight(typicalG)} g; confidence ${confidence}.${noteText}`;
+      return `Stone weight: ${formatStoneWeight(minimumG)}-${formatStoneWeight(maximumG)} g`;
     }
 
     function formatStoneWeight(value) {
@@ -3704,40 +3760,32 @@
 
     function stoneSurfaceStatus(result) {
       if (!result) return "--";
-      return result.stone_surface_status ||
-        (result.stone_surface_risk && result.stone_surface_risk.status) ||
-        (Number(result.stone_percentage || 0) > 40
-          ? "HIGH STONE AREA — RISK"
-          : Number(result.stone_percentage || 0) > 0
-            ? "LOW STONE AREA — NORMAL"
-            : "NO SIGNIFICANT STONES DETECTED");
+      const weight = result.weight_estimate || {};
+      if (!weight.success || weight.weight_estimate_suppressed) return "NOT ASSESSED";
+      const maximumG = Number(
+        weight.estimated_total_maximum_g ??
+        (Number(weight.estimated_total_maximum_ct || 0) * 0.2)
+      );
+      return maximumG > 1 ? "HIGH RISK" : "LOW RISK";
     }
 
     function stoneAnalysisText(result) {
-      const coverage = Number(
-        result.stone_surface_coverage_percent ?? result.stone_percentage ?? 0
+      return stoneWeightText(result.weight_estimate || {});
+    }
+
+    function setRiskResultStyle(element, status) {
+      element.classList.remove("risk-high", "risk-low", "risk-unavailable");
+      element.classList.add(
+        status === "HIGH RISK"
+          ? "risk-high"
+          : status === "LOW RISK"
+            ? "risk-low"
+            : "risk-unavailable"
       );
-      const instances = Number(result.stone_instance_count || 0);
-      const weightText = stoneWeightText(result.weight_estimate || {});
-      const reflectionText = (result.reflection_risk || result.reflection_flagged)
-        ? ` ${result.reflection_summary || "Dense reflection is additional transparent-stone evidence."}`
-        : "";
-      return `Visible Stone Coverage: ${coverage.toFixed(1)}%. Detected Stone Regions: ${instances}. ${weightText}${reflectionText}`;
     }
 
     function stageSkipped(stageKey) {
       return Boolean(backendState && backendState.stage_skips && backendState.stage_skips[stageKey]);
-    }
-
-    function stoneSuperResolutionText(result) {
-      const sr = result && result.stone_super_resolution;
-      if (!sr || !sr.requested) return "Analysis: native pixels.";
-      if (sr.applied) {
-        const seconds = Number(sr.runtime_seconds || 0);
-        const tileText = Number(sr.tile_count || 0) > 0 ? `, ${Number(sr.tile_count)} tile(s)` : "";
-        return `Analysis: Real-ESRGAN x${Number(sr.scale || 2)} detail enhancement${seconds > 0 ? ` in ${seconds.toFixed(1)}s` : ""}${tileText}; calibrated native measurement grid.`;
-      }
-      return "Analysis: SR requested but not applied.";
     }
 
     function countVerificationDone() {
@@ -3884,19 +3932,22 @@
         refs.classificationTable.classList.add("hidden");
 
         refs.dimensionValue.textContent = "--";
-        refs.dimensionSub.textContent = "Run OD/ID measurement after actual weight is captured.";
+        refs.dimensionSub.textContent = "Select an option and start measurement.";
         refs.dimensionArtifacts.innerHTML = "";
 
         refs.segmentationValue.textContent = "--";
-        refs.segmentationSub.textContent = "Start jewellery analysis after actual weight is captured.";
+        setRiskResultStyle(refs.segmentationValue, "NOT ASSESSED");
+        refs.segmentationSub.textContent = "Start jewellery analysis.";
         refs.segmentationArtifacts.innerHTML = "";
 
         refs.mainStoneValue.textContent = "--";
-        refs.mainStoneSub.textContent = "Run stone detection for the confirmed workflow branch.";
+        setRiskResultStyle(refs.mainStoneValue, "NOT ASSESSED");
+        refs.mainStoneSub.textContent = "Select the stone type and start analysis.";
         refs.mainStoneArtifacts.innerHTML = "";
 
         refs.sideStoneValue.textContent = "--";
-        refs.sideStoneSub.textContent = "Awaiting side image.";
+        setRiskResultStyle(refs.sideStoneValue, "NOT ASSESSED");
+        refs.sideStoneSub.textContent = "Capture the side image to continue.";
         refs.sideArtifacts.innerHTML = "";
 
         refs.purityValue.textContent = "--";
@@ -3909,6 +3960,8 @@
         refs.purityArtifacts.innerHTML = "";
 
         refs.finalHeadline.textContent = "--";
+        refs.finalRiskTable.classList.add("hidden");
+        refs.finalRiskTableBody.innerHTML = "";
         refs.finalLines.innerHTML = "";
         refs.finalArtifacts.innerHTML = "";
         refs.pledgeClosurePanel.classList.add("hidden");
@@ -3961,7 +4014,7 @@
         flow.currentStage = "classification";
       }
 
-      refs.workflowStage.textContent = backendState.status || "Ready";
+      refs.workflowStage.textContent = stageDisplayName(flow.currentStage);
       refs.workflowBranch.textContent = (backendState.branch && backendState.branch.label) || "-";
       refs.workflowSource.textContent = `${source.kind || currentMainSourceKind()}${source.four_marker_rectified ? " · four-marker rectified" : ""}`;
       refs.workflowSize.textContent = jewelProgressText();
@@ -3975,7 +4028,7 @@
         refs.jewelCountStatus.textContent = `Saved count: ${backendState.jewel_count}. Current jewel: ${backendState.jewel_index || 1}.`;
         refs.inputJewelCount.value = backendState.jewel_count || "";
         refs.btnPledgeSetupNext.disabled = false;
-        if (backendState.session_id) {
+        if (backendState.session_id && !flow.pledgeSetupReview) {
           flow.pledgeSetupComplete = true;
         }
       } else {
@@ -4041,10 +4094,10 @@
         refs.weightSub.textContent = weightExtraction.message || "Jewel weight extraction skipped.";
       } else if (weightExtraction.success && weightDetails.jewel_weight_g != null) {
         refs.weightValue.textContent = `${Number(weightDetails.jewel_weight_g).toFixed(2)} g`;
-        refs.weightSub.textContent = weightExtraction.message || "Actual weight captured from the scale.";
+        refs.weightSub.textContent = "Weight captured.";
       } else {
         refs.weightValue.textContent = weightExtraction.captured_at ? "READ FAILED" : "--";
-        refs.weightSub.textContent = weightExtraction.message || "The Weight Scale ROI is a placement guide; OCR reads the Processing ROI.";
+        refs.weightSub.textContent = weightExtraction.message || "Place the scale display clearly inside the guide.";
       }
       refs.btnCaptureWeight.textContent = "Capture Weight";
       refs.btnCaptureWeight.disabled = Boolean(weightExtraction.captured_at) && !weightSkipped;
@@ -4059,58 +4112,29 @@
       if (dimension.done) {
         if (dimension.od_mm !== null && dimension.od_mm !== undefined) {
           refs.dimensionValue.textContent = `OD ${dimension.od_mm.toFixed(2)} mm | ID ${dimension.id_mm.toFixed(2)} mm`;
-          refs.dimensionSub.textContent = `Wall ${dimension.wall_thickness_mm.toFixed(2)} mm | AprilTag calibrated`;
+          refs.dimensionSub.textContent = "Measurement completed.";
         } else {
-          refs.dimensionValue.textContent = "Metric measurement unavailable";
-          refs.dimensionSub.textContent = "Check the AprilTag calibration and run measurement again.";
+          refs.dimensionValue.textContent = "Measurement unavailable";
+          refs.dimensionSub.textContent = "Please retry.";
         }
         renderArtifactStrip(refs.dimensionArtifacts, [dimension.result_image, dimension.measurement_input]);
       } else {
         refs.dimensionValue.textContent = "--";
-        refs.dimensionSub.textContent = "Run OD/ID measurement after actual weight is captured.";
+        refs.dimensionSub.textContent = "Select an option and start measurement.";
         refs.dimensionArtifacts.innerHTML = "";
       }
 
         if (segmentation.done) {
           const parts = segmentation.part_summary || {};
-          const pendant = parts.pendant ? parts.pendant.area : 0;
-          const chain = parts.chain ? parts.chain.area : 0;
           const tassel = parts.tassel ? parts.tassel.area : 0;
           const beadRiskHigh = segmentation.bead_risk_high || segmentation.bead_risk === "High" ||
             (segmentation.bead_analysis && segmentation.bead_analysis.beads_detected);
-          const correctedParts = [];
-          if (segmentation.debug && segmentation.debug.pendant_feedback_applied) correctedParts.push("Pendant");
-          if (segmentation.debug && segmentation.debug.tassel_feedback_applied) correctedParts.push("Tassel");
-          const excludedParts = [];
-          if (segmentation.no_pendant || (segmentation.debug && segmentation.debug.no_pendant)) excludedParts.push("Pendant");
-          if (segmentation.no_tassel || (segmentation.debug && segmentation.debug.no_tassel)) excludedParts.push("Tassel");
-        const feedbackMatchType = segmentation.debug && segmentation.debug.feedback_match_type;
-        const pendantPresent = Boolean(segmentation.pendant_detected || pendant > 0) && !segmentation.no_pendant;
-        const tasselPresent = Boolean(segmentation.tassel_detected || tassel > 0) && !segmentation.no_tassel;
-        const automaticallyAbsentParts = [];
-        if (!pendantPresent && segmentation.pendant_absent && !segmentation.no_pendant) automaticallyAbsentParts.push("distinct pendant");
-        if (!tasselPresent && segmentation.tassel_absent && !segmentation.no_tassel) automaticallyAbsentParts.push("tassel");
-        let feedbackSourceText = "";
-        if (feedbackMatchType === "similar_signature") {
-          feedbackSourceText = " from similar saved feedback";
-        } else if (feedbackMatchType === "exact_signature" || feedbackMatchType === "legacy_path") {
-          feedbackSourceText = " from saved feedback";
-        }
-          refs.segmentationValue.textContent = segmentation.autonomous_mode
-            ? "Autonomous jewellery analysis completed"
-            : "Jewellery analysis completed";
-          if (beadRiskHigh) {
-            refs.segmentationSub.textContent = `RISK JEWEL: Round beads/decorative elements detected in chain.${tasselPresent ? " Tassel region detected; estimated weight 1.5000 g." : ""}`;
-          } else {
-            const analysisNote = excludedParts.length
-              ? `${excludedParts.join(" and ")} excluded; merged into chain.`
-              : correctedParts.length
-                ? `${correctedParts.join(" and ")} correction applied${feedbackSourceText}.`
-                : automaticallyAbsentParts.length
-                  ? `No ${automaticallyAbsentParts.join(" or ")} region detected.`
-                  : "";
-            refs.segmentationSub.textContent = `${analysisNote}${tasselPresent ? `${analysisNote ? " " : ""}Tassel region detected; estimated weight 1.5000 g.` : ""}`;
-          }
+          const tasselPresent = Boolean(segmentation.tassel_detected || tassel > 0) && !segmentation.no_tassel;
+          const threadRiskHigh = tasselPresent;
+          const jewelleryRiskStatus = threadRiskHigh || beadRiskHigh ? "HIGH RISK" : "LOW RISK";
+          refs.segmentationValue.textContent = jewelleryRiskStatus;
+          setRiskResultStyle(refs.segmentationValue, jewelleryRiskStatus);
+          refs.segmentationSub.textContent = `Thread: ${threadRiskHigh ? "High" : "Low"} risk · Beads: ${beadRiskHigh ? "High" : "Low"} risk`;
         renderArtifactStrip(refs.segmentationArtifacts, [
           segmentation.composite_layout,
           segmentation.bead_analysis_image,
@@ -4125,6 +4149,7 @@
         refs.btnSegmentationNext.disabled = false;
       } else {
         refs.segmentationValue.textContent = "--";
+        setRiskResultStyle(refs.segmentationValue, "NOT ASSESSED");
         refs.segmentationSub.textContent = classification.confirmed && getCurrentBranch() === "segmentation"
           ? `Jewel type confirmed as ${classification.confirmed_label}. Click Start Jewellery Analysis.`
           : "Confirm a necklace-type jewel before starting jewellery analysis.";
@@ -4140,7 +4165,8 @@
       if (mainStone) {
         const mainStats = mainStone.stone_area_statistics;
         refs.mainStoneValue.textContent = stoneSurfaceStatus(mainStone);
-        refs.mainStoneSub.textContent = `${stoneAnalysisText(mainStone)} ${stoneSuperResolutionText(mainStone)}`;
+        setRiskResultStyle(refs.mainStoneValue, refs.mainStoneValue.textContent);
+        refs.mainStoneSub.textContent = stoneAnalysisText(mainStone);
         renderArtifactStrip(refs.mainStoneArtifacts, [
           source.working_image || source.original_image,
           mainStone.gallery,
@@ -4179,7 +4205,8 @@
         }
       } else {
         refs.mainStoneValue.textContent = "--";
-        refs.mainStoneSub.textContent = "Run stone detection for the confirmed workflow branch.";
+        setRiskResultStyle(refs.mainStoneValue, "NOT ASSESSED");
+        refs.mainStoneSub.textContent = "Select the stone type and start analysis.";
         refs.mainStoneArtifacts.innerHTML = "";
         refs.mainStoneTable.classList.add("hidden");
       }
@@ -4187,7 +4214,8 @@
       if (sideStone) {
         const sideStats = sideStone.stone_area_statistics;
         refs.sideStoneValue.textContent = stoneSurfaceStatus(sideStone);
-        refs.sideStoneSub.textContent = `${stoneAnalysisText(sideStone)} ${stoneSuperResolutionText(sideStone)}`;
+        setRiskResultStyle(refs.sideStoneValue, refs.sideStoneValue.textContent);
+        refs.sideStoneSub.textContent = stoneAnalysisText(sideStone);
         renderArtifactStrip(refs.sideArtifacts, [
           (backendState.side_capture || {}).original_image,
           sideStone.gallery,
@@ -4226,7 +4254,8 @@
         }
       } else {
         refs.sideStoneValue.textContent = "--";
-        refs.sideStoneSub.textContent = "Awaiting side image.";
+        setRiskResultStyle(refs.sideStoneValue, "NOT ASSESSED");
+        refs.sideStoneSub.textContent = "Capture the side image to continue.";
         refs.sideArtifacts.innerHTML = "";
         refs.sideStoneTable.classList.add("hidden");
       }
@@ -4256,6 +4285,23 @@
       // preserving the user's local selection until they press Start.
 
       refs.finalHeadline.textContent = finalState.headline || "--";
+      refs.finalRiskTableBody.innerHTML = "";
+      const riskFactors = finalState.risk_factors || {};
+      ["thread", "beads", "stones"].forEach((factorKey) => {
+        const factor = riskFactors[factorKey];
+        if (!factor) return;
+        const row = document.createElement("tr");
+        const labelCell = document.createElement("td");
+        const statusCell = document.createElement("td");
+        const resultCell = document.createElement("td");
+        labelCell.textContent = factor.label;
+        statusCell.textContent = factor.status;
+        resultCell.textContent = factor.result;
+        statusCell.className = factor.high ? "risk-high" : (factor.assessed ? "risk-low" : "risk-unavailable");
+        row.append(labelCell, statusCell, resultCell);
+        refs.finalRiskTableBody.appendChild(row);
+      });
+      refs.finalRiskTable.classList.toggle("hidden", refs.finalRiskTableBody.children.length === 0);
       refs.finalLines.innerHTML = "";
       (finalState.lines || []).forEach((line) => {
         const item = document.createElement("li");
@@ -4886,6 +4932,24 @@
 
     document.getElementById("btnToggleAdvancedTools").addEventListener("click", toggleSetupTools);
 
+    refs.btnApplyTasselModel.addEventListener(
+      "click",
+      withButtonGuard(refs.btnApplyTasselModel, async () => {
+        try {
+          const data = await postJson("/api/tassel-model", {
+            source: refs.tasselModelSource.value,
+          });
+          applyTasselModelSettings(data.tassel_model);
+          setStatusWithIndicator(
+            data.warning || "Tassel model selection saved. It will be used for the next Jewellery Analysis.",
+            data.warning ? "warning" : "success"
+          );
+        } catch (error) {
+          setStatusWithIndicator(error.message, "error");
+        }
+      })
+    );
+
     refs.btnSaveCalibrationSetup.addEventListener(
       "click",
       withButtonGuard(refs.btnSaveCalibrationSetup, async () => {
@@ -5133,6 +5197,7 @@
         setStatus("Save the jewel count before continuing.");
         return;
       }
+      flow.pledgeSetupReview = false;
       flow.pledgeSetupComplete = true;
       flow.currentStage = "classification";
       renderPanels();
@@ -5163,6 +5228,11 @@
       flow.segmentationNext = false;
       flow.finalVisible = false;
       goToNextStage();
+    });
+    refs.btnClassificationPrev.addEventListener("click", () => {
+      flow.pledgeSetupReview = true;
+      flow.pledgeSetupComplete = false;
+      renderPanels();
     });
 
     refs.btnCaptureWeight.addEventListener("click", captureWeight);
