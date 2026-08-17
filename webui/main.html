@@ -2510,7 +2510,7 @@
       refs.setupMarkerSide.value = String(metric.marker_length_mm ?? 20);
       refs.markerLength.value = String(metric.marker_length_mm ?? 20);
       refs.markerBreadth.value = String(metric.marker_breadth_mm ?? metric.marker_length_mm ?? 20);
-      refs.cameraToBed.value = String(metric.camera_to_bed_mm ?? 500);
+      refs.cameraToBed.value = String(metric.camera_to_bed_mm ?? 370);
       refs.nominalStoneHeight.value = String(metric.nominal_stone_height_mm ?? 0);
       refs.fourMarkerEnabled.checked = Boolean(metric.four_marker_enabled);
       refs.fourMarkerIds.value = Array.isArray(metric.four_marker_ids) ? metric.four_marker_ids.join(",") : "0,1,2,3";
@@ -2533,7 +2533,7 @@
         marker_id: Number(refs.setupMarkerId.value),
         marker_length_mm: markerSide,
         marker_breadth_mm: markerSide,
-        camera_to_bed_mm: Number(refs.cameraToBed.value) || 500,
+        camera_to_bed_mm: Number(refs.cameraToBed.value) || 370,
         nominal_stone_height_mm: Number(refs.nominalStoneHeight.value) || 0,
         camera_matrix: cameraCalibrationData && cameraCalibrationData.camera_matrix,
         dist_coeffs: cameraCalibrationData && cameraCalibrationData.dist_coeffs,

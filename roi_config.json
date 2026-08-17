@@ -6,10 +6,10 @@
     "h": 1410
   },
   "aruco_roi": {
-    "x": 449,
-    "y": 17,
-    "w": 185,
-    "h": 199
+    "x": 420,
+    "y": 11,
+    "w": 208,
+    "h": 208
   },
   "weight_roi": {
     "x": 960,
@@ -80,7 +80,7 @@
     "marker_id": 1,
     "marker_length_mm": 20.0,
     "marker_breadth_mm": 20.0,
-    "camera_to_bed_mm": 400.0,
+    "camera_to_bed_mm": 370.0,
     "nominal_stone_height_mm": 0.0,
     "camera_matrix": [
       [

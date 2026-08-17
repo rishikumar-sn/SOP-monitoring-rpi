@@ -1812,11 +1812,16 @@ def mean_hsv_for_mask(hsv_image: np.ndarray, mask: np.ndarray) -> tuple[float, f
     )
 
 
-def mean_lab_ab_for_mask(image_bgr: np.ndarray, mask: np.ndarray) -> tuple[float, float, float]:
+def mean_lab_ab_for_mask(
+    image_bgr: np.ndarray,
+    mask: np.ndarray,
+    lab_image: np.ndarray | None = None,
+) -> tuple[float, float, float]:
     pixels = mask > 0
     if not np.any(pixels):
         return 0.0, 0.0, 0.0
-    lab_pixels = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB)[pixels].astype(np.float32)
+    lab = lab_image if lab_image is not None else cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB)
+    lab_pixels = lab[pixels].astype(np.float32)
     lab_a = lab_pixels[:, 1] - 128.0
     lab_b = lab_pixels[:, 2] - 128.0
     chroma = np.sqrt((lab_a * lab_a) + (lab_b * lab_b))
@@ -1982,6 +1987,10 @@ def expand_stone_seed_to_full_region(
     color_name: str,
     jewel_area: int,
     background_match_mask: np.ndarray | None = None,
+    hsv_image: np.ndarray | None = None,
+    lab_image: np.ndarray | None = None,
+    reliable_gold_barrier: np.ndarray | None = None,
+    reflective_gold_barrier: np.ndarray | None = None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Grow a strict HSV seed to the complete local stone face.
 
@@ -2093,24 +2102,29 @@ def expand_stone_seed_to_full_region(
         )
 
     relaxed_colored_growth = color_name in COLOR_STONE_REGION_GROW_COLORS
-    reliable_gold_barrier = build_reliable_gold_barrier(
-        image_bgr,
-        broad_gold_mask,
-        strict_gold_mask,
-        jewel_mask,
-        include_reflective_metal=color_name != "Black",
-    )
+    if color_name != "Black" and reflective_gold_barrier is not None:
+        reliable_barrier = reflective_gold_barrier
+    elif reliable_gold_barrier is not None:
+        reliable_barrier = reliable_gold_barrier
+    else:
+        reliable_barrier = build_reliable_gold_barrier(
+            image_bgr,
+            broad_gold_mask,
+            strict_gold_mask,
+            jewel_mask,
+            include_reflective_metal=color_name != "Black",
+        )
     if relaxed_colored_growth:
         # Colored gemstones often contain yellow/white specular facets that
         # fall inside the broad gold HSV range. Treat only strict gold as a
         # hard growth barrier, then validate the final compact component
         # against the broader metal mask below.
         gold_barrier = cv2.bitwise_and(strict_gold_mask, jewel_mask)
-        gold_validation_barrier = reliable_gold_barrier
+        gold_validation_barrier = reliable_barrier
         max_gold_overlap_share = STONE_REGION_GROW_COLOR_MAX_GOLD_OVERLAP_SHARE
     else:
-        gold_barrier = reliable_gold_barrier
-        gold_validation_barrier = reliable_gold_barrier
+        gold_barrier = reliable_barrier
+        gold_validation_barrier = reliable_barrier
         max_gold_overlap_share = 0.0
 
     seed = cv2.bitwise_and(seed, cv2.bitwise_not(gold_barrier))
@@ -2137,8 +2151,12 @@ def expand_stone_seed_to_full_region(
         max(seed_area + 8, int(cv2.countNonZero(search_mask))),
     )
 
-    hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
-    lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
+    hsv = hsv_image if hsv_image is not None else cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
+    lab = (
+        lab_image.astype(np.float32, copy=False)
+        if lab_image is not None
+        else cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
+    )
     value = hsv[:, :, 2].astype(np.float32)
     saturation = hsv[:, :, 1].astype(np.float32)
     lab_a = lab[:, :, 1] - 128.0
@@ -2264,17 +2282,31 @@ def expand_stone_seed_to_full_region(
         STONE_REGION_GROW_GRABCUT_ITERATIONS > 0
         and cv2.countNonZero(threshold_region) > seed_area
     ):
-        grab_mask = np.full(seed.shape, cv2.GC_BGD, dtype=np.uint8)
-        search_pixels = search_mask > 0
+        search_points = cv2.findNonZero(search_mask)
+        if search_points is None:
+            return seed, diagnostics
+        grab_x, grab_y, grab_w, grab_h = cv2.boundingRect(search_points)
+        grab_x1 = max(0, grab_x - 2)
+        grab_y1 = max(0, grab_y - 2)
+        grab_x2 = min(seed.shape[1], grab_x + grab_w + 2)
+        grab_y2 = min(seed.shape[0], grab_y + grab_h + 2)
+        grab_slice = np.s_[grab_y1:grab_y2, grab_x1:grab_x2]
+        local_search = search_mask[grab_slice]
+        local_threshold = threshold_region[grab_slice]
+        local_seed = seed[grab_slice]
+        local_gold_barrier = gold_barrier[grab_slice]
+        local_background = background[grab_slice]
+        grab_mask = np.full(local_seed.shape, cv2.GC_BGD, dtype=np.uint8)
+        search_pixels = local_search > 0
         grab_mask[search_pixels] = cv2.GC_PR_BGD
-        grab_mask[threshold_region > 0] = cv2.GC_PR_FGD
-        grab_mask[seed_pixels] = cv2.GC_FGD
-        grab_mask[(gold_barrier > 0) | background] = cv2.GC_BGD
+        grab_mask[local_threshold > 0] = cv2.GC_PR_FGD
+        grab_mask[local_seed > 0] = cv2.GC_FGD
+        grab_mask[(local_gold_barrier > 0) | local_background] = cv2.GC_BGD
         try:
             background_model = np.zeros((1, 65), np.float64)
             foreground_model = np.zeros((1, 65), np.float64)
             cv2.grabCut(
-                image_bgr,
+                image_bgr[grab_slice],
                 grab_mask,
                 None,
                 background_model,
@@ -2282,11 +2314,13 @@ def expand_stone_seed_to_full_region(
                 STONE_REGION_GROW_GRABCUT_ITERATIONS,
                 cv2.GC_INIT_WITH_MASK,
             )
-            grab_region = np.where(
+            local_grab_region = np.where(
                 (grab_mask == cv2.GC_FGD) | (grab_mask == cv2.GC_PR_FGD),
                 255,
                 0,
             ).astype(np.uint8)
+            grab_region = np.zeros_like(seed)
+            grab_region[grab_slice] = local_grab_region
             grab_region = cv2.bitwise_and(grab_region, search_mask)
             grab_region = cv2.bitwise_and(
                 grab_region,
@@ -2566,10 +2600,14 @@ def classify_component(
     jewel_mask: np.ndarray,
     image_bgr: np.ndarray,
     hsv_image: np.ndarray,
+    lab_image: np.ndarray,
     jewel_area: int,
     background_match_mask: np.ndarray | None = None,
     learned_profile_masks: dict[str, np.ndarray] | None = None,
     learned_profiles_by_id: dict[str, dict] | None = None,
+    reliable_gold_barrier: np.ndarray | None = None,
+    reflective_gold_barrier: np.ndarray | None = None,
+    allowed_colors: set[str] | None = None,
 ) -> dict | None:
     area_px = int(cv2.countNonZero(component_mask))
     if area_px == 0:
@@ -2600,6 +2638,9 @@ def classify_component(
         second_share = multicolor_drivers[1][1] / area_px
         if first_share >= 0.18 and second_share >= 0.18 and (first_share + second_share) >= 0.60:
             dominant_color = "Multicolor/Color-changing"
+
+    if allowed_colors is not None and dominant_color not in allowed_colors:
+        return None
 
     gold_overlap = int(cv2.countNonZero(cv2.bitwise_and(component_mask, gold_mask)))
     gold_share = gold_overlap / area_px
@@ -2650,29 +2691,38 @@ def classify_component(
         color_name=dominant_color,
         jewel_area=jewel_area,
         background_match_mask=background_match_mask,
+        hsv_image=hsv_image,
+        lab_image=lab_image,
+        reliable_gold_barrier=reliable_gold_barrier,
+        reflective_gold_barrier=reflective_gold_barrier,
     )
     if dominant_color in COLOR_STONE_REGION_GROW_COLORS:
         # The grown colored-stone mask has already been compactness checked
         # against the broad metal mask. Do not erase warm/low-saturation
         # stone facets here just because they resemble reflective gold.
-        reliable_gold_barrier = cv2.bitwise_and(strict_gold_mask, jewel_mask)
+        selected_gold_barrier = cv2.bitwise_and(strict_gold_mask, jewel_mask)
     else:
-        reliable_gold_barrier = build_reliable_gold_barrier(
-            image_bgr,
-            gold_mask,
-            strict_gold_mask,
-            jewel_mask,
-            # Bright low-saturation pixels are the stone itself for white gems;
-            # never subtract them as reflective metal.
-            include_reflective_metal=dominant_color not in {
-                "Black",
-                "White/Colorless",
-            },
-        )
+        if dominant_color in {"Black", "White/Colorless"}:
+            selected_gold_barrier = reliable_gold_barrier
+        else:
+            selected_gold_barrier = reflective_gold_barrier
+        if selected_gold_barrier is None:
+            selected_gold_barrier = build_reliable_gold_barrier(
+                image_bgr,
+                gold_mask,
+                strict_gold_mask,
+                jewel_mask,
+                # Bright low-saturation pixels are the stone itself for white gems;
+                # never subtract them as reflective metal.
+                include_reflective_metal=dominant_color not in {
+                    "Black",
+                    "White/Colorless",
+                },
+            )
     component_mask = fill_component_holes(component_mask)
     component_mask = cv2.bitwise_and(
         component_mask,
-        cv2.bitwise_not(reliable_gold_barrier),
+        cv2.bitwise_not(selected_gold_barrier),
     )
     area_px = int(cv2.countNonZero(component_mask))
     contours, _ = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -2687,6 +2737,7 @@ def classify_component(
     mean_lab_a, mean_lab_b, mean_lab_chroma = mean_lab_ab_for_mask(
         image_bgr,
         component_mask,
+        lab_image=lab_image,
     )
     overlaps = {
         color_name: int(
@@ -2698,7 +2749,7 @@ def classify_component(
     breakdown.sort(key=lambda item: (-item[1], item[0]))
     final_gold_overlap = int(
         cv2.countNonZero(
-            cv2.bitwise_and(component_mask, reliable_gold_barrier)
+            cv2.bitwise_and(component_mask, selected_gold_barrier)
         )
     )
     final_gold_share = final_gold_overlap / max(1, area_px)
@@ -2956,6 +3007,7 @@ def detect_regions_in_roi(
     background_calibration: dict | None = None,
     analysis_normalization: dict | None = None,
     learned_stone_profiles: list[dict] | None = None,
+    allowed_colors: set[str] | None = None,
 ) -> list[dict]:
     if cv2.countNonZero(roi_mask) == 0:
         return []
@@ -3011,6 +3063,20 @@ def detect_regions_in_roi(
         )
         for profile_id, profile_mask in learned_profile_masks.items()
     }
+    reliable_gold_barrier = build_reliable_gold_barrier(
+        roi_bgr,
+        gold_mask,
+        strict_gold_mask,
+        analysis_roi_mask,
+        include_reflective_metal=False,
+    )
+    reflective_gold_barrier = build_reliable_gold_barrier(
+        roi_bgr,
+        gold_mask,
+        strict_gold_mask,
+        analysis_roi_mask,
+        include_reflective_metal=True,
+    )
 
     effective_area = max(1, int(area_reference or cv2.countNonZero(roi_mask)))
     region_candidates = extract_region_candidates(
@@ -3089,10 +3155,14 @@ def detect_regions_in_roi(
             jewel_mask=analysis_roi_mask,
             image_bgr=roi_bgr,
             hsv_image=hsv,
+            lab_image=lab,
             jewel_area=effective_area,
             background_match_mask=background_match_mask,
             learned_profile_masks=filtered_learned_masks,
             learned_profiles_by_id=learned_profiles_by_id,
+            reliable_gold_barrier=reliable_gold_barrier,
+            reflective_gold_barrier=reflective_gold_barrier,
+            allowed_colors=allowed_colors,
         )
         if region is not None:
             learned_profile_id = region_candidate.get("learned_profile_id")
@@ -3245,7 +3315,23 @@ def region_quality_score(region: dict) -> float:
 
 
 def regions_are_duplicates(region_a: dict, region_b: dict) -> bool:
-    overlap_px = int(cv2.countNonZero(cv2.bitwise_and(region_a["mask"], region_b["mask"])))
+    ax, ay, aw, ah = region_a["bbox"]
+    bx, by, bw, bh = region_b["bbox"]
+    overlap_x1 = max(ax, bx)
+    overlap_y1 = max(ay, by)
+    overlap_x2 = min(ax + aw, bx + bw)
+    overlap_y2 = min(ay + ah, by + bh)
+    if overlap_x1 >= overlap_x2 or overlap_y1 >= overlap_y2:
+        return False
+    overlap_slice = np.s_[overlap_y1:overlap_y2, overlap_x1:overlap_x2]
+    overlap_px = int(
+        cv2.countNonZero(
+            cv2.bitwise_and(
+                region_a["mask"][overlap_slice],
+                region_b["mask"][overlap_slice],
+            )
+        )
+    )
     if overlap_px <= 0:
         return False
 
@@ -3299,7 +3385,13 @@ def region_mask_overlap_share(region_mask: np.ndarray, reference_mask: np.ndarra
     region_area = int(cv2.countNonZero(region_mask))
     if region_area <= 0:
         return 0.0
-    overlap_px = int(cv2.countNonZero(cv2.bitwise_and(region_mask, reference_mask)))
+    points = cv2.findNonZero(region_mask)
+    if points is None:
+        return 0.0
+    x, y, width, height = cv2.boundingRect(points)
+    region_crop = region_mask[y:y + height, x:x + width]
+    reference_crop = reference_mask[y:y + height, x:x + width]
+    overlap_px = int(cv2.countNonZero(cv2.bitwise_and(region_crop, reference_crop)))
     return overlap_px / region_area
 
 
@@ -4678,6 +4770,7 @@ def analyze_jewel_candidate(
             background_calibration=background_calibration,
             analysis_normalization=analysis_normalization,
             learned_stone_profiles=learned_stone_profiles,
+            allowed_colors={"White/Colorless"},
         )
         if region["color"] == "White/Colorless"
     ]
@@ -4858,6 +4951,14 @@ def analyze_jewel_candidate(
                 zoomed_mask,
                 background_calibration,
             )
+            color_measurement_hsv = cv2.cvtColor(
+                color_measurement_bgr,
+                cv2.COLOR_BGR2HSV,
+            )
+            color_measurement_lab = cv2.cvtColor(
+                color_measurement_bgr,
+                cv2.COLOR_BGR2LAB,
+            )
             v2_candidates = _stone_v2.generate_stone_candidates(
                 glare_processed_bgr,
                 zoomed_mask,
@@ -4882,6 +4983,8 @@ def analyze_jewel_candidate(
                     color_measurement_bgr,
                     mask,
                     gold_mask=v2_gold_mask,
+                    lab_image=color_measurement_lab,
+                    hsv_image=color_measurement_hsv,
                 )
                 color = str(classification["color"])
                 contours, _ = cv2.findContours(
@@ -4904,12 +5007,13 @@ def analyze_jewel_candidate(
                     else [x + width // 2, y + height // 2]
                 )
                 mean_h, mean_s, mean_v = mean_hsv_for_mask(
-                    cv2.cvtColor(color_measurement_bgr, cv2.COLOR_BGR2HSV),
+                    color_measurement_hsv,
                     mask,
                 )
                 mean_lab_a, mean_lab_b, mean_lab_chroma = mean_lab_ab_for_mask(
                     color_measurement_bgr,
                     mask,
+                    lab_image=color_measurement_lab,
                 )
                 region.update(
                     {

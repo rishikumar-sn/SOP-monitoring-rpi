@@ -915,7 +915,7 @@ APRILTAG_DEFAULT_BREADTH_MM = float(
     os.environ.get("APRILTAG_BREADTH_MM", str(APRILTAG_DEFAULT_LENGTH_MM))
 )
 APRILTAG_DEFAULT_ID = int(os.environ.get("APRILTAG_MARKER_ID", "1"))
-CAMERA_TO_BED_DEFAULT_MM = float(os.environ.get("CAMERA_TO_BED_MM", "500.0"))
+CAMERA_TO_BED_DEFAULT_MM = float(os.environ.get("CAMERA_TO_BED_MM", "370.0"))
 
 legacy_feedback_dirs = [
     path

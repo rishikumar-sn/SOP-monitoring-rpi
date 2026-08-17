@@ -878,6 +878,8 @@ def classify_stone_instance_color(
     color_image_bgr: np.ndarray,
     instance_mask: np.ndarray,
     gold_mask: np.ndarray | None = None,
+    lab_image: np.ndarray | None = None,
+    hsv_image: np.ndarray | None = None,
 ) -> dict[str, Any]:
     """Classify one final instance from robust interior LAB statistics."""
     mask = _binary(instance_mask, color_image_bgr.shape[:2])
@@ -886,8 +888,16 @@ def classify_stone_instance_color(
         eroded = cv2.erode(mask, np.ones((3, 3), np.uint8))
         if cv2.countNonZero(eroded) >= max(8, int(area * 0.35)):
             mask = eroded
-    lab = cv2.cvtColor(color_image_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
-    hsv = cv2.cvtColor(color_image_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
+    lab = (
+        lab_image.astype(np.float32, copy=False)
+        if lab_image is not None
+        else cv2.cvtColor(color_image_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
+    )
+    hsv = (
+        hsv_image.astype(np.float32, copy=False)
+        if hsv_image is not None
+        else cv2.cvtColor(color_image_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
+    )
     l_star = lab[:, :, 0] * (100.0 / 255.0)
     a_star = lab[:, :, 1] - 128.0
     b_star = lab[:, :, 2] - 128.0
@@ -909,22 +919,29 @@ def classify_stone_instance_color(
     median_chroma = float(math.hypot(median_a, median_b))
     color = _basic_lab_color(median_l, median_a, median_b)
 
-    pixel_labels = np.empty(valid.shape, dtype=object)
-    pixel_labels[:] = ""
     ys, xs = np.where(valid)
     labels = [
         _basic_lab_color(float(l_star[y, x]), float(a_star[y, x]), float(b_star[y, x]))
         for y, x in zip(ys, xs)
     ]
-    for (y, x), label in zip(zip(ys, xs), labels):
-        pixel_labels[y, x] = label
     counts = Counter(labels)
+    label_array = np.asarray(labels, dtype=object)
+    min_y = int(ys.min())
+    min_x = int(xs.min())
+    local_ys = ys - min_y
+    local_xs = xs - min_x
+    local_shape = (
+        int(ys.max()) - min_y + 1,
+        int(xs.max()) - min_x + 1,
+    )
     meaningful: list[tuple[str, int]] = []
     valid_count = max(1, len(labels))
     for label, count in counts.most_common():
         if label == "Multicolor/Color-changing" or count / float(valid_count) < 0.18:
             continue
-        cluster_mask = np.where(pixel_labels == label, 255, 0).astype(np.uint8)
+        cluster_mask = np.zeros(local_shape, dtype=np.uint8)
+        label_points = label_array == label
+        cluster_mask[local_ys[label_points], local_xs[label_points]] = 255
         component_count, _, stats, _ = cv2.connectedComponentsWithStats(cluster_mask, 8)
         largest = max(
             (int(stats[index, cv2.CC_STAT_AREA]) for index in range(1, component_count)),
