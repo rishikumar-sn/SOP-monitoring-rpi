@@ -1,1609 +1,1416 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Integrated Jewellery Workflow</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jewellery SOP Monitor</title>
+  <link rel="icon" type="image/png" href="/favicon.ico" />
   <style>
     :root {
-      --bg: #f0f4f8;
-      --panel: #ffffff;
-      --panel-strong: #f8fafb;
-      --border: #d0dce6;
-      --text: #1a202c;
-      --muted: #4a5568;
-      --accent: #2563eb;
-      --accent-dark: #1d4ed8;
-      --gold: #c18b2f;
-      --gold-soft: #f6e4b8;
-      --danger: #dc2626;
+      --bg: #f3f5f7;
+      --surface: #ffffff;
+      --surface-2: #f8fafc;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text: #1f2937;
+      --muted: #64748b;
+      --primary: #1d4ed8;
+      --primary-hover: #1e40af;
+      --primary-soft: #eff6ff;
       --success: #16a34a;
-      --shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-      --video-bg: linear-gradient(145deg, #1f2937, #111827);
+      --success-soft: #f0fdf4;
+      --warning: #d97706;
+      --warning-soft: #fffbeb;
+      --danger: #dc2626;
+      --danger-soft: #fef2f2;
+      --amber: #f59e0b;
+      --cam-bg: #111827;
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 4px 14px rgba(15, 23, 42, 0.10);
+      --shadow-lg: 0 10px 32px rgba(15, 23, 42, 0.16);
+      --radius: 12px;
+      --header-h: 60px;
     }
-
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
-      font-family: "Segoe UI", Tahoma, sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(255, 228, 160, 0.45), transparent 28%),
-        radial-gradient(circle at bottom right, rgba(205, 168, 83, 0.35), transparent 26%),
-        var(--bg);
+      font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 15px;
       color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
     }
+    .hidden { display: none !important; }
 
-    /* Enhanced UI styles for better user experience */
-    .card {
-      transition: all 0.3s ease;
-      box-shadow: var(--shadow);
+    button, input, select {
+      font: inherit;
+      color: inherit;
     }
+    button { cursor: pointer; }
 
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
-    }
-
+    /* ============ Buttons ============ */
     .btn {
-      transition: all 0.2s ease;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .btn:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .btn:active:not(:disabled) {
-      transform: translateY(0);
-    }
-
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .status-indicator {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 8px;
-    }
-
-    .status-success {
-      background-color: #10b981;
-    }
-
-    .status-error {
-      background-color: #ef4444;
-    }
-
-    .status-warning {
-      background-color: #f59e0b;
-    }
-
-    .status-info {
-      background-color: #2563eb;
-    }
-
-    .loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      flex-direction: column;
+      display: inline-flex;
+      align-items: center;
       justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      color: white;
-    }
-
-    .loading-spinner {
-      width: 50px;
-      height: 50px;
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #2563eb;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 20px;
-    }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    .loading-text {
-      font-size: 18px;
-      font-weight: bold;
-    }
-
-    .status-message {
-      padding: 8px 12px;
-      border-radius: 8px;
-      margin: 8px 0;
+      gap: 6px;
+      padding: 10px 16px;
+      border: 1px solid var(--border-strong);
+      border-radius: 9px;
+      background: var(--surface);
+      color: var(--text);
       font-weight: 600;
+      font-size: 14px;
+      line-height: 1.2;
+      transition: background .12s ease, border-color .12s ease, box-shadow .12s ease, transform .08s ease;
+      user-select: none;
+    }
+    .btn:hover:not(:disabled) { background: var(--surface-2); border-color: var(--text); }
+    .btn:active:not(:disabled) { transform: translateY(1px); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #ffffff; }
+    .btn.primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn.secondary { background: var(--surface); border-color: var(--border-strong); color: var(--text); }
+    .btn.success { background: var(--success); border-color: var(--success); color: #ffffff; }
+    .btn.success:hover:not(:disabled) { background: #15803d; }
+    .btn.danger { background: var(--danger); border-color: var(--danger); color: #ffffff; }
+    .btn.danger:hover:not(:disabled) { background: #b91c1c; }
+    .btn.gold { background: linear-gradient(180deg, #f59e0b, #d97706); border-color: #b45309; color: #ffffff; }
+    .btn.gold:hover:not(:disabled) { background: linear-gradient(180deg, #d97706, #b45309); }
+    .btn.prev { background: var(--surface); border-color: var(--border-strong); }
+    .btn.smallBtn { padding: 7px 12px; font-size: 13px; }
+    .btn.wide { width: 100%; }
+
+    .next-action {
+      outline: 2px solid var(--amber) !important;
+      outline-offset: 2px;
+      animation: nextActionPulse 1.6s ease-in-out infinite;
+    }
+    @keyframes nextActionPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
+      50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
     }
 
-    .status-success-bg {
-      background-color: #f0fdf4;
-      border: 1px solid #16a34a;
-      color: #166534;
-    }
-
-    .status-error-bg {
-      background-color: #fef2f2;
-      border: 1px solid #ef4444;
-      color: #dc2626;
-    }
-
-    .status-warning-bg {
-      background-color: #fffbeb;
-      border: 1px solid #f59e0b;
-      color: #c2410c;
-    }
-
-    .wrap {
-      height: 100vh;
-      overflow: hidden;
-      display: grid;
-      grid-template-rows: auto 1fr;
-      gap: 12px;
-      padding: 16px;
-    }
-
-    .header {
+    /* ============ Layout ============ */
+    .appHeader {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      height: var(--header-h);
       display: flex;
       align-items: center;
-      gap: 14px;
-      padding: 16px 18px;
+      gap: 16px;
+      padding: 0 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .logoImage { width: 36px; height: 36px; object-fit: contain; }
+    .appTitle { font-size: 17px; font-weight: 700; margin: 0; white-space: nowrap; }
+    .headerChips { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .chip {
+      padding: 5px 11px;
       border: 1px solid var(--border);
-      border-radius: 18px;
-      background: var(--panel);
-      box-shadow: var(--shadow);
-    }
-
-    .logoImage {
-      height: 58px;
-      object-fit: contain;
-    }
-
-    .title h1 {
-      margin: 0;
-      font-size: 40px;
-      line-height: 1;
-      letter-spacing: -0.01em;
-      text-transform: uppercase;
-      font-weight: 900;
-    }
-
-    .title .sub {
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .main {
-      min-height: 0;
-      overflow: hidden;
-      display: grid;
-      gap: 12px;
-      grid-template-columns: minmax(0, 1.15fr) minmax(370px, 0.95fr);
-    }
-
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-      padding: 14px;
-    }
-
-    .card h2,
-    .card h3 {
-      margin: 0 0 12px 0;
-      font-size: 18px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--accent);
-    }
-
-    .leftColumn {
-      min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .leftColumn::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .leftColumn::-webkit-scrollbar-thumb {
-      background: var(--accent);
       border-radius: 999px;
+      background: var(--surface-2);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 240px;
     }
+    .chip.active { color: var(--primary); border-color: #bfdbfe; background: var(--primary-soft); }
+    .headerActions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
-    .previewCard {
-      flex: 1;
+    .statusChip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .statusChip:hover { border-color: var(--border-strong); background: var(--surface-2); }
+    .statusDot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+    .statusDot.ok { background: var(--success); }
+    .statusDot.warn { background: var(--warning); }
+    .statusDot.error { background: var(--danger); }
+
+    .statusPopover {
+      position: fixed;
+      top: calc(var(--header-h) + 8px);
+      right: 220px;
+      z-index: 120;
+      width: 330px;
+      max-width: calc(100vw - 24px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      padding: 12px;
+    }
+    .popoverHead { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 2px 4px 8px; border-bottom: 1px solid var(--border); }
+    .statusRows { padding: 6px 0; }
+    .statusRow { display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 13.5px; }
+    .rowDot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+    .rowDot.ok { background: var(--success); }
+    .rowDot.warn { background: var(--warning); }
+    .rowName { flex: 1; color: var(--text); }
+    .rowValue { font-weight: 700; font-size: 12px; }
+    .rowValue.ok { color: var(--success); }
+    .rowValue.warn { color: var(--warning); }
+    .popoverFoot { border-top: 1px solid var(--border); padding-top: 10px; text-align: right; }
+
+    .mainGrid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(330px, 30%);
+      gap: 16px;
+      padding: 16px;
+      height: calc(100vh - var(--header-h) - 40px);
+      min-height: 420px;
+    }
+    .cameraCard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+    }
+    .cameraHead {
+      display: flex;
+      align-items: center;
       gap: 10px;
-      min-height: 0;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .liveHeading { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+    .liveDot { width: 9px; height: 9px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.15); animation: livePulse 2s ease-in-out infinite; }
+    .liveHeading.cameraModeCaptured .liveDot { background: var(--warning); box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.15); animation: none; }
+    .liveHeading.cameraModeTest .liveDot { background: var(--danger); box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15); animation: none; }
+    @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+    .cameraPills { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .modePill {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-2);
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .testImageBadge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--warning-soft);
+      border: 1px solid #fcd34d;
+      color: var(--warning);
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .canvasWrap {
       position: relative;
+      flex: 1;
+      background: var(--cam-bg);
+      min-height: 0;
     }
-
-    /* Setup Tools slides over the live camera preview instead of pushing/squishing it. */
-    .setupDrawer {
+    .canvasWrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .drawStatus {
       position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 52px;
-      margin-top: 0 !important;
-      max-height: calc(100% - 60px);
-      overflow-y: auto;
-      z-index: 20;
-      box-shadow: 0 -12px 28px rgba(15, 23, 42, 0.28);
-      transition: transform 0.25s ease, opacity 0.2s ease;
-      transform: translateY(0);
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .setupDrawer.setupDrawerClosed {
-      transform: translateY(16px);
-      opacity: 0;
+      top: 10px;
+      left: 10px;
+      z-index: 5;
+      max-width: calc(100% - 20px);
+      padding: 5px 11px;
+      border-radius: 8px;
+      background: rgba(17, 24, 39, 0.72);
+      color: #e5e7eb;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       pointer-events: none;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .setupDrawer { transition: none; }
-    }
-
-    .previewToolbar,
-    .toolRow,
-    .actionRow,
-    .buttonRow,
-    .statusRow {
+    /* ============ Action area / stages ============ */
+    .actionArea {
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    .canvasWrap {
-      flex: 1;
-      min-height: 300px;
-      display: grid;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      background: var(--video-bg);
-      position: relative;
-    }
-
-    #previewCanvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-      background: transparent;
-      cursor: crosshair;
-      object-fit: contain;
-    }
-
-    .tiny {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.35;
-    }
-
-    input,
-    select,
-    button {
-      font: inherit;
-    }
-
-    input[type="file"] {
-      max-width: 100%;
-    }
-
-    .field {
-      display: grid;
-      gap: 6px;
-      min-width: 0;
-    }
-
-    .field label {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted);
-    }
-
-    input[type="number"],
-    select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--panel);
-    }
-
-    .twoCol,
-    .threeCol {
-      display: grid;
+      flex-direction: column;
       gap: 12px;
-    }
-
-    .twoCol {
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .threeCol {
-      grid-template-columns: 1fr 1fr 1fr;
-    }
-
-    .btn {
-      border: 1px solid var(--accent-dark);
-      background: linear-gradient(180deg, #3b82f6, var(--accent));
-      color: #ffffff;
-      padding: 11px 15px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 15px;
-      font-weight: 700;
-      min-height: 46px;
-    }
-
-    .btn:hover {
-      filter: brightness(1.04);
-    }
-
-    .btn.secondary {
-      background: linear-gradient(180deg, #f0f4f8, #e5eef7);
-      border-color: #cbd5e1;
-      color: var(--text);
-    }
-
-    .btn.success {
-      background: linear-gradient(180deg, #22c55e, #16a34a);
-      border-color: #15803d;
-    }
-
-    .btn.danger {
-      background: linear-gradient(180deg, #ef4444, #dc2626);
-      border-color: #b91c1c;
-    }
-
-    .btn.gold {
-      background: linear-gradient(180deg, #e5b95c, #c18b2f);
-      border-color: #9f6a13;
-      color: #fffaf0;
-    }
-
-    .btn.prev {
-      background: linear-gradient(180deg, #64748b, #475569);
-      border-color: #334155;
-      color: #ffffff;
-    }
-
-    .btn:disabled {
-      opacity: 0.58;
-      cursor: not-allowed;
-      filter: none;
-    }
-
-    .modePill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border-radius: 999px;
-      padding: 8px 12px;
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
-      font-weight: 700;
-      color: var(--accent-dark);
-    }
-
-    .rightColumn {
       min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
-      padding-right: 6px;
-      display: grid;
-      gap: 12px;
-      align-content: start;
+      padding-right: 2px;
     }
-
-    .rightColumn::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .rightColumn::-webkit-scrollbar-thumb {
-      background: var(--accent);
-      border-radius: 999px;
-    }
-
-    .heroValue {
-      font-size: 38px;
-      line-height: 1;
-      font-weight: 800;
-      color: var(--accent-dark);
-      letter-spacing: 0.01em;
-      word-break: break-word;
-    }
-
-    .heroSub {
-      margin-top: 8px;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--muted);
-    }
-
-    .summaryGrid {
-      display: grid;
+    .stageProgress { display: flex; flex-wrap: wrap; gap: 6px; }
+    .progressStep {
+      display: inline-flex;
+      align-items: center;
       gap: 6px;
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .statBox {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--panel-strong);
-      padding: 6px 10px;
-    }
-
-    .statBox .k {
-      display: block;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 2px;
-    }
-
-    .statBox .v {
-      display: block;
-      font-size: 16px;
-      font-weight: 800;
-      word-break: break-word;
-    }
-
-    .artifactStrip {
-      display: grid;
-      gap: 14px;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-
-    .artifactFigure {
-      margin: 0;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: #fff;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
-    }
-
-    .artifactImage {
-      width: 100%;
-      height: min(46vh, 420px);
-      display: block;
-      object-fit: contain;
-      background: #f8fafc;
-    }
-
-    .artifactCaption {
-      display: none;
-    }
-
-    .artifactNav {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 6px 10px;
-      border-top: 1px solid var(--border);
-      background: var(--panel-strong);
-    }
-
-    .artifactNavBtn {
-      min-height: 0;
-      width: 30px;
-      height: 30px;
-      padding: 0;
-      border-radius: 999px;
-      font-size: 16px;
-      line-height: 1;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .artifactNavCount {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--muted);
-      min-width: 42px;
-      text-align: center;
-    }
-
-    .weightFields {
-      margin-top: 14px;
-      padding: 12px;
-      border: 1px solid #bfdbfe;
-      border-radius: 14px;
-      background: #eff6ff;
-    }
-
-    .scoreTable {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 8px;
-      font-size: 13px;
-    }
-
-    .scoreTable th,
-    .scoreTable td {
-      border-bottom: 1px solid #e2e8f0;
-      padding: 8px 6px;
-      text-align: left;
-    }
-
-    .scoreTable th {
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      font-size: 11px;
-    }
-
-    .riskTable {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      font-size: 13px;
-    }
-
-    .riskTable th,
-    .riskTable td {
-      padding: 9px 10px;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .riskTable tr:last-child td { border-bottom: 0; }
-    .riskTable th { background: #eaf1f8; color: var(--muted); }
-    .risk-high { color: var(--danger) !important; }
-    .risk-low { color: var(--success) !important; }
-    .risk-unavailable { color: var(--muted) !important; }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .stageCard {
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 14px;
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.96)),
-        var(--panel-strong);
-    }
-
-    .stageHead {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .stageTag {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 58px;
       padding: 5px 10px;
       border-radius: 999px;
-      background: linear-gradient(180deg, #e5b95c, #c18b2f);
-      color: #ffffff;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-    }
-
-    .stageNote {
-      padding: 12px 14px;
-      border-radius: 14px;
-      background: #fff9eb;
-      border: 1px solid #f2d59c;
-      font-size: 13px;
-      color: #7a5716;
-      line-height: 1.35;
-    }
-
-    .lineList {
-      margin: 0;
-      padding-left: 18px;
-      display: grid;
-      gap: 8px;
-    }
-
-    .footerBar {
-      min-height: 54px;
-      padding: 12px 14px;
-      border-radius: 16px;
       border: 1px solid var(--border);
-      background: var(--panel);
-      box-shadow: var(--shadow);
+      background: var(--surface);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .progressIcon { font-size: 12px; line-height: 1; }
+    .progressStep.progressDone { background: var(--success-soft); border-color: #bbf7d0; color: var(--success); }
+    .progressStep.progressDone .progressIcon { color: var(--success); }
+    .progressStep.progressCurrent { background: var(--primary-soft); border-color: #bfdbfe; color: var(--primary); box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.15); }
+    .progressStep.progressCurrent .progressIcon { color: var(--primary); }
+    .progressStep.progressSkipped { background: var(--warning-soft); border-color: #fde68a; color: var(--warning); text-decoration: line-through; }
+    .progressStep.progressFailed { background: var(--danger-soft); border-color: #fecaca; color: var(--danger); text-decoration: none; }
+
+    .stageCard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 16px;
+      flex: none;
+    }
+    .stageHead { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+    .stageHead h3 { margin: 0; font-size: 16px; font-weight: 700; flex: 1; }
+    .stepNum { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; flex: none; }
+    .moreBtn {
+      flex: none;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .moreBtn:hover { background: var(--surface-2); border-color: var(--border-strong); color: var(--text); }
+    .moreMenu {
+      position: fixed;
+      z-index: 130;
+      min-width: 180px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow-lg);
+      padding: 5px;
+      display: flex;
+      flex-direction: column;
+    }
+    .moreItem {
+      text-align: left;
+      padding: 8px 12px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text);
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+    .moreItem:hover { background: var(--surface-2); }
+    .moreItemDanger { color: var(--danger); }
+    .moreItemDanger:hover { background: rgba(220, 38, 38, 0.12); }
+    .moreDivider { height: 1px; background: var(--border); margin: 5px 8px; }
+    .stepInstruction { margin: 0 0 12px; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+
+    .resultBox { margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--border-strong); border-radius: 10px; background: var(--surface-2); }
+    .heroValue { font-size: 22px; font-weight: 800; line-height: 1.3; }
+    .heroValue.risk-high { color: var(--danger); }
+    .heroValue.risk-low { color: var(--success); }
+    .heroValue.risk-unavailable { color: var(--muted); }
+    .heroSub { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+    .tiny { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+    .twoCol { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .threeCol { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .buttonRow { display: flex; flex-wrap: wrap; gap: 10px; }
+    .toolRow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; min-width: 0; }
+    .field > label { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+    .field input[type="text"], .field input[type="number"], .field select {
+      padding: 9px 11px;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      font-size: 14px;
+      width: 100%;
+      min-width: 0;
+    }
+    .field input:focus, .field select:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
+    .field input[type="range"] { width: 100%; accent-color: var(--primary); }
+    .field input[type="file"] { font-size: 13px; padding: 7px 0; }
+    .checkRow, .toggleRow { display: flex; align-items: center; gap: 9px; margin-top: 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+    .checkRow input, .toggleRow input { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
+    .fieldWarning { margin-top: 8px; padding: 8px 11px; border-radius: 8px; background: var(--warning-soft); border: 1px solid #fde68a; color: var(--warning); font-size: 12.5px; font-weight: 600; }
+    .fieldStatus { margin-top: 8px; padding: 8px 11px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+
+    .focusStatus {
+      margin-top: 10px;
+      padding: 8px 11px;
+      border-radius: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      font-size: 12.5px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .micStatus { margin-top: 10px; padding: 8px 11px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12.5px; color: var(--muted); font-weight: 600; }
+
+    .chipRow { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .chipBtn {
+      padding: 8px 14px;
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      background: var(--surface);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .chipBtn:hover { border-color: var(--text); color: var(--text); }
+    .chipBtn.active { background: var(--primary); border-color: var(--primary); color: #ffffff; }
+
+    .segCorrection { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+    .segControls { margin-top: 12px; }
+
+    .finalHeadline { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .lineList { margin: 0 0 6px; padding-left: 20px; font-size: 13.5px; color: var(--text); line-height: 1.6; }
+    .closureBox { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+    .closureBox h4 { margin: 0 0 4px; font-size: 14px; }
+    .sealControls, .stripingControls { margin-top: 12px; }
+    .pledgeCompleteBanner {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--success, #16a34a);
+      border-radius: 10px;
+      background: rgba(22, 163, 74, 0.1);
     }
+    .pledgeCompleteCheck {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--success, #16a34a);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      flex: none;
+    }
+    .pledgeCompleteMeta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .confirmOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 400;
+      background: rgba(15, 23, 42, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .confirmBox {
+      width: min(420px, calc(100vw - 40px));
+      padding: 20px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+    }
+    .confirmBox h3 { margin: 0 0 10px; font-size: 17px; }
+    .confirmBox p { margin: 0 0 16px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
 
-    .statusValue {
+    /* ============ Tables / scores / artifacts ============ */
+    .scoreTable, .riskTable { margin-top: 10px; }
+    .scoreTable table, .riskTable table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .scoreTable th, .scoreTable td, .riskTable th, .riskTable td { padding: 7px 9px; text-align: left; border-bottom: 1px solid var(--border); }
+    .scoreTable th, .riskTable th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+    .riskTable td.risk-high { color: var(--danger); font-weight: 700; }
+    .riskTable td.risk-low { color: var(--success); font-weight: 700; }
+
+    .artifactStrip { margin-top: 12px; }
+    .artifactFigure { margin: 0 0 8px; }
+    .artifactImage { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); }
+    .artifactNav { display: flex; align-items: center; gap: 10px; }
+    .artifactNavBtn {
+      padding: 6px 11px;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      background: var(--surface);
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+    .artifactNavBtn:hover:not(:disabled) { background: var(--surface-2); }
+    .artifactNavBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .artifactNavCount { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .artifactCaption { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+
+    /* ============ Purity progress / audio live ============ */
+    .purityProgress { margin-top: 12px; }
+    .purityProgressRow { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+    .purityProgressHead { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .purityProgressBar { height: 7px; border-radius: 999px; background: var(--border); overflow: hidden; }
+    .purityProgressFill { height: 100%; border-radius: 999px; background: var(--border-strong); transition: width .4s ease; }
+    .purityProgressRow.purityTone-done .purityProgressFill { background: var(--success); }
+    .purityProgressRow.purityTone-success .purityProgressFill { background: var(--success); }
+    .purityProgressRow.purityTone-warn .purityProgressFill { background: var(--warning); }
+    .purityProgressRow.purityTone-danger .purityProgressFill { background: var(--danger); }
+    .purityProgressRow.purityTone-locked .purityProgressFill { background: var(--muted); }
+    .purityProgressRow.purityTone-idle .purityProgressFill { background: var(--border-strong); }
+
+    .purityAudioLive {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-2);
+    }
+    .purityAudioHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .purityAudioDecision {
+      font-size: 14px;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      color: var(--muted);
+    }
+    .purityAudioDecision.ok { background: var(--success-soft); border-color: #bbf7d0; color: var(--success); }
+    .purityAudioDecision.nok { background: var(--danger-soft); border-color: #fecaca; color: var(--danger); }
+    .purityAudioLabel { font-weight: 700; font-size: 13.5px; }
+    .purityAudioMeta { font-size: 12px; color: var(--muted); }
+    .purityAudioProbabilities { margin-top: 10px; }
+    .purityAudioProbRow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12.5px; }
+    .purityAudioProbName { width: 80px; flex: none; font-weight: 600; }
+    .purityAudioProbTrack { flex: 1; height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
+    .purityAudioProbFill { height: 100%; border-radius: 999px; background: var(--primary); }
+    .purityAudioProbValue { width: 44px; flex: none; text-align: right; color: var(--muted); font-weight: 600; }
+
+    /* ============ Loading overlay ============ */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(243, 245, 247, 0.78);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .loadingCard {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 26px 40px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow-lg);
+    }
+    .loading-spinner {
+      width: 34px;
+      height: 34px;
+      border: 4px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 14px; font-weight: 700; color: var(--text); }
+
+    /* ============ Footer ============ */
+    .footerStrip {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 8px 20px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .footStatus { font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .footHint { margin-left: auto; flex: none; }
+
+    .status-indicator { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; background: var(--primary); }
+    .status-indicator.status-success { background: var(--success); }
+    .status-indicator.status-error { background: var(--danger); }
+    .status-indicator.status-warning { background: var(--warning); }
+    .status-indicator.status-info { background: var(--primary); }
+
+    .setupDrawer { margin-top: 6px; }
+    .setupDrawer.setupDrawerClosed { display: none; }
+    .modeLine { margin-bottom: 6px; }
+
+    /* ============ Pledge start screen ============ */
+    .pledgeStart {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .pledgeCard {
+      width: min(470px, 100%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
+      padding: 34px 36px;
+    }
+    .pledgeLogo { width: 64px; height: 64px; object-fit: contain; display: block; margin: 0 auto 14px; }
+    .pledgeTitle { margin: 0 0 6px; font-size: 23px; font-weight: 800; text-align: center; }
+    .pledgeSub { margin: 0 0 18px; font-size: 13.5px; color: var(--muted); text-align: center; line-height: 1.5; }
+    .pledgeDivider { border: 0; border-top: 1px solid var(--border); margin: 18px 0; }
+
+    /* ============ Settings ============ */
+    .settingsOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 150;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+    }
+    .settingsShell { display: flex; flex-direction: column; height: 100%; max-width: 980px; width: 100%; margin: 0 auto; background: var(--surface); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+    .settingsHead {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      flex: none;
+    }
+    .settingsTitle { margin: 0; font-size: 17px; font-weight: 700; }
+    .settingsHead .btn { margin-left: auto; }
+    .settingsNav { display: flex; gap: 4px; padding: 10px 20px 0; border-bottom: 1px solid var(--border); flex: none; }
+    .settingsNavBtn {
+      padding: 9px 16px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      font-size: 14px;
       font-weight: 700;
-      font-size: 15px;
+      color: var(--muted);
     }
-
-    @media (max-width: 1180px) {
-      .wrap {
-        height: auto;
-        overflow: auto;
-      }
-
-      .main {
-        grid-template-columns: 1fr;
-        overflow: visible;
-      }
-
-      .twoCol,
-      .threeCol,
-      .summaryGrid {
-        grid-template-columns: 1fr;
-      }
+    .settingsNavBtn:hover { color: var(--text); }
+    .settingsNavBtn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .settingsBody { flex: 1; overflow-y: auto; padding: 20px; }
+    .settingsView { max-width: 720px; }
+    .settingsSection {
+      margin-bottom: 22px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
     }
+    .settingsSection h3 { margin: 0 0 10px; font-size: 14.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text); }
+    .settingsSection.warnBox { border-color: #fcd34d; background: var(--warning-soft); }
+    .deviceList { display: flex; flex-direction: column; gap: 6px; }
+    .deviceLine { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; }
+    .deviceLine .rowDot { flex: none; }
+    .summaryGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; }
+    .statBox {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface-2);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .statBox .k { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+    .statBox .v { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Compact operator view: one clear active step, with service tools tucked away. */
-    @keyframes nextActionPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, .72); transform: scale(1); }
-      50% { box-shadow: 0 0 0 7px rgba(245, 158, 11, 0); transform: scale(1.035); }
+    /* ============ Responsive ============ */
+    @media (max-width: 900px) {
+      .mainGrid { grid-template-columns: 1fr; height: auto; }
+      .cameraCard { min-height: 56vh; }
+      .appTitle { font-size: 15px; }
+      .chip { max-width: 150px; }
+      .statusPopover { right: 12px; left: 12px; width: auto; }
+      .footHint { display: none; }
     }
-    @keyframes livePulse { 50% { opacity: .25; } }
-    .next-action {
-      animation: nextActionPulse 1s ease-in-out infinite !important;
-      outline: 3px solid #f59e0b;
-      outline-offset: 2px;
-    }
-    .liveHeading { display:flex; align-items:center; gap:8px; }
-    .liveDot { width:10px; height:10px; border-radius:50%; background:#dc2626; animation:livePulse 1s infinite; }
-    .wrap { gap: 8px; padding: 8px; }
-    .header { padding: 8px 12px; border-radius: 12px; }
-    .logoImage { height: 38px; }
-    .title h1 { font-size: clamp(20px, 2.2vw, 30px); }
-    .main { gap: 8px; grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr); }
-    .card, .stageCard { padding: 9px; border-radius: 12px; }
-    .card:hover { transform: none; }
-    .card h2, .card h3 { margin-bottom: 7px; font-size: 15px; }
-    .btn { min-height: 34px; padding: 7px 11px; border-radius: 8px; font-size: 13px; }
-    .field { gap: 3px; }
-    input[type="number"], select { padding: 7px 9px; border-radius: 8px; }
-    .rightColumn, .leftColumn { gap: 8px; scrollbar-width: none; }
-    .rightColumn::-webkit-scrollbar, .leftColumn::-webkit-scrollbar { display:none; }
-    .heroValue { font-size: 25px; }
-    .heroSub { margin-top: 4px; font-size: 13px; }
-    .summaryGrid { grid-template-columns: repeat(2, 1fr); }
-    .summaryGrid .statBox:nth-child(2), .summaryGrid .statBox:nth-child(3) { display:none; }
-    .statBox { padding: 3px 6px; border-radius: 7px; }
-    .statBox .v { font-size: 11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .artifactStrip { gap: 7px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
-    .artifactImage { height: min(40vh, 340px); }
-    .artifactNav { padding: 4px 8px; gap: 8px; }
-    .artifactNavBtn { width: 26px; height: 26px; font-size: 14px; }
-    .artifactNavCount { font-size: 11px; min-width: 34px; }
-    .artifactCaption { padding: 5px 7px; font-size: 10px; }
-    .footerBar { position:absolute; right:10px; bottom:10px; z-index:10; min-height:0; max-width:220px; padding:6px 9px; opacity:.94; pointer-events:none; }
-    .footerBar > div:nth-child(2) { display:none; }
-    .footerBar .statusValue { font-size:12px; }
-    .footerBar .tiny { font-size:10px; }
-    #btnToggleAdvancedTools { width:auto !important; position:absolute; left:10px; bottom:10px; z-index:5; opacity:.88; }
-    .previewCard { position:relative; }
-    #previewHint, #stageProgressFlow, .scoreTable, #purityAudioProbabilities { display:none !important; }
-    .purityAudioCard { padding:8px; }
-    .purityAudioMeta { font-size:11px; }
-    .buttonRow, .actionRow, .toolRow { gap:6px; }
     @media (prefers-reduced-motion: reduce) {
-      .next-action { animation:none !important; }
-      .liveDot { animation:none; }
+      .next-action { animation: none; }
+      .liveDot { animation: none; }
+      .loading-spinner { animation-duration: 2.5s; }
     }
   </style>
 </head>
-
 <body>
-  <div class="wrap">
-    <div class="header" style="justify-content: space-between;">
-      <div style="display: flex; align-items: center; gap: 14px;">
-        <img src="/webui/embsys_logo.png" alt="Embsys Logo" class="logoImage" />
-        <div class="title">
-          <h1>Embsys Intelligence Jewellery Analyser</h1>
-        </div>
+
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loadingCard">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Processing...</div>
+    </div>
+  </div>
+
+  <!-- ==================== Pledge start screen ==================== -->
+  <div id="pledgeStartScreen" class="pledgeStart">
+    <div class="pledgeCard">
+      <img class="pledgeLogo" src="/webui/embsys_logo.png" alt="Embsys logo" />
+      <h1 class="pledgeTitle">Jewellery SOP Monitor</h1>
+      <p class="pledgeSub">New pledge setup. Enter the pledge ID and total jewel count to start.</p>
+      <div class="field">
+        <label for="inputPledgeId">Pledge ID</label>
+        <input id="inputPledgeId" type="text" placeholder="e.g., PLG-1024" autocomplete="off" />
       </div>
-      <div>
-        <a href="/report" target="_blank" style="text-decoration: none;">
-          <button class="btn accent" style="display: flex; align-items: center; gap: 8px;">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            Pledge Reports
-          </button>
-        </a>
+      <div class="toolRow">
+        <button id="btnSetPledge" class="btn primary" style="width:100%;">Set Pledge ID</button>
+      </div>
+      <div id="pledgeStatus" class="tiny">Pledge ID not set.</div>
+      <hr class="pledgeDivider" />
+      <div class="field">
+        <label for="inputJewelCount">Total jewel count</label>
+        <input id="inputJewelCount" type="number" min="1" step="1" placeholder="e.g., 12" />
+      </div>
+      <div class="twoCol">
+        <button id="btnSaveJewelCount" class="btn secondary">Save Count</button>
+        <button id="btnClearJewelCount" class="btn secondary">Clear Count</button>
+      </div>
+      <div id="jewelCountStatus" class="tiny">Jewel count not saved.</div>
+      <div class="toolRow">
+        <button id="btnPledgeSetupNext" class="btn gold wide" disabled>Start Jewellery Workflow</button>
       </div>
     </div>
+  </div>
 
-    <div class="main">
-      <div class="leftColumn">
-        <div class="card previewCard">
-          <h2 class="liveHeading"><span class="liveDot" aria-hidden="true"></span>LIVE CAMERA</h2>
+  <!-- ==================== Header ==================== -->
+  <header class="appHeader">
+    <div class="brand">
+      <img class="logoImage" src="/webui/embsys_logo.png" alt="Embsys logo" />
+      <h1 class="appTitle">Jewellery SOP Monitor</h1>
+    </div>
+    <div class="headerChips">
+      <span id="headerPledgeId" class="chip">No pledge</span>
+      <span id="headerJewelProgress" class="chip hidden"></span>
+    </div>
+    <div class="headerActions">
+      <button id="systemStatusChip" class="statusChip" aria-haspopup="true">
+        <span id="systemStatusDot" class="statusDot"></span>
+        <span id="systemStatusLabel">Checking system...</span>
+      </button>
+      <a class="btn secondary smallBtn headerBtn" href="/report">Reports</a>
+      <button id="btnOpenSettings" class="btn secondary smallBtn headerBtn">Settings</button>
+    </div>
+  </header>
 
+  <div id="systemStatusPopover" class="statusPopover hidden">
+    <div class="popoverHead">System Status</div>
+    <div id="systemStatusRows" class="statusRows"></div>
+    <div class="popoverFoot">
+      <button id="btnRunSystemCheckPopover" class="btn secondary smallBtn">Run System Check</button>
+    </div>
+  </div>
 
+  <!-- ==================== Main workspace ==================== -->
+  <main class="mainGrid">
 
-          <div class="canvasWrap">
-            <img id="hiddenLiveImage" class="hidden" alt="RPi live camera frame" />
-            <canvas id="previewCanvas"></canvas>
-          </div>
+    <section class="cameraCard">
+      <div class="cameraHead">
+        <span class="liveHeading"><span class="liveDot"></span> <span id="cameraModeLabel">LIVE</span></span>
+        <span class="cameraPills">
+          <span id="previewModePill" class="modePill">Preview: Live Camera</span>
+          <span id="testImageBadge" class="testImageBadge hidden"></span>
+        </span>
+      </div>
+      <div class="canvasWrap">
+        <img id="hiddenLiveImage" class="hidden" alt="" />
+        <canvas id="previewCanvas"></canvas>
+        <div id="drawStatus" class="drawStatus">Select an action...</div>
+      </div>
+    </section>
 
-          <div class="footerBar">
-            <div>
-              <div class="tiny">Backend Status</div>
-              <div id="statusValue" class="statusValue">Ready.</div>
+    <section class="actionArea">
+      <div id="stageProgressFlow" class="stageProgress hidden"></div>
+
+      <!-- Classification -->
+      <div id="classificationPanel" class="stageCard hidden">
+        <button id="btnClassificationPrev" class="btn prev hidden">Back to Setup</button>
+        <div class="stageHead">
+          <h3>Jewel Type</h3>
+          <span class="stepNum" data-step-label="classification"></span>
+          <button type="button" class="moreBtn" data-stage="classification" aria-label="More actions">&#8943;</button>
+        </div>
+        <p class="stepInstruction">Place the jewel clearly inside the marked area, then check the jewel type.</p>
+        <div id="classificationFocusStatus" class="focusStatus">Ready to capture.</div>
+        <div class="twoCol">
+          <button id="btnCaptureMainImage" class="btn primary">Capture Image</button>
+          <button id="btnRunClassification" class="btn secondary">Check Jewel Type</button>
+        </div>
+        <div class="resultBox">
+          <div class="heroValue" id="classificationValue">--</div>
+          <div class="heroSub" id="classificationSub">No image captured yet.</div>
+          <div id="classificationActions" class="classificationActions hidden">
+            <div class="twoCol">
+              <button id="btnClassYes" class="btn success">Confirm Jewel Type</button>
+              <button id="btnClassNo" class="btn danger">Change Jewel Type</button>
             </div>
-            <div>
-              <div class="tiny">Drawing Hint</div>
-              <div id="drawStatus" class="statusValue">No active drawing mode.</div>
+            <div id="classificationTable" class="scoreTable hidden">
+              <table>
+                <thead><tr><th>Jewel Type</th><th>Confidence</th></tr></thead>
+                <tbody id="classificationTableBody"></tbody>
+              </table>
             </div>
           </div>
-
+          <div id="overrideArea" class="twoCol hidden">
+            <select id="overrideClassSelect" class="field"></select>
+            <button id="btnApplyOverride" class="btn secondary">Apply Override</button>
+          </div>
           <div class="toolRow">
-            <button id="btnToggleAdvancedTools" class="btn secondary"
-              style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
-              <span>Setup Tools</span>
-              <span id="advancedToolsIcon">▼</span>
-            </button>
+            <button id="btnClassificationNext" class="btn gold hidden">Continue</button>
           </div>
-          <div id="advancedToolsContainer" class="toolRow setupDrawer setupDrawerClosed"
-            style="padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-strong); flex-direction: column; align-items: stretch;">
-            <div class="tiny" style="margin-bottom: 8px; color: var(--muted); line-height: 1.4;">
-              Live camera, ROI-based capture, jewel type, dimension, jewellery analysis, hand removal, and stone detection in one staged dashboard.
+        </div>
+      </div>
+
+      <!-- Weight -->
+      <div id="weightPanel" class="stageCard hidden">
+        <button id="btnWeightPrev" class="btn prev hidden">Previous Step</button>
+        <button id="btnSkipWeight" class="btn secondary">Skip Stage</button>
+        <div class="stageHead">
+          <h3>Jewel Weight</h3>
+          <span class="stepNum" data-step-label="weight"></span>
+          <button type="button" class="moreBtn" data-stage="weight" aria-label="More actions">&#8943;</button>
+        </div>
+        <p class="stepInstruction">Place the jewel on the weighing scale and capture the weight.</p>
+        <div class="field">
+          <label for="appraiserStoneWeight">Appraiser Stone Weight (g)</label>
+          <input id="appraiserStoneWeight" type="number" min="0" step="0.01" placeholder="e.g., 0.50" />
+        </div>
+        <div class="twoCol">
+          <button id="btnCaptureWeight" class="btn primary">Capture Weight</button>
+          <button id="btnRetakeWeight" class="btn secondary">Try Again</button>
+        </div>
+        <div class="resultBox">
+          <div class="heroValue" id="weightValue">Waiting for weight...</div>
+          <div class="heroSub" id="weightSub">Place the jewel on the scale and capture the weight.</div>
+          <div class="toolRow">
+            <button id="btnWeightNext" class="btn gold hidden">Continue</button>
+          </div>
+        </div>
+        <div id="weightArtifacts" class="artifactStrip hidden"></div>
+      </div>
+
+      <!-- Dimension -->
+      <div id="dimensionPanel" class="stageCard hidden">
+        <button id="btnDimensionPrev" class="btn prev hidden">Previous Step</button>
+        <button id="btnSkipDimension" class="btn secondary">Skip Stage</button>
+        <div class="stageHead">
+          <h3>Jewel Dimensions</h3>
+          <span class="stepNum" data-step-label="dimension"></span>
+          <button type="button" class="moreBtn" data-stage="dimension" aria-label="More actions">&#8943;</button>
+        </div>
+        <p class="stepInstruction">Keep the jewel inside the measured area. Calibration is configured in Settings &#8594; System Setup.</p>
+        <div class="toolRow">
+          <button id="btnRunDimension" class="btn primary">Start Measurement</button>
+        </div>
+        <div class="resultBox">
+          <div class="heroValue" id="dimensionValue">Waiting for measurement...</div>
+          <div class="heroSub" id="dimensionSub">Start measurement to begin.</div>
+          <div class="toolRow">
+            <button id="btnDimensionNext" class="btn gold hidden">Continue</button>
+          </div>
+        </div>
+        <div id="dimensionArtifacts" class="artifactStrip hidden"></div>
+      </div>
+
+      <!-- Side stone detection -->
+      <div id="sidePanel" class="stageCard hidden">
+        <button id="btnSidePrev" class="btn prev hidden">Previous Step</button>
+        <button id="btnSkipSide" class="btn secondary">Skip Stage</button>
+        <div class="stageHead">
+          <h3>Side View — Stone Detection</h3>
+          <span class="stepNum" data-step-label="side"></span>
+          <button type="button" class="moreBtn" data-stage="side" aria-label="More actions">&#8943;</button>
+        </div>
+        <p class="stepInstruction">Capture a clear side image of the jewel, then run the stone analysis.</p>
+        <div class="field">
+          <label for="sideStoneSettingProfile">Stone Setting Type</label>
+          <select id="sideStoneSettingProfile">
+            <option value="front_only_shallow">Half cut / front-only stones</option>
+            <option value="open_back_faceted">Full cut / open-back stones</option>
+            <option value="unknown">Unknown — visible area only</option>
+          </select>
+        </div>
+        <div class="twoCol">
+          <button id="btnCaptureSideLive" class="btn primary">Capture Side Image</button>
+          <button id="btnRunSidePipeline" class="btn secondary">Start Stone Analysis</button>
+        </div>
+        <div class="resultBox">
+          <div class="heroValue" id="sideStoneValue">Waiting for analysis...</div>
+          <div class="heroSub" id="sideStoneSub">No side image captured yet.</div>
+          <div id="sideStoneTable" class="scoreTable hidden">
+            <table>
+              <thead><tr><th>Stone</th><th>Type</th><th>Confidence</th></tr></thead>
+              <tbody id="sideStoneTableBody"></tbody>
+            </table>
+          </div>
+          <div class="toolRow">
+            <button id="btnShowFinalFromSide" class="btn gold hidden">Continue</button>
+          </div>
+        </div>
+        <div id="sideArtifacts" class="artifactStrip hidden"></div>
+      </div>
+
+      <!-- Segmentation -->
+      <div id="segmentationPanel" class="stageCard hidden">
+        <button id="btnSegmentationPrev" class="btn prev hidden">Previous Step</button>
+        <button id="btnSkipSegmentation" class="btn secondary">Skip Stage</button>
+        <div class="stageHead">
+          <h3>Jewellery Analysis</h3>
+          <span class="stepNum" data-step-label="segmentation"></span>
+          <button type="button" class="moreBtn" data-stage="segmentation" aria-label="More actions">&#8943;</button>
+        </div>
+        <p class="stepInstruction">Check the jewellery details.</p>
+        <div class="toolRow">
+          <button id="btnRunSegmentation" class="btn primary">Start Analysis</button>
+        </div>
+        <div class="segControls">
+          <div class="twoCol">
+            <button id="btnNoPendant" class="btn danger hidden">Pendant Not Found</button>
+            <button id="btnNoTassel" class="btn danger hidden">Tassel Not Found</button>
+          </div>
+          <div class="toolRow">
+            <button id="btnShowSegCorrections" class="btn secondary">Correct Result</button>
+          </div>
+          <div id="segCorrectionArea" class="segCorrection hidden">
+            <div class="twoCol">
+              <button id="btnStartPendantCorrection" class="btn secondary">Correct Pendant</button>
+              <button id="btnStartTasselCorrection" class="btn secondary">Correct Tassel</button>
             </div>
-            <div style="display: grid; grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr); gap: 12px; width: 100%; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+            <div class="twoCol">
+              <button id="btnApplyPendantCorrection" class="btn success">Apply Pendant Correction</button>
+              <button id="btnApplyTasselCorrection" class="btn success">Apply Tassel Correction</button>
+            </div>
+          </div>
+        </div>
+        <div class="resultBox">
+          <div class="heroValue" id="segmentationValue">Waiting for analysis...</div>
+          <div class="heroSub" id="segmentationSub">Start the analysis to begin.</div>
+          <div class="toolRow">
+            <button id="btnSegmentationNext" class="btn gold hidden">Continue</button>
+          </div>
+        </div>
+        <div id="segmentationArtifacts" class="artifactStrip hidden"></div>
+      </div>
+
+      <!-- Main stone detection -->
+      <div id="mainStonePanel" class="stageCard hidden">
+        <button id="btnMainStonePrev" class="btn prev hidden">Previous Step</button>
+        <button id="btnSkipMainStone" class="btn secondary">Skip Stage</button>
+        <div class="stageHead">
+          <h3 id="mainStoneTitle">Stone Analysis</h3>
+          <span class="stepNum" data-step-label="mainStone"></span>
+          <button type="button" class="moreBtn" data-stage="mainStone" aria-label="More actions">&#8943;</button>
+        </div>
+        <p class="stepInstruction">Choose the stone setting, then run the stone analysis.</p>
+        <div class="chipRow">
+          <button type="button" class="chipBtn active" data-chip="front_only_shallow">Half Cut</button>
+          <button type="button" class="chipBtn" data-chip="open_back_faceted">Full Cut</button>
+          <button type="button" class="chipBtn" data-chip="unknown">Unsure</button>
+        </div>
+        <select id="mainStoneSettingProfile" class="hidden">
+          <option value="front_only_shallow">Half cut / front-only stones</option>
+          <option value="open_back_faceted">Full cut / open-back stones</option>
+          <option value="unknown">Unknown — visible area only</option>
+        </select>
+        <span id="mainStoneTag" class="hidden"></span>
+        <div class="toolRow">
+          <button id="btnRunMainStoneDetection" class="btn primary">Start Stone Analysis</button>
+        </div>
+        <div class="resultBox">
+          <div class="heroValue" id="mainStoneValue">Waiting for analysis...</div>
+          <div class="heroSub" id="mainStoneSub">No stones scanned yet.</div>
+          <div id="mainStoneTable" class="scoreTable hidden">
+            <table>
+              <thead><tr><th>Stone</th><th>Type</th><th>Confidence</th></tr></thead>
+              <tbody id="mainStoneTableBody"></tbody>
+            </table>
+          </div>
+          <div class="toolRow">
+            <button id="btnShowFinalFromMain" class="btn gold hidden">Continue</button>
+          </div>
+        </div>
+        <div id="mainStoneArtifacts" class="artifactStrip hidden"></div>
+      </div>
+
+      <!-- Purity / acid test -->
+      <div id="purityPanel" class="stageCard hidden">
+        <button id="btnPurityPrev" class="btn prev hidden">Previous Step</button>
+        <button id="btnSkipPurityTest" class="btn secondary">Skip Acid Test</button>
+        <div class="stageHead">
+          <h3 id="purityTitle">Acid Test</h3>
+          <span class="stepNum" data-step-label="purity"></span>
+          <button type="button" class="moreBtn" data-stage="purity" aria-label="More actions">&#8943;</button>
+        </div>
+        <p class="stepInstruction">Rub the jewel on the test stone and listen for the result.</p>
+        <span id="purityTag" class="hidden"></span>
+        <div id="purityAudioStatus" class="micStatus">Waiting for microphone selection.</div>
+        <div id="purityAudioLive" class="purityAudioLive hidden">
+          <div class="purityAudioHead">
+            <span id="purityAudioDecision" class="purityAudioDecision ok">Waiting</span>
+            <span id="purityAudioLabel" class="purityAudioLabel">Acid Test</span>
+            <span id="purityAudioMeta" class="purityAudioMeta">Sample rate pending</span>
+          </div>
+          <div id="purityAudioProbabilities" class="purityAudioProbabilities"></div>
+        </div>
+        <div class="twoCol">
+          <button id="btnStartPurityTest" class="btn primary">Start Acid Test</button>
+          <button id="btnStopPurityTest" class="btn secondary">Stop Test</button>
+        </div>
+        <div class="resultBox">
+          <div class="heroValue" id="purityValue">Waiting for test...</div>
+          <div class="heroSub" id="puritySub">Start the acid test to begin.</div>
+          <div class="toolRow">
+            <button id="btnNextJewelFromPurity" class="btn gold hidden">Next Jewel</button>
+            <button id="btnShowFinalFromPurity" class="btn gold hidden">Capture Jewel Count</button>
+          </div>
+        </div>
+        <div id="purityProgress" class="purityProgress"></div>
+        <div id="purityArtifacts" class="artifactStrip hidden"></div>
+      </div>
+
+      <!-- Final / closure -->
+      <div id="finalPanel" class="stageCard hidden">
+        <button id="btnFinalPrev" class="btn prev hidden">Previous Step</button>
+        <div class="stageHead">
+          <h3 id="finalTitle">Pledge Closure</h3>
+          <span class="stepNum" data-step-label="final"></span>
+          <button type="button" class="moreBtn" data-stage="final" aria-label="More actions">&#8943;</button>
+        </div>
+        <p class="stepInstruction">Complete the final checks.</p>
+        <div id="finalHeadline" class="finalHeadline">Pledge not complete yet.</div>
+        <ol id="finalLines" class="lineList">
+          <li>No pledge summary available yet.</li>
+        </ol>
+        <div id="finalRiskTable" class="riskTable hidden">
+          <table>
+            <thead><tr><th>Item</th><th>Result</th></tr></thead>
+            <tbody id="finalRiskTableBody"></tbody>
+          </table>
+        </div>
+        <div id="finalArtifacts" class="artifactStrip hidden"></div>
+
+        <div id="pledgeClosurePanel" class="closureBox">
+          <div id="pledgeCompleteBanner" class="pledgeCompleteBanner hidden">
+            <span class="pledgeCompleteCheck">&#10003;</span>
+            <div>
+              <strong>Pledge Completed</strong>
+              <div class="pledgeCompleteMeta">Pledge ID: <span id="pledgeCompleteId">-</span> &middot; <span id="pledgeCompleteCount">0</span> Jewel(s) Processed</div>
+            </div>
+          </div>
+          <h4>1 &middot; Verify Jewel Count</h4>
+          <p class="tiny">Place all jewels on the test area and verify the count.</p>
+          <div class="twoCol" id="finalCountActions">
+            <button id="btnCaptureFinalJewelCount" class="btn primary">Verify Jewel Count</button>
+            <button id="btnSkipFinalCount" class="btn secondary hidden">Skip Count</button>
+          </div>
+          <div class="resultBox">
+            <div class="heroValue" id="countCaptureValue">Not verified yet.</div>
+            <div class="heroSub" id="countCaptureSub">--</div>
+          </div>
+          <div id="countCaptureArtifacts" class="artifactStrip hidden"></div>
+
+          <div id="packetSealingControls" class="sealControls hidden">
+            <h4>2 &middot; Packet Sealing</h4>
+            <p class="tiny">Place the jewels in the packet and seal it.</p>
+            <div class="twoCol">
+              <button id="btnStartPacketSealing" class="btn primary">Start Packet Sealing</button>
+              <button id="btnStopPacketSealing" class="btn secondary">Finish Packet Sealing</button>
+              <button id="btnSkipPacketSealing" class="btn secondary hidden">Skip Sealing Video</button>
+            </div>
+            <div class="resultBox">
+              <div class="heroValue" id="packetSealingValue">--</div>
+              <div class="heroSub" id="packetSealingSub">--</div>
+            </div>
+            <div class="toolRow">
+              <a id="packetVideoLink" class="btn secondary hidden" download>View Video</a>
+            </div>
+            <div id="stripingControls" class="stripingControls hidden">
+              <p class="tiny">Strip check: did the tamper strip stay intact and is the packet sealed?</p>
+              <div class="twoCol">
+                <button id="btnStripingHandClear" class="btn success">Strip Hand-Clear</button>
+                <button id="btnRestartStriping" class="btn secondary">Restart Strip Check</button>
+                <button id="btnSkipStriping" class="btn secondary">Skip Strip Check</button>
+              </div>
+              <div class="resultBox">
+                <div class="heroValue" id="stripingValue">Strip check not done.</div>
+                <div class="heroSub" id="stripingSub">--</div>
+              </div>
+              <div id="stripingArtifacts" class="artifactStrip hidden"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="twoCol">
+          <button id="btnGeneratePdf" class="btn primary hidden">View Report</button>
+          <button id="btnNewPledge" class="btn gold hidden">New Pledge</button>
+          <button id="btnNextJewelFromFinal" class="btn gold hidden">Next Jewel</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footerStrip">
+    <span id="statusValue" class="footStatus">Ready.</span>
+    <span class="footHint">State auto-syncs with the workbench.</span>
+  </footer>
+
+  <!-- ==================== Reset confirmation ==================== -->
+  <div id="resetConfirmOverlay" class="confirmOverlay hidden">
+    <div class="confirmBox">
+      <h3>Reset Workflow</h3>
+      <p>Reset current pledge? All progress for this pledge will be cleared and you will return to the Pledge ID screen.</p>
+      <div class="twoCol">
+        <button id="btnResetCancel" class="btn secondary">Cancel</button>
+        <button id="btnResetConfirm" class="btn danger">Reset Pledge</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Settings ==================== -->
+  <div id="settingsOverlay" class="settingsOverlay hidden">
+    <div class="settingsShell">
+      <header class="settingsHead">
+        <div class="brand">
+          <img class="logoImage" src="/webui/embsys_logo.png" alt="Embsys logo" />
+          <h2 class="settingsTitle">Settings</h2>
+        </div>
+        <button id="btnCloseSettings" class="btn secondary smallBtn">Back to Workflow</button>
+      </header>
+      <nav class="settingsNav">
+        <button id="settingsNavAudio" class="settingsNavBtn active" data-view="settingsAudio">Audio</button>
+        <button id="settingsNavSystem" class="settingsNavBtn" data-view="settingsSystem">System Setup</button>
+        <button id="settingsNavDeveloper" class="settingsNavBtn" data-view="settingsDeveloper">Developer Tools</button>
+      </nav>
+      <main class="settingsBody">
+
+        <section id="settingsAudio" class="settingsView">
+          <div class="settingsSection">
+            <h3>Audio Guidance</h3>
+            <label class="toggleRow">
+              <input id="speakToggle" type="checkbox" checked />
+              <span>Voice guidance on stage changes</span>
+            </label>
+          </div>
+          <div class="settingsSection">
+            <h3>Microphone</h3>
+            <div class="twoCol">
               <div class="field">
-                <label for="ttsOutputSelect">TTS Audio Output</label>
-                <select id="ttsOutputSelect"></select>
+                <label for="purityMicSelect">Acid test microphone</label>
+                <select id="purityMicSelect"></select>
               </div>
               <div class="field">
-                <label for="ttsOutputStatus">Speaker Status</label>
-                <div id="ttsOutputStatus" class="heroSub">Checking speaker...</div>
+                <label>&nbsp;</label>
+                <button id="btnRefreshPurityAudio" class="btn secondary">Refresh Mics</button>
               </div>
             </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
-              <div class="field" style="min-width: 280px; flex: 1 1 280px;">
-                <label for="tasselModelSource">Tassel Detection Model</label>
-                <select id="tasselModelSource">
-                  <option value="production">Production Model</option>
-                  <option value="candidate">Latest Trained Model</option>
-                </select>
-              </div>
-              <button id="btnApplyTasselModel" class="btn secondary">Apply Tassel Model</button>
-              <span id="tasselModelStatus" class="tiny" style="flex: 2 1 360px; color: var(--muted);">Checking tassel models...</span>
+            <div id="purityMicWarning" class="fieldWarning hidden">Audio sensor not connected.</div>
+          </div>
+          <div class="settingsSection">
+            <h3>Speaker</h3>
+            <div class="field">
+              <label for="ttsOutputSelect">TTS audio output</label>
+              <select id="ttsOutputSelect"></select>
             </div>
-            <div class="hidden" aria-hidden="true" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; width: 100%; align-items: end; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+            <div id="ttsOutputStatus" class="fieldStatus">Checking speaker...</div>
+          </div>
+          <div class="settingsSection">
+            <h3>Acid Test Confidence</h3>
+            <div class="twoCol">
               <div class="field">
-                <label for="audioOkThreshold">Audio OK confidence <span id="audioOkThresholdValue">90%</span></label>
+                <label for="audioOkThreshold">Audio OK confidence — <span id="audioOkThresholdValue">90%</span></label>
                 <input id="audioOkThreshold" type="range" min="0.50" max="0.99" step="0.01" value="0.90" />
               </div>
               <div class="field">
                 <label for="audioOkThresholdNumber">Threshold</label>
                 <input id="audioOkThresholdNumber" type="number" min="0.50" max="0.99" step="0.01" value="0.90" />
               </div>
+            </div>
+            <div class="toolRow">
               <button id="btnApplyAudioThreshold" class="btn secondary">Apply Audio Threshold</button>
-              <div id="audioOkThresholdStatus" class="tiny" style="grid-column: 1 / -1; color: var(--muted);">Audio OK threshold: 90%.</div>
             </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-              <div class="field" style="min-width: 260px; flex: 1 1 260px;">
-                <label for="fileMainImage">Load Jewel Image For Testing</label>
-                <input id="fileMainImage" type="file" accept="image/*" />
-              </div>
-              <span id="previewModePill" class="modePill">Preview: RPi Live Camera</span>
-              <span id="annotationModePill" class="modePill">Draw Mode: None</span>
-            </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-              <button id="btnCaptureFrame" class="btn">Capture Frame</button>
-              <button id="btnUseLiveNow" class="btn gold">Use Current Live Frame</button>
-              <button id="btnDrawProcessingRoi" class="btn secondary">Draw Processing ROI</button>
-              <button id="btnDrawArucoRoi" class="btn secondary">Draw ArUco ROI</button>
-              <button id="btnDrawWeightRoi" class="btn secondary">Draw Weight Scale ROI</button>
-              <button id="btnClearWeightRoi" class="btn secondary">Clear Weight Scale ROI</button>
-              <button id="btnDrawScaleLine" class="btn secondary hidden">Draw Calibration Line</button>
-              <button id="btnDrawPendantBox" class="btn secondary hidden">Draw Pendant Box</button>
-              <button id="btnDrawTasselBox" class="btn secondary hidden">Draw Tassel Box</button>
-              <button id="btnShowSourceView" class="btn secondary">Show Source View</button>
-              <button id="btnClearCurrentDraw" class="btn secondary">Clear Current Draw</button>
-              <button id="btnClearRois" class="btn secondary">Clear ROIs</button>
-            </div>
-            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);">
-              <div style="font-weight: 800; color: var(--accent); margin-bottom: 4px;">Captured Jewel Preview</div>
-              <div class="tiny" style="color: var(--muted); margin-bottom: 10px;">
-                These controls affect only the still-image preview. Stone analysis uses neutral color normalization and is not changed by preview saturation.
-              </div>
-              <div style="display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 12px;">
-                <div class="field">
-                  <label for="stoneSaturation">Preview saturation <span id="stoneSaturationValue">1.00x</span></label>
-                  <input id="stoneSaturation" type="range" min="0.50" max="2.50" step="0.05" value="1.00" disabled />
-                </div>
-                <div class="field">
-                  <label for="stoneContrast">Contrast <span id="stoneContrastValue">1.05x</span></label>
-                  <input id="stoneContrast" type="range" min="0.70" max="1.60" step="0.05" value="1.05" disabled />
-                </div>
-                <div class="field">
-                  <label for="stoneBrightness">Brightness <span id="stoneBrightnessValue">0</span></label>
-                  <input id="stoneBrightness" type="range" min="-60" max="60" step="2" value="0" disabled />
-                </div>
-              </div>
-              <div style="font-weight: 800; color: var(--accent); margin: 14px 0 8px;">Selective Stone Color Recovery</div>
-              <div style="display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px;">
-                <div class="field">
-                  <label for="stoneColorBoost">Color detection boost <span id="stoneColorBoostValue">1.00x</span></label>
-                  <input id="stoneColorBoost" type="range" min="1.00" max="2.50" step="0.05" value="1.00" />
-                </div>
-                <div class="field">
-                  <label for="greenRecovery">Green recovery <span id="greenRecoveryValue">1.15x</span></label>
-                  <input id="greenRecovery" type="range" min="1.00" max="1.50" step="0.05" value="1.15" />
-                </div>
-                <div class="field">
-                  <label for="darkGreenRecovery">Dark-green recovery <span id="darkGreenRecoveryValue">1.20x</span></label>
-                  <input id="darkGreenRecovery" type="range" min="1.00" max="1.60" step="0.05" value="1.20" />
-                </div>
-              </div>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
-                <label style="display: flex; gap: 8px; align-items: center; font-weight: 800; color: var(--text);">
-                  <input id="stoneSuperResolution" type="checkbox" />
-                  Real-ESRGAN x2 stone SR
-                </label>
-                <span id="stoneSuperResolutionStatus" class="tiny" style="color:var(--muted);">Stone SR off.</span>
-              </div>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
-                <button id="btnSetStoneBackground" class="btn secondary" disabled>Set Background From Click</button>
-                <button id="btnClearStoneBackground" class="btn secondary">Clear Background Calibration</button>
-                <span id="stoneBackgroundStatus" class="tiny" style="color: var(--muted);">Background not calibrated.</span>
-              </div>
-              <div style="font-weight: 800; color: var(--accent); margin: 16px 0 8px;">Human Feedback: Learn a Missed Stone</div>
-              <div class="tiny" style="color: var(--muted); margin-bottom: 10px; line-height: 1.45;">
-                Choose the expected color, name the sample, then click the center of a missed stone in the captured preview.
-                Its normalized HSV/LAB range is saved and reused in future detections.
-              </div>
-              <div style="display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px;">
-                <div class="field">
-                  <label for="learnStoneColor">Expected color</label>
-                  <select id="learnStoneColor">
-                    <option>Red</option>
-                    <option>Orange</option>
-                    <option>Yellow/Gold</option>
-                    <option>Green</option>
-                    <option>Blue</option>
-                    <option>Purple/Violet</option>
-                    <option>Pink</option>
-                    <option>Black</option>
-                    <option>White/Colorless</option>
-                    <option value="Multicolor/Color-changing">Multicolor / Mixed Appearance</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="learnStoneLabel">Representation label</label>
-                  <input id="learnStoneLabel" type="text" maxlength="80" placeholder="Example: Tiny dark red ruby" />
-                </div>
-                <div class="field">
-                  <label for="learnStoneRadius">Sample radius (px)</label>
-                  <input id="learnStoneRadius" type="number" min="4" max="24" step="1" value="8" />
-                </div>
-              </div>
-              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px;">
-                <button id="btnLearnStoneColor" class="btn secondary" disabled>Click Missed Stone to Learn</button>
-                <button id="btnClearLearnedStoneColors" class="btn secondary">Clear Learned Stone Colors</button>
-                <span id="learnedStoneStatus" class="tiny" style="color:var(--muted);">No learned stone colors.</span>
-              </div>
-            </div>
-            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);">
-              <div style="font-weight: 800; color: var(--accent); margin-bottom: 8px;">Camera & Millimetre Calibration</div>
-              <div style="display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 12px;">
-                <div class="field">
-                  <label for="setupMarkerId">AprilTag ID</label>
-                  <input id="setupMarkerId" type="number" min="0" step="1" value="1" />
-                </div>
-                <div class="field">
-                  <label for="setupMarkerSide">Printed marker side (mm)</label>
-                  <input id="setupMarkerSide" type="number" min="0.1" step="0.1" value="20" />
-                </div>
-                <div class="field">
-                  <label for="cameraToBed">Camera to test bed (mm)</label>
-                  <input id="cameraToBed" type="number" min="1" step="1" value="500" />
-                </div>
-                <div class="field">
-                  <label for="nominalStoneHeight">Nominal stone height (mm)</label>
-                  <input id="nominalStoneHeight" type="number" min="0" step="0.1" value="0" />
-                </div>
-                <div class="field">
-                  <label for="cameraCalibrationFile">ChArUco calibration JSON</label>
-                  <input id="cameraCalibrationFile" type="file" accept=".json,application/json" />
-                </div>
-                <div class="field">
-                  <label>Lens calibration</label>
-                  <div id="cameraCalibrationStatus" class="tiny">Not loaded.</div>
-                </div>
-              </div>
-              <label style="display:flex; align-items:center; gap:8px; margin-top:12px;">
-                <input id="fourMarkerEnabled" type="checkbox" />
-                Use four-marker top-down rectification
-              </label>
-              <div class="tiny" style="color:var(--muted); margin-top:8px; line-height:1.5;">
-                Place four different AprilTags around the jewel so all four are visible in the full captured frame.
-                Enter their IDs in clockwise order: top-left, top-right, bottom-right, bottom-left.
-                Measure center-to-center width between the left/right tag centers and center-to-center height between the top/bottom tag centers.
-                When enabled, capture the full marker layout; Processing and ArUco ROIs are ignored because the image is automatically undistorted, warped to a top-down rectangle, and calibrated in mm.
-              </div>
-              <div style="display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 12px; margin-top: 10px;">
-                <div class="field">
-                  <label for="fourMarkerIds">IDs TL,TR,BR,BL</label>
-                  <input id="fourMarkerIds" type="text" value="0,1,2,3" />
-                </div>
-                <div class="field">
-                  <label for="markerCenterWidth">Center width (mm)</label>
-                  <input id="markerCenterWidth" type="number" min="0" step="0.1" value="0" />
-                </div>
-                <div class="field">
-                  <label for="markerCenterHeight">Center height (mm)</label>
-                  <input id="markerCenterHeight" type="number" min="0" step="0.1" value="0" />
-                </div>
-              </div>
-              <button id="btnSaveCalibrationSetup" class="btn secondary" style="margin-top:12px;">Save Calibration Setup</button>
-            </div>
+            <div id="audioOkThresholdStatus" class="tiny">Audio OK threshold: 90%.</div>
           </div>
+        </section>
 
-          <div class="tiny" id="previewHint" style="margin-top: 10px;">
-            Draw the blue Processing ROI to limit the full workflow area. Draw the green ArUco ROI over the base marker
-            so calibration and ignore masking use the correct region.
-          </div>
-        </div>
-      </div>
-
-      <div class="rightColumn">
-        <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-            <h2 style="margin-bottom: 0;">Workflow Status</h2>
-            <button id="btnResetUi" class="btn danger"
-              style="padding: 8px 12px; min-height: unset; font-size: 13px;">Reset Workflow</button>
-          </div>
-          
-          <div class="field" style="margin-bottom: 12px;">
-            <label for="inputPledgeId" style="color: var(--accent);">Pledge ID</label>
-            <div style="display: flex; gap: 10px;">
-              <input id="inputPledgeId" type="text" placeholder="Enter Pledge ID" style="flex: 1;" />
-              <button id="btnSetPledge" class="btn success" style="min-height: unset; padding: 8px 16px;">Set</button>
+        <section id="settingsSystem" class="settingsView hidden">
+          <div class="settingsSection">
+            <h3>Devices</h3>
+            <div id="setupDevicesStatus" class="deviceList">
+              <div class="tiny">Open this panel and run a system check to see device status.</div>
             </div>
-            <div id="pledgeStatus" class="tiny" style="font-weight: bold; color: var(--success); height: 16px; margin-top: 4px;"></div>
-          </div>
-
-          <div id="jewelCountSetup" class="field" style="margin-bottom: 14px;">
-            <label for="inputJewelCount" style="color: var(--accent);">Jewel Count</label>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-              <input id="inputJewelCount" type="number" min="1" step="1" placeholder="Enter Jewel Count" style="flex: 1 1 180px;" />
-              <button id="btnSaveJewelCount" class="btn success" style="min-height: unset; padding: 8px 16px;">Save</button>
-              <button id="btnClearJewelCount" class="btn secondary" style="min-height: unset; padding: 8px 16px;">Clear</button>
-              <button id="btnPledgeSetupNext" class="btn gold" style="min-height: unset; padding: 8px 16px;" disabled>Next</button>
+            <div class="toolRow">
+              <button id="btnRunSystemCheck" class="btn secondary">Run System Check</button>
             </div>
-            <div id="jewelCountStatus" class="tiny" style="font-weight: bold; color: var(--muted); min-height: 16px; margin-top: 4px;"></div>
           </div>
-
-          <div class="summaryGrid">
-            <div class="statBox"><span class="k">Stage</span><span id="workflowStage" class="v">Waiting</span></div>
-            <div class="statBox"><span class="k">Branch</span><span id="workflowBranch" class="v">-</span></div>
-            <div class="statBox"><span class="k">Source</span><span id="workflowSource" class="v">RPi live camera</span>
+          <div class="settingsSection">
+            <h3>Camera &amp; ROI</h3>
+            <div id="previewHint" class="tiny">Draw the blue Processing ROI and the ArUco ROI before jewel type classification.</div>
+            <div class="toolRow">
+              <button id="btnToggleAdvancedTools" class="btn secondary" style="width:100%; justify-content:space-between;">
+                <span>ROI &amp; Drawing Tools</span><span id="advancedToolsIcon">&#9660;</span>
+              </button>
             </div>
-            <div class="statBox"><span class="k">Jewel</span><span id="workflowSize" class="v">-</span></div>
-          </div>
-        </div>
-
-        <div id="stageProgressFlow" class="hidden"
-          style="margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
-        </div>
-
-        <div id="classificationPanel" class="card stageCard">
-          <div class="stageHead">
-            <h3>STAGE 1 JEWEL TYPE</h3>
-          </div>
-          <div class="buttonRow">
-            <button id="btnClassificationPrev" class="btn prev">Previous</button>
-            <button id="btnCaptureMainImage" class="btn secondary">Capture Image</button>
-            <button id="btnRunClassification" class="btn">Run Jewel Type</button>
-          </div>
-          <div class="heroSub" id="classificationFocusStatus" style="margin-top: 10px;">Ready to capture.</div>
-          <div class="heroValue" id="classificationValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="classificationSub">Capture or load the main jewellery image, then run jewel type.
-          </div>
-
-          <div id="classificationActions" class="hidden" style="margin-top: 14px;">
-            <div class="buttonRow">
-              <button id="btnClassYes" class="btn success">Yes, Correct</button>
-              <button id="btnClassNo" class="btn danger">No, Override</button>
-              <button id="btnClassificationNext" class="btn gold" disabled>Next</button>
+            <div id="advancedToolsContainer" class="toolRow setupDrawer setupDrawerClosed">
+              <div class="modeLine">
+                <span id="annotationModePill" class="modePill">Draw Mode: None</span>
+              </div>
+              <div class="toolRow">
+                <button id="btnDrawProcessingRoi" class="btn secondary">Edit Jewel Area</button>
+                <button id="btnDrawArucoRoi" class="btn secondary">Edit ArUco Area</button>
+                <button id="btnDrawWeightRoi" class="btn secondary">Edit Weight Area</button>
+                <button id="btnClearWeightRoi" class="btn secondary">Clear Weight Area</button>
+                <button id="btnDrawScaleLine" class="btn secondary hidden">Draw Calibration Line</button>
+                <button id="btnDrawPendantBox" class="btn secondary hidden">Draw Pendant Box</button>
+                <button id="btnDrawTasselBox" class="btn secondary hidden">Draw Tassel Box</button>
+                <button id="btnShowSourceView" class="btn secondary">Show Source View</button>
+                <button id="btnClearCurrentDraw" class="btn secondary">Clear Current Draw</button>
+                <button id="btnClearRois" class="btn secondary">Clear All ROIs</button>
+              </div>
             </div>
-            <div id="overrideArea" class="twoCol hidden" style="margin-top: 12px;">
+          </div>
+          <div class="settingsSection">
+            <h3>Models</h3>
+            <div class="twoCol">
               <div class="field">
-                <label for="overrideClassSelect">Correct Jewel Type</label>
-                <select id="overrideClassSelect"></select>
+                <label for="tasselModelSource">Tassel detection model</label>
+                <select id="tasselModelSource">
+                  <option value="production">Production Model</option>
+                  <option value="candidate">Latest Trained Model</option>
+                </select>
               </div>
               <div class="field">
                 <label>&nbsp;</label>
-                <button id="btnApplyOverride" class="btn">Use Selected Jewel Type</button>
+                <button id="btnApplyTasselModel" class="btn secondary">Apply Tassel Model</button>
               </div>
             </div>
+            <div id="tasselModelStatus" class="tiny">Checking tassel models...</div>
           </div>
-
-          <table class="scoreTable hidden" id="classificationTable">
-            <thead>
-              <tr>
-                <th>Jewel Type</th>
-              </tr>
-            </thead>
-            <tbody id="classificationTableBody"></tbody>
-          </table>
-        </div>
-
-        <div id="weightPanel" class="card stageCard hidden">
-          <div class="stageHead">
-            <h3>STAGE 2 JEWEL WEIGHT EXTRACTION</h3>
-          </div>
-          <div class="heroSub" style="font-weight: 800; color: var(--accent);">
-            Place the weight scale inside the guide box region.
-          </div>
-          <div class="field" style="margin-top: 12px;">
-            <label for="appraiserStoneWeight">Appraiser Stone Weight (g, optional)</label>
-            <input id="appraiserStoneWeight" type="number" min="0.0001" step="0.0001" placeholder="Optional appraiser estimate" />
-          </div>
-          <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnWeightPrev" class="btn prev">Previous</button>
-            <button id="btnCaptureWeight" class="btn">Capture Weight</button>
-            <button id="btnRetakeWeight" class="btn secondary" disabled>Retake</button>
-            <button id="btnSkipWeight" class="btn secondary">Skip Stage</button>
-            <button id="btnWeightNext" class="btn gold" disabled>Next</button>
-          </div>
-          <div class="heroValue" id="weightValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="weightSub">Place the scale display clearly inside the guide.</div>
-          <div id="weightArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
-        </div>
-
-        <div id="dimensionPanel" class="card stageCard hidden">
-          <div class="stageHead">
-            <h3>STAGE 3 DIMENSION</h3>
-          </div>
-
-          <div class="twoCol" style="margin-top: 12px;">
-            <div class="field">
-              <label for="calibrationMethod">Calibration Method</label>
-              <select id="calibrationMethod">
-                <option value="aruco">ArUco Marker</option>
-                <option value="line">Manual Line</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="arucoDict">ArUco Dictionary</label>
-              <select id="arucoDict"></select>
-            </div>
-          </div>
-
-          <div id="arucoFields" class="twoCol" style="margin-top: 12px;">
-            <div class="field">
-              <label for="markerLength">Marker Length (mm)</label>
-              <input id="markerLength" type="number" min="0.1" step="0.1" value="20" />
-            </div>
-            <div class="field">
-              <label for="markerBreadth">Marker Breadth (mm)</label>
-              <input id="markerBreadth" type="number" min="0.1" step="0.1" value="20" />
-            </div>
-          </div>
-
-          <div id="lineFields" class="twoCol hidden" style="margin-top: 12px;">
-            <div class="field">
-              <label for="knownDistance">Known Distance (mm)</label>
-              <input id="knownDistance" type="number" min="0.1" step="0.1" value="10" />
-            </div>
-            <div class="field">
-              <label>&nbsp;</label>
-              <button id="btnEnableScaleLine" class="btn secondary">Enable Line Drawing</button>
-            </div>
-          </div>
-
-          <div id="manualScaleFields" class="hidden">
-            <input id="manualScale" type="hidden" value="0.085" />
-          </div>
-
-          <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnDimensionPrev" class="btn prev">Previous</button>
-            <button id="btnRunDimension" class="btn">Start Measurement</button>
-            <button id="btnSkipDimension" class="btn secondary">Skip Stage</button>
-            <button id="btnDimensionNext" class="btn gold" disabled>Next</button>
-          </div>
-
-          <div class="heroValue" id="dimensionValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="dimensionSub">Select an option and start measurement.</div>
-          <div id="dimensionArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
-        </div>
-
-        <div id="sidePanel" class="card stageCard hidden">
-          <div class="stageHead">
-            <h3>STAGE 4 STONE DETECTION</h3>
-          </div>
-
-          <div class="field" style="margin-top: 12px;">
-            <label for="sideStoneSettingProfile">Stone Setting Type</label>
-            <select id="sideStoneSettingProfile">
-              <option value="front_only_shallow">Half cut / front-only stones</option>
-              <option value="open_back_faceted">Full cut / open-back stones</option>
-              <option value="unknown">Unknown — visible area only</option>
-            </select>
-          </div>
-
-          <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnCaptureSideLive" class="btn secondary">Capture Side Image</button>
-          </div>
-          <div class="field" style="margin-top: 12px;">
-            <label for="fileSideImage">Upload Side Image</label>
-            <input id="fileSideImage" type="file" accept="image/*" />
-          </div>
-          <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnSidePrev" class="btn prev">Previous</button>
-            <button id="btnRunSidePipeline" class="btn">Start Stone Analysis</button>
-            <button id="btnSkipSide" class="btn secondary">Skip Stage</button>
-            <button id="btnShowFinalFromSide" class="btn gold" disabled>Acid Test</button>
-          </div>
-
-          <div class="heroValue" id="sideStoneValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="sideStoneSub">Capture the side image to continue.</div>
-
-          <table class="scoreTable hidden" id="sideStoneTable" style="margin-top: 14px;">
-            <thead>
-              <tr>
-                <th>Color</th>
-                <th>Detection</th>
-              </tr>
-            </thead>
-            <tbody id="sideStoneTableBody"></tbody>
-          </table>
-
-          <div id="sideArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
-        </div>
-
-        <div id="segmentationPanel" class="card stageCard hidden">
-          <div class="stageHead">
-            <h3>STAGE 3 JEWELLERY ANALYSIS</h3>
-          </div>
-
-          <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnRunSegmentation" class="btn">Start Jewellery Analysis</button>
-            <button id="btnNoPendant" class="btn secondary hidden" disabled>No Pendant</button>
-            <button id="btnNoTassel" class="btn secondary hidden" disabled>No Tassel</button>
-          </div>
-          <div class="buttonRow hidden" style="margin-top: 12px;">
-            <button id="btnStartPendantCorrection" class="btn secondary" disabled>Draw Correct Pendant</button>
-            <button id="btnApplyPendantCorrection" class="btn secondary" disabled>Apply Pendant Box</button>
-            <button id="btnStartTasselCorrection" class="btn secondary" disabled>Draw Correct Tassel</button>
-            <button id="btnApplyTasselCorrection" class="btn secondary" disabled>Apply Tassel Box</button>
-          </div>
-          <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnSegmentationPrev" class="btn prev">Previous</button>
-            <button id="btnSkipSegmentation" class="btn secondary">Skip Stage</button>
-            <button id="btnSegmentationNext" class="btn gold" disabled>Next</button>
-          </div>
-
-          <div class="heroValue" id="segmentationValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="segmentationSub">Start jewellery analysis.</div>
-          <div id="segmentationArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
-        </div>
-
-        <div id="mainStonePanel" class="card stageCard hidden">
-          <div class="stageHead">
-            <h3 id="mainStoneTitle">STAGE 3 STONE DETECTION</h3>
-          </div>
-
-          <div class="field" style="margin-top: 12px;">
-            <label for="mainStoneSettingProfile">Stone Setting Type</label>
-            <select id="mainStoneSettingProfile">
-              <option value="front_only_shallow">Half cut / front-only stones</option>
-              <option value="open_back_faceted">Full cut / open-back stones</option>
-              <option value="unknown">Unknown — visible area only</option>
-            </select>
-          </div>
-
-          <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnRunMainStoneDetection" class="btn">Start Stone Analysis</button>
-            <button id="btnSkipMainStone" class="btn secondary">Skip Stage</button>
-            <button id="btnShowFinalFromMain" class="btn gold" disabled>Acid Test</button>
-          </div>
-          <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnMainStonePrev" class="btn prev">Previous</button>
-          </div>
-
-          <div class="heroValue" id="mainStoneValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="mainStoneSub">Select the stone type and start analysis.</div>
-
-          <table class="scoreTable hidden" id="mainStoneTable" style="margin-top: 14px;">
-            <thead>
-              <tr>
-                <th>Color</th>
-                <th>Detection</th>
-              </tr>
-            </thead>
-            <tbody id="mainStoneTableBody"></tbody>
-          </table>
-
-          <div id="mainStoneArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
-        </div>
-
-        <div id="purityPanel" class="card stageCard hidden">
-          <div class="stageHead">
-            <h3 id="purityTitle">STAGE 4 ACID TEST</h3>
-          </div>
-
-          <div class="grid twoCols" style="margin-top: 12px;">
-            <div class="field">
-              <label for="purityMicSelect">Microphone</label>
-              <select id="purityMicSelect"></select>
-            </div>
-            <div class="field">
-              <label for="purityAudioStatus">Microphone Status</label>
-              <div id="purityAudioStatus" class="heroSub">Waiting for microphone selection.</div>
-            </div>
-          </div>
-          <div id="purityMicWarning" class="hidden" style="margin-top: 10px; padding: 10px 12px; border: 1px solid #ef4444; border-radius: 8px; background: #fef2f2; color: #b91c1c; font-weight: 800;">
-            Audio sensor not connected.
-          </div>
-
-          <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnRefreshPurityAudio" class="btn secondary">Refresh Mics</button>
-            <button id="btnStartPurityTest" class="btn">Start Acid Test</button>
-            <button id="btnSkipPurityTest" class="btn secondary">Skip Acid Test</button>
-            <button id="btnStopPurityTest" class="btn secondary" disabled>Stop</button>
-          </div>
-          <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnPurityPrev" class="btn prev">Previous</button>
-            <button id="btnNextJewelFromPurity" class="btn success hidden">Next Jewel</button>
-            <button id="btnShowFinalFromPurity" class="btn gold" disabled>Capture Jewel Count</button>
-          </div>
-
-          <div class="heroValue" id="purityValue" style="margin-top: 14px;">--</div>
-          <div class="heroSub" id="puritySub">Start or skip the acid test after stone detection completes.</div>
-
-          <div id="purityAudioLive" class="purityAudioLive" style="margin-top: 14px;">
-            <div class="purityAudioHead">
-              <span>Live Audio Prediction</span>
-              <span id="purityAudioDecision" class="purityAudioDecision">Waiting</span>
-            </div>
-            <div id="purityAudioLabel" class="purityAudioLabel">Waiting...</div>
-            <div id="purityAudioMeta" class="purityAudioMeta">No rubbing audio prediction yet.</div>
-            <div id="purityAudioProbabilities" class="purityAudioProbabilities"></div>
-          </div>
-
-          <div id="purityProgress" class="purityProgress" style="margin-top: 14px;"></div>
-          <div id="purityArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
-        </div>
-
-        <div id="finalPanel" class="card stageCard hidden">
-          <div class="stageHead">
-            <h3 id="finalTitle">PLEDGE CLOSURE</h3>
-          </div>
-          <div class="heroValue" id="finalHeadline">--</div>
-          <table id="finalRiskTable" class="riskTable hidden" style="margin-top: 12px;">
-            <thead><tr><th>Risk Factor</th><th>Status</th><th>Result</th></tr></thead>
-            <tbody id="finalRiskTableBody"></tbody>
-          </table>
-          <ol id="finalLines" class="lineList" style="margin-top: 12px;"></ol>
-          <div id="finalArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
-          <div id="pledgeClosurePanel" class="hidden" style="margin-top: 16px; display: grid; gap: 14px;">
-            <div style="padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-strong);">
-              <div class="stageHead">
-                <h3>CAPTURE JEWEL COUNT</h3>
+          <div class="settingsSection">
+            <h3>Calibration</h3>
+            <div class="twoCol">
+              <div class="field">
+                <label for="calibrationMethod">Dimension calibration method</label>
+                <select id="calibrationMethod">
+                  <option value="aruco">ArUco Marker</option>
+                  <option value="line">Manual Line</option>
+                </select>
               </div>
-              <div class="buttonRow" style="margin-top: 10px;">
-                <button id="btnCaptureFinalJewelCount" class="btn">Capture Jewel Count</button>
-                <button id="btnSkipFinalCount" class="btn secondary">Skip Count Capture</button>
+              <div class="field">
+                <label for="arucoDict">ArUco dictionary</label>
+                <select id="arucoDict"></select>
               </div>
-              <div class="heroValue" id="countCaptureValue" style="margin-top: 10px;">--</div>
-              <div class="heroSub" id="countCaptureSub">Place all jewels on the test bed and capture the final count.</div>
-              <div id="countCaptureArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
             </div>
-
-            <div style="padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-strong);">
-              <div class="stageHead">
-                <h3>PACKET SEALING</h3>
+            <div id="arucoFields" class="twoCol">
+              <div class="field">
+                <label for="markerLength">Marker length (mm)</label>
+                <input id="markerLength" type="number" min="0.1" step="0.1" value="20" />
               </div>
-              <div class="buttonRow" style="margin-top: 10px;">
-                <button id="btnOpenPacketSealing" class="btn secondary">Packet Sealing</button>
+              <div class="field">
+                <label for="markerBreadth">Marker breadth (mm)</label>
+                <input id="markerBreadth" type="number" min="0.1" step="0.1" value="20" />
               </div>
-              <div id="packetSealingControls" class="buttonRow hidden" style="margin-top: 10px;">
-                <button id="btnStartPacketSealing" class="btn">Start Recording</button>
-                <button id="btnStopPacketSealing" class="btn secondary" disabled>Stop</button>
-                <button id="btnSkipPacketSealing" class="btn secondary">Skip Video</button>
+            </div>
+            <div id="lineFields" class="twoCol hidden">
+              <div class="field">
+                <label for="knownDistance">Known distance (mm)</label>
+                <input id="knownDistance" type="number" min="0.1" step="0.1" value="10" />
               </div>
-              <div class="heroValue" id="packetSealingValue" style="margin-top: 10px;">--</div>
-              <div class="heroSub" id="packetSealingSub">Record the appraiser placing all jewels into the packet and sealing it.</div>
-              <div id="stripingControls" class="buttonRow hidden" style="margin-top: 10px;">
-                <button id="btnStripingHandClear" class="btn" disabled>Hand Clear - Verify Removal</button>
-                <button id="btnRestartStriping" class="btn secondary">Restart Strip Check</button>
-                <button id="btnSkipStriping" class="btn secondary">Skip Strip Check</button>
+              <div class="field">
+                <label>&nbsp;</label>
+                <button id="btnEnableScaleLine" class="btn secondary">Enable Line Drawing</button>
               </div>
-              <div class="heroValue" id="stripingValue" style="margin-top: 10px;">--</div>
-              <div class="heroSub" id="stripingSub">Strip check starts after the packet is rectangular.</div>
-              <div id="stripingArtifacts" class="artifactStrip" style="margin-top: 12px;"></div>
-              <a id="packetVideoLink" class="btn secondary hidden" style="margin-top: 12px; text-decoration: none; width: fit-content;" download>Download Sealing Video</a>
+            </div>
+            <div id="manualScaleFields" class="hidden">
+              <input id="manualScale" type="hidden" value="0.085" />
+            </div>
+            <div class="threeCol">
+              <div class="field">
+                <label for="setupMarkerId">AprilTag ID</label>
+                <input id="setupMarkerId" type="number" min="0" step="1" value="1" />
+              </div>
+              <div class="field">
+                <label for="setupMarkerSide">Printed marker side (mm)</label>
+                <input id="setupMarkerSide" type="number" min="0.1" step="0.1" value="20" />
+              </div>
+              <div class="field">
+                <label for="cameraToBed">Camera to test bed (mm)</label>
+                <input id="cameraToBed" type="number" min="1" step="1" value="500" />
+              </div>
+              <div class="field">
+                <label for="nominalStoneHeight">Nominal stone height (mm)</label>
+                <input id="nominalStoneHeight" type="number" min="0" step="0.1" value="0" />
+              </div>
+              <div class="field">
+                <label for="cameraCalibrationFile">ChArUco calibration JSON</label>
+                <input id="cameraCalibrationFile" type="file" accept=".json,application/json" />
+              </div>
+              <div class="field">
+                <label>Lens calibration</label>
+                <div id="cameraCalibrationStatus" class="tiny">Not loaded.</div>
+              </div>
+            </div>
+            <label class="checkRow">
+              <input id="fourMarkerEnabled" type="checkbox" />
+              <span>Use four-marker top-down rectification</span>
+            </label>
+            <div class="threeCol">
+              <div class="field">
+                <label for="fourMarkerIds">Marker IDs (TL,TR,BR,BL)</label>
+                <input id="fourMarkerIds" type="text" value="0,1,2,3" />
+              </div>
+              <div class="field">
+                <label for="markerCenterWidth">Center width (mm)</label>
+                <input id="markerCenterWidth" type="number" min="0" step="0.1" value="0" />
+              </div>
+              <div class="field">
+                <label for="markerCenterHeight">Center height (mm)</label>
+                <input id="markerCenterHeight" type="number" min="0" step="0.1" value="0" />
+              </div>
+            </div>
+            <div class="toolRow">
+              <button id="btnSaveCalibrationSetup" class="btn secondary">Save Calibration Setup</button>
             </div>
           </div>
-          <div class="buttonRow" style="margin-top: 12px;">
-            <button id="btnFinalPrev" class="btn prev">Previous</button>
-            <button id="btnNextJewelFromFinal" class="btn success hidden">Next Jewel</button>
-            <button id="btnGeneratePdf" class="btn gold">Download PDF Report</button>
-          </div>
-        </div>
-      </div>
-    </div>
+        </section>
 
-    <!-- Loading overlay for better user feedback -->
-    <div id="loadingOverlay" class="loading-overlay hidden">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Processing...</div>
+        <section id="settingsDeveloper" class="settingsView hidden">
+          <div class="settingsSection warnBox">
+            <h3>Test Image Mode</h3>
+            <p class="tiny">Loading a test image switches the preview away from the live camera. This is NOT production camera mode. Use "Use Current Live Frame" to return to the live feed.</p>
+            <div class="field">
+              <label for="fileMainImage">Load jewel image for testing</label>
+              <input id="fileMainImage" type="file" accept="image/*" />
+            </div>
+            <div class="twoCol">
+              <button id="btnCaptureFrame" class="btn secondary">Capture Frame</button>
+              <button id="btnUseLiveNow" class="btn secondary">Use Current Live Frame</button>
+            </div>
+            <div class="field">
+              <label for="fileSideImage">Upload side image</label>
+              <input id="fileSideImage" type="file" accept="image/*" />
+            </div>
+          </div>
+          <div class="settingsSection">
+            <h3>Workflow Details</h3>
+            <div class="summaryGrid">
+              <div class="statBox"><span class="k">Stage</span><span id="workflowStage" class="v">Waiting</span></div>
+              <div class="statBox"><span class="k">Branch</span><span id="workflowBranch" class="v">-</span></div>
+              <div class="statBox"><span class="k">Source</span><span id="workflowSource" class="v">RPi live camera</span></div>
+              <div class="statBox"><span class="k">Jewel</span><span id="workflowSize" class="v">-</span></div>
+            </div>
+            <div class="toolRow">
+              <button id="btnResetUi" class="btn danger">Reset Workflow</button>
+            </div>
+          </div>
+          <div class="settingsSection">
+            <h3>Stone Preview Tuning</h3>
+            <div class="threeCol">
+              <div class="field">
+                <label for="stoneSaturation">Saturation — <span id="stoneSaturationValue">100%</span></label>
+                <input id="stoneSaturation" type="range" min="0" max="300" step="1" value="100" />
+              </div>
+              <div class="field">
+                <label for="stoneContrast">Contrast — <span id="stoneContrastValue">100%</span></label>
+                <input id="stoneContrast" type="range" min="0" max="300" step="1" value="100" />
+              </div>
+              <div class="field">
+                <label for="stoneBrightness">Brightness — <span id="stoneBrightnessValue">100%</span></label>
+                <input id="stoneBrightness" type="range" min="0" max="300" step="1" value="100" />
+              </div>
+              <div class="field">
+                <label for="stoneColorBoost">Color boost — <span id="stoneColorBoostValue">100%</span></label>
+                <input id="stoneColorBoost" type="range" min="0" max="300" step="1" value="100" />
+              </div>
+              <div class="field">
+                <label for="greenRecovery">Green recovery — <span id="greenRecoveryValue">0%</span></label>
+                <input id="greenRecovery" type="range" min="0" max="100" step="1" value="0" />
+              </div>
+              <div class="field">
+                <label for="darkGreenRecovery">Dark green recovery — <span id="darkGreenRecoveryValue">0%</span></label>
+                <input id="darkGreenRecovery" type="range" min="0" max="100" step="1" value="0" />
+              </div>
+            </div>
+            <label class="checkRow">
+              <input id="stoneSuperResolution" type="checkbox" />
+              <span>Super resolution</span>
+            </label>
+            <div id="stoneSuperResolutionStatus" class="tiny">Super resolution is off.</div>
+          </div>
+          <div class="settingsSection">
+            <h3>Background Calibration</h3>
+            <p class="tiny">Click "Learn Background" on a plain background region to help the stone detector ignore it.</p>
+            <div class="toolRow">
+              <button id="btnSetStoneBackground" class="btn secondary">Learn Background Color</button>
+              <button id="btnClearStoneBackground" class="btn secondary">Clear Background</button>
+            </div>
+            <div id="stoneBackgroundStatus" class="tiny">No background color learned.</div>
+          </div>
+          <div class="settingsSection">
+            <h3>Learn a Missed Stone</h3>
+            <div class="field">
+              <label for="learnStoneColor">Stone color</label>
+              <input id="learnStoneColor" type="text" placeholder="e.g., red" />
+            </div>
+            <div class="field">
+              <label for="learnStoneLabel">Stone label</label>
+              <input id="learnStoneLabel" type="text" placeholder="e.g., ruby" />
+            </div>
+            <div class="field">
+              <label for="learnStoneRadius">Radius (px)</label>
+              <input id="learnStoneRadius" type="number" min="1" step="1" value="20" />
+            </div>
+            <div class="toolRow">
+              <button id="btnLearnStoneColor" class="btn secondary">Learn Stone Color</button>
+              <button id="btnClearLearnedStoneColors" class="btn secondary">Clear Learned Stones</button>
+            </div>
+            <div id="learnedStoneStatus" class="tiny">No learned stones.</div>
+          </div>
+        </section>
+
+      </main>
     </div>
   </div>
 
-  <!-- Loading spinner styles -->
-  <style>
-    .loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      color: white;
-    }
-
-    .loading-spinner {
-      width: 50px;
-      height: 50px;
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #2563eb;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 20px;
-    }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    .loading-text {
-      font-size: 18px;
-      font-weight: bold;
-    }
-
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .btn:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .status-indicator {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 8px;
-    }
-
-    .status-success {
-      background-color: #10b981;
-    }
-
-    .status-error {
-      background-color: #ef4444;
-    }
-
-    .status-warning {
-      background-color: #f59e0b;
-    }
-
-    .purityProgress {
-      display: grid;
-      gap: 10px;
-    }
-
-    .purityProgressRow {
-      padding: 10px 12px;
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      border-radius: 12px;
-      background: rgba(15, 23, 42, 0.32);
-    }
-
-    .purityProgressHead {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #e2e8f0;
-    }
-
-    .purityProgressBar {
-      height: 8px;
-      border-radius: 999px;
-      overflow: hidden;
-      background: rgba(148, 163, 184, 0.18);
-      margin-top: 8px;
-    }
-
-    .purityProgressFill {
-      height: 100%;
-      border-radius: 999px;
-      transition: width 0.2s ease;
-    }
-
-    .purityTone-done,
-    .purityTone-success {
-      background: linear-gradient(90deg, #16a34a, #22c55e);
-    }
-
-    .purityTone-warn {
-      background: linear-gradient(90deg, #d97706, #f59e0b);
-    }
-
-    .purityTone-danger,
-    .purityTone-locked {
-      background: linear-gradient(90deg, #b91c1c, #ef4444);
-    }
-
-    .purityTone-idle {
-      background: linear-gradient(90deg, #475569, #64748b);
-    }
-
-    .purityAudioLive {
-      padding: 10px 12px;
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      border-radius: 8px;
-      background: rgba(15, 23, 42, 0.28);
-    }
-
-    .purityAudioHead,
-    .purityAudioProbRow {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .purityAudioHead {
-      color: #cbd5e1;
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .purityAudioDecision {
-      min-width: 54px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      text-align: center;
-      color: #e2e8f0;
-      background: rgba(100, 116, 139, 0.35);
-    }
-
-    .purityAudioDecision.ok {
-      color: #dcfce7;
-      background: rgba(22, 163, 74, 0.38);
-    }
-
-    .purityAudioDecision.nok {
-      color: #fee2e2;
-      background: rgba(185, 28, 28, 0.38);
-    }
-
-    .purityAudioLabel {
-      margin-top: 8px;
-      color: #f8fafc;
-      font-size: 18px;
-      font-weight: 800;
-      word-break: break-word;
-    }
-
-    .purityAudioMeta {
-      margin-top: 4px;
-      color: #94a3b8;
-      font-size: 12px;
-      line-height: 1.35;
-    }
-
-    .purityAudioProbabilities {
-      display: grid;
-      gap: 6px;
-      margin-top: 10px;
-    }
-
-    .purityAudioProbRow {
-      color: #cbd5e1;
-      font-size: 12px;
-    }
-
-    .purityAudioProbName {
-      min-width: 132px;
-      max-width: 48%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .purityAudioProbTrack {
-      flex: 1;
-      height: 7px;
-      border-radius: 999px;
-      overflow: hidden;
-      background: rgba(148, 163, 184, 0.16);
-    }
-
-    .purityAudioProbFill {
-      height: 100%;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #0891b2, #22c55e);
-      transition: width 0.2s ease;
-    }
-
-    .purityAudioProbValue {
-      width: 48px;
-      text-align: right;
-      color: #e2e8f0;
-      font-variant-numeric: tabular-nums;
-    }
-  </style>
+  <!-- ==================== More menu ==================== -->
+  <div id="moreMenu" class="moreMenu hidden"></div>
 
   <script>
     const refs = {
@@ -1788,12 +1595,15 @@
       finalLines: document.getElementById("finalLines"),
       finalArtifacts: document.getElementById("finalArtifacts"),
       pledgeClosurePanel: document.getElementById("pledgeClosurePanel"),
+      pledgeCompleteBanner: document.getElementById("pledgeCompleteBanner"),
+      pledgeCompleteId: document.getElementById("pledgeCompleteId"),
+      pledgeCompleteCount: document.getElementById("pledgeCompleteCount"),
+      finalCountActions: document.getElementById("finalCountActions"),
       btnCaptureFinalJewelCount: document.getElementById("btnCaptureFinalJewelCount"),
       btnSkipFinalCount: document.getElementById("btnSkipFinalCount"),
       countCaptureValue: document.getElementById("countCaptureValue"),
       countCaptureSub: document.getElementById("countCaptureSub"),
       countCaptureArtifacts: document.getElementById("countCaptureArtifacts"),
-      btnOpenPacketSealing: document.getElementById("btnOpenPacketSealing"),
       packetSealingControls: document.getElementById("packetSealingControls"),
       btnStartPacketSealing: document.getElementById("btnStartPacketSealing"),
       btnStopPacketSealing: document.getElementById("btnStopPacketSealing"),
@@ -1811,6 +1621,7 @@
       btnFinalPrev: document.getElementById("btnFinalPrev"),
       btnNextJewelFromFinal: document.getElementById("btnNextJewelFromFinal"),
       btnGeneratePdf: document.getElementById("btnGeneratePdf"),
+      btnNewPledge: document.getElementById("btnNewPledge"),
       statusValue: document.getElementById("statusValue"),
       drawStatus: document.getElementById("drawStatus"),
       inputPledgeId: document.getElementById("inputPledgeId"),
@@ -1908,7 +1719,6 @@
       dimensionNext: false,
       segmentationNext: false,
       finalVisible: false,
-      packetSealingOpen: false,
       currentStage: "classification",
     };
 
@@ -1948,7 +1758,7 @@
     function stageDisplayName(stageKey) {
       return {
         classification: "Jewel Type",
-        weight: "Jewel Weight Extraction",
+        weight: "Jewel Weight",
         dimension: "Dimension",
         side: "Stone Detection",
         segmentation: "Jewellery Analysis",
@@ -2008,7 +1818,7 @@
       flow.dimensionNext = false;
       flow.segmentationNext = false;
       flow.finalVisible = false;
-      flow.packetSealingOpen = false;
+      
       flow.currentStage = "classification";
       overrideActive = false;
       pendingStoneSettingProfile = null;
@@ -2041,10 +1851,6 @@
         (backendState.stage_skips || {}).jewellery_analysis
       );
       flow.finalVisible = true;
-      flow.packetSealingOpen = Boolean(
-        backendState.jewel_count_verification ||
-        (backendState.packet_sealing && backendState.packet_sealing.status !== "idle")
-      );
       flow.currentStage = "final";
       return true;
     }
@@ -2717,6 +2523,8 @@
       // Fire-and-forget voice line; must never block UI or affect the state-mutation
       // polling gate that postJson() uses, so this bypasses postJson entirely.
       if (!text) return;
+      const speakToggleEl = document.getElementById("speakToggle");
+      if (speakToggleEl && !speakToggleEl.checked) return;
       fetch("/api/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2951,6 +2759,13 @@
         clearInterval(audioDevicePollInterval);
       }
       audioDevicePollInterval = setInterval(async () => {
+        const settingsOpenEl = document.getElementById("settingsOverlay");
+        const settingsOpen = Boolean(settingsOpenEl && !settingsOpenEl.classList.contains("hidden"));
+        const purityStageActive = flow.currentStage === "purity";
+        const purityRunningNow = Boolean(
+          backendState && backendState.purity_test && backendState.purity_test.running
+        );
+        if (!settingsOpen && !purityStageActive && !purityRunningNow) return;
         try {
           await loadPurityAudioDevices({
             preserveLocal: purityMicSelectActive || ttsOutputSelectActive,
@@ -2958,7 +2773,7 @@
         } catch (error) {
           console.error("Failed to refresh audio devices:", error);
         }
-      }, 2500);
+      }, 5000);
     }
 
     function loadImageInto(target, dataUrl) {
@@ -3488,7 +3303,7 @@
         backendState = data.state;
         const verification = backendState && backendState.jewel_count_verification;
         const predicted = verification ? verification.predicted_count : "--";
-        setStatusWithIndicator(`Predicted jewel count: ${predicted}`, "success");
+        setStatusWithIndicator(`Jewel count: ${predicted}`, "success");
         renderServerState();
       } catch (error) {
         hideLoading();
@@ -3503,7 +3318,7 @@
         setStatus("Starting packet sealing recording...");
         const data = await postJson("/api/packet-sealing/start", {});
         backendState = data.state;
-        flow.packetSealingOpen = true;
+ 
         setStatusWithIndicator("Packet sealing recording started", "success");
         renderServerState();
       } catch (error) {
@@ -3537,7 +3352,7 @@
       try {
         const data = await postJson(endpoint, {});
         backendState = data.state;
-        flow.packetSealingOpen = true;
+ 
         setStatusWithIndicator(message, "success");
         renderServerState();
       } catch (error) {
@@ -3840,27 +3655,36 @@
       const packet = (backendState && backendState.packet_sealing) || {};
       const showClosure = pledgeComplete || Boolean(verification) || Boolean(packet.video) || Boolean(packet.recording) || Boolean(packet.compressing);
       const closureComplete = countVerificationDone() && packetSealingDone();
+      const countResolved = countVerificationDone();
 
       refs.pledgeClosurePanel.classList.toggle("hidden", !showClosure);
+      refs.finalCountActions.classList.toggle("hidden", countResolved);
       refs.btnCaptureFinalJewelCount.disabled = !pledgeComplete || Boolean(packet.recording);
-      refs.btnSkipFinalCount.disabled = !pledgeComplete || countVerificationDone() || Boolean(packet.recording);
+      refs.btnSkipFinalCount.disabled = !pledgeComplete || countResolved || Boolean(packet.recording);
       refs.finalTitle.textContent = closureComplete ? "OVERALL RESULT" : "PLEDGE CLOSURE";
       refs.finalHeadline.classList.toggle("hidden", !closureComplete);
       refs.finalLines.classList.toggle("hidden", !closureComplete);
       refs.finalArtifacts.classList.toggle("hidden", !closureComplete);
+      if (refs.pledgeCompleteBanner) {
+        refs.pledgeCompleteBanner.classList.toggle("hidden", !closureComplete);
+        if (closureComplete && refs.pledgeCompleteId && refs.pledgeCompleteCount) {
+          refs.pledgeCompleteId.textContent = backendState.pledge_id || "-";
+          refs.pledgeCompleteCount.textContent = String(backendState.completed_jewels || backendState.jewel_count || 0);
+        }
+      }
 
       if (verification) {
         if (verification.skipped) {
-          refs.countCaptureValue.textContent = "Skipped";
-          refs.countCaptureSub.textContent = `Final jewel count capture skipped${verification.skipped_at ? ` at ${verification.skipped_at}` : ""}.`;
+          refs.countCaptureValue.textContent = "Jewel Count Skipped";
+          refs.countCaptureSub.textContent = "The final jewel count was skipped.";
           refs.countCaptureArtifacts.innerHTML = "";
         } else {
         const predicted = Number(verification.predicted_count || 0);
         const entered = verification.user_entered_count ?? backendState.jewel_count ?? "-";
-        refs.countCaptureValue.textContent = `Predicted jewel count: ${predicted}`;
+        refs.countCaptureValue.textContent = `Jewel count: ${predicted}`;
         refs.countCaptureSub.textContent = verification.match === false
-          ? `User entered ${entered}; predicted ${predicted}. Check the count image before sealing.`
-          : `User entered ${entered}; count capture completed.`;
+          ? `User entered ${entered}; counted ${predicted}. Check the count image before sealing.`
+          : `User entered ${entered}; count verified.`;
         renderArtifactStrip(refs.countCaptureArtifacts, [
           verification.result_image,
         ]);
@@ -3868,17 +3692,27 @@
       } else {
         refs.countCaptureValue.textContent = "--";
         refs.countCaptureSub.textContent = pledgeComplete
-          ? "Place all jewels on the test bed and capture the final count."
+          ? "Place all jewels on the test area and verify the count."
           : "Complete every jewel before final count capture.";
         refs.countCaptureArtifacts.innerHTML = "";
       }
 
-      refs.btnOpenPacketSealing.disabled = !countVerificationDone();
-      refs.packetSealingControls.classList.toggle("hidden", !flow.packetSealingOpen && !packet.recording && !packet.compressing);
-      refs.btnStartPacketSealing.disabled = !countVerificationDone() || Boolean(packet.recording) || Boolean(packet.compressing);
+      refs.packetSealingControls.classList.toggle("hidden", !countResolved && !packet.recording && !packet.compressing);
+      refs.btnStartPacketSealing.disabled = !countResolved || Boolean(packet.recording) || Boolean(packet.compressing);
       refs.btnStopPacketSealing.disabled = !packet.recording;
-      refs.btnSkipPacketSealing.disabled = !countVerificationDone() || packetSealingDone() || Boolean(packet.recording) || Boolean(packet.compressing);
+      refs.btnSkipPacketSealing.disabled = !countResolved || packetSealingDone() || Boolean(packet.recording) || Boolean(packet.compressing);
       refs.btnResetUi.disabled = Boolean(packet.recording);
+      if (packet.recording) {
+        refs.btnStartPacketSealing.classList.remove("primary");
+        refs.btnStartPacketSealing.classList.add("secondary");
+        refs.btnStopPacketSealing.classList.remove("secondary");
+        refs.btnStopPacketSealing.classList.add("primary");
+      } else {
+        refs.btnStartPacketSealing.classList.remove("secondary");
+        refs.btnStartPacketSealing.classList.add("primary");
+        refs.btnStopPacketSealing.classList.remove("primary");
+        refs.btnStopPacketSealing.classList.add("secondary");
+      }
       const striping = packet.striping || {};
       const stripingStatus = String(striping.status || "idle");
       refs.stripingControls.classList.toggle("hidden", !packet.recording);
@@ -3906,8 +3740,8 @@
       } else {
         refs.packetSealingValue.textContent = "--";
         refs.packetSealingSub.textContent = countVerificationDone()
-          ? "Click Packet Sealing, then Start before placing jewels into the packet."
-          : "Capture the final jewel count before packet sealing.";
+          ? "Place the jewels in the packet, then start packet sealing."
+          : "Verify the jewel count before packet sealing.";
       }
 
       const stripingLabels = {
@@ -3976,7 +3810,7 @@
         refs.sideArtifacts.innerHTML = "";
 
         refs.purityValue.textContent = "--";
-        refs.puritySub.textContent = "Start or skip the acid test after stone detection completes.";
+        refs.puritySub.textContent = "Start or skip the acid test.";
         refs.purityAudioStatus.textContent = "Waiting for microphone selection.";
         refs.purityMicWarning.classList.add("hidden");
         refs.purityAudioLive.classList.add("hidden");
@@ -4089,7 +3923,7 @@
         }
       } else {
         refs.classificationSub.textContent = classification.predicted_label
-          ? "Jewel type completed."
+          ? "Jewel type identified."
           : "Capture or load the main jewellery image, then run jewel type.";
         refs.classificationActions.classList.toggle("hidden", !classification.predicted_label);
         refs.btnClassificationNext.textContent = "Next";
@@ -4111,13 +3945,13 @@
 
       // Keep the detailed notGold message above; only overwrite for gold items
       if (classification.confirmed && !notGold) {
-        refs.classificationSub.textContent = `Confirmed jewel type: ${classification.confirmed_label}`;
+        refs.classificationSub.textContent = `Jewel type confirmed: ${classification.confirmed_label}`;
       }
 
       const weightSkipped = stageSkipped("weight_extraction");
       if (weightSkipped) {
         refs.weightValue.textContent = "SKIPPED";
-        refs.weightSub.textContent = weightExtraction.message || "Jewel weight extraction skipped.";
+        refs.weightSub.textContent = weightExtraction.message || "Jewel weight skipped.";
       } else if (weightExtraction.success && weightDetails.jewel_weight_g != null) {
         refs.weightValue.textContent = `${Number(weightDetails.jewel_weight_g).toFixed(2)} g`;
         refs.weightSub.textContent = "Weight captured.";
@@ -4293,7 +4127,7 @@
           : purity.running
             ? purity.stage || "Running"
             : purity.result || "--";
-      refs.puritySub.textContent = purity.status || "Start or skip the acid test after stone detection completes.";
+      refs.puritySub.textContent = purity.status || "Start or skip the acid test.";
       refs.purityAudioStatus.textContent = purity.audio_device_name || purity.audio_selected_device || "Waiting for microphone selection.";
       refs.purityAudioLive.classList.toggle("hidden", !purity.running);
       renderPurityAudio(purity);
@@ -4372,15 +4206,18 @@
       else if (flow.currentStage === "final" && backendState && backendState.packet_sealing && backendState.packet_sealing.recording) {
         const striping = backendState.packet_sealing.striping || {};
         if (striping.hand_clear_enabled) nextId = "btnStripingHandClear";
-      }
+        else nextId = "btnStopPacketSealing";
+      } else if (flow.currentStage === "final" && !countVerificationDone()) nextId = "btnCaptureFinalJewelCount";
+      else if (flow.currentStage === "final" && !packetSealingDone()) nextId = "btnStartPacketSealing";
+      else if (flow.currentStage === "final") nextId = "btnGeneratePdf";
 
       const candidates = [
         "btnClassificationNext", "btnCaptureWeight", "btnRetakeWeight", "btnSkipWeight", "btnWeightNext", "btnRunDimension", "btnDimensionNext",
         "btnCaptureSideLive", "btnRunSidePipeline", "btnShowFinalFromSide",
         "btnRunSegmentation", "btnSegmentationNext", "btnRunMainStoneDetection",
         "btnShowFinalFromMain", "btnStartPurityTest", "btnStopPurityTest",
-        "btnNextJewelFromPurity", "btnShowFinalFromPurity", "btnCaptureFinalJewelCount",
-        "btnOpenPacketSealing", "btnStartPacketSealing", "btnStripingHandClear", "btnStopPacketSealing", "btnGeneratePdf"
+        "btnNextJewelFromPurity", "btnShowFinalFromPurity",
+        "btnStartPacketSealing", "btnStopPacketSealing", "btnStripingHandClear", "btnGeneratePdf", "btnNextJewelFromFinal"
       ];
       const usable = (element) => element && !element.disabled && element.offsetParent !== null;
       let nextElement = document.getElementById(nextId);
@@ -4449,6 +4286,7 @@
       refs.btnNextJewelFromFinal.textContent = retryJewelAvailable ? "Capture Replacement" : "Next Jewel";
       refs.btnNextJewelFromFinal.classList.toggle("hidden", !advanceCaptureAvailable);
       refs.btnGeneratePdf.classList.toggle("hidden", advanceCaptureAvailable || !closureComplete);
+      refs.btnNewPledge.classList.toggle("hidden", !(pledgeComplete && closureComplete && !advanceCaptureAvailable));
 
       refs.btnDrawPendantBox.classList.toggle("hidden", !isSegmentationContext());
       refs.btnDrawTasselBox.classList.toggle("hidden", !isSegmentationContext());
@@ -4623,50 +4461,50 @@
       container.innerHTML = "";
       container.classList.remove("hidden");
 
-      for (let idx = 0; idx <= currentIndex && idx < order.length; idx++) {
+      const total = order.length;
+      for (let idx = 0; idx < total; idx++) {
         const stageKey = order[idx];
-        const isPast = idx < currentIndex;
+        const skipped = stageSkipped(skipKeyForUiStage(stageKey));
+        const isCurrent = idx === currentIndex;
 
         const pill = document.createElement("div");
-        pill.style.padding = "6px 14px";
-        pill.style.borderRadius = "999px";
-        pill.style.fontSize = "11px";
-        pill.style.fontWeight = "800";
-        pill.style.textTransform = "uppercase";
-        pill.style.letterSpacing = "0.05em";
-        pill.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)";
-
-        const label = stageKey === "final"
-          ? (packetSealingDone() ? "FINAL · COMPLETE" : "PLEDGE CLOSURE")
-          : `STAGE ${idx + 1} · ${stageDisplayName(stageKey)}`;
-        pill.textContent = label;
-
-        const skipped = stageSkipped(skipKeyForUiStage(stageKey));
-        if (skipped) {
-          pill.style.background = "linear-gradient(180deg, #f59e0b, #d97706)";
-          pill.style.color = "#ffffff";
-          pill.style.border = "1px solid #b45309";
-          pill.textContent += " · SKIPPED";
-        } else if (isPast) {
-          pill.style.background = "linear-gradient(180deg, #22c55e, #16a34a)";
-          pill.style.color = "#ffffff";
-          pill.style.border = "1px solid #15803d";
+        pill.className = "progressStep";
+        if (isCurrent && skipped) {
+          pill.classList.add("progressFailed");
+        } else if (skipped) {
+          pill.classList.add("progressSkipped");
+        } else if (idx < currentIndex) {
+          pill.classList.add("progressDone");
+        } else if (isCurrent) {
+          pill.classList.add("progressCurrent");
         } else {
-          pill.style.background = "linear-gradient(180deg, #3b82f6, #2563eb)";
-          pill.style.color = "#ffffff";
-          pill.style.border = "1px solid #1d4ed8";
+          pill.classList.add("progressNext");
         }
 
+        const icon = document.createElement("span");
+        icon.className = "progressIcon";
+        if (isCurrent && skipped) {
+          icon.textContent = "!";
+        } else if (skipped) {
+          icon.textContent = "\u2014";
+        } else if (idx < currentIndex) {
+          icon.textContent = "\u2713";
+        } else if (isCurrent) {
+          icon.textContent = "\u25CF";
+        } else {
+          icon.textContent = "\u25CB";
+        }
+
+        const label = document.createElement("span");
+        label.className = "progressLabel";
+        label.textContent = stageKey === "final"
+          ? (countVerificationDone() && packetSealingDone() ? "Closure \u00B7 Complete" : "Closure")
+          : stageDisplayName(stageKey);
+        if (skipped) label.textContent += " \u00B7 Skipped";
+
+        pill.appendChild(icon);
+        pill.appendChild(label);
         container.appendChild(pill);
-
-        if (idx < currentIndex) {
-          const arrow = document.createElement("div");
-          arrow.textContent = "→";
-          arrow.style.color = "#16a34a";
-          arrow.style.fontWeight = "900";
-          arrow.style.fontSize = "14px";
-          container.appendChild(arrow);
-        }
       }
     }
 
@@ -5072,14 +4910,7 @@
       reader.readAsDataURL(file);
     });
 
-    refs.btnResetUi.addEventListener("click", async () => {
-      try {
-        const data = await postJson("/api/reset", {});
-        backendState = data.state;
-      } catch (error) {
-        setStatusWithIndicator(error.message, "error");
-        return;
-      }
+    function applyWorkflowResetToUi(message) {
       if (previewState.main.kind === "upload") {
         previewState.rois.processing = previewState.cameraRois.processing;
         previewState.rois.aruco = previewState.cameraRois.aruco;
@@ -5098,14 +4929,74 @@
       refs.previewModePill.textContent = "Preview: RPi Live Camera";
       refs.pledgeStatus.textContent = "";
       refs.inputJewelCount.value = "";
-        refs.appraiserStoneWeight.value = "";
+      refs.appraiserStoneWeight.value = "";
       refs.jewelCountStatus.textContent = "Set a Pledge ID, then save jewel count.";
       refs.btnPledgeSetupNext.disabled = true;
       resetFlow();
       setDrawMode(null);
       updateCapturedSetupControls();
       renderServerState();
-      setStatus("Workflow reset.");
+      setStatus(message || "Workflow reset.");
+    }
+
+    async function stopActiveRecorders() {
+      const packet = (backendState && backendState.packet_sealing) || {};
+      const purity = (backendState && backendState.purity_test) || {};
+      if (packet.recording) {
+        try {
+          await postJson("/api/packet-sealing/stop", {});
+        } catch (error) { /* recorder already stopped */ }
+      }
+      if (purity.running) {
+        try {
+          await postJson("/api/purity/stop", { reason: "Reset workflow" });
+        } catch (error) { /* purity already stopped */ }
+      }
+    }
+
+    async function performWorkflowReset() {
+      try {
+        await stopActiveRecorders();
+        const data = await postJson("/api/reset", {});
+        backendState = data.state;
+      } catch (error) {
+        setStatusWithIndicator(error.message, "error");
+        return;
+      }
+      applyWorkflowResetToUi("Workflow reset. Set a Pledge ID to start.");
+    }
+
+    function openResetConfirm() {
+      const overlay = document.getElementById("resetConfirmOverlay");
+      if (overlay) overlay.classList.remove("hidden");
+    }
+
+    function closeResetConfirm() {
+      const overlay = document.getElementById("resetConfirmOverlay");
+      if (overlay) overlay.classList.add("hidden");
+    }
+
+    const btnResetCancel = document.getElementById("btnResetCancel");
+    if (btnResetCancel) {
+      btnResetCancel.addEventListener("click", closeResetConfirm);
+    }
+    const btnResetConfirm = document.getElementById("btnResetConfirm");
+    if (btnResetConfirm) {
+      btnResetConfirm.addEventListener("click", () => {
+        closeResetConfirm();
+        performWorkflowReset();
+      });
+    }
+
+    refs.btnResetUi.addEventListener("click", async () => {
+      try {
+        const data = await postJson("/api/reset", {});
+        backendState = data.state;
+      } catch (error) {
+        setStatusWithIndicator(error.message, "error");
+        return;
+      }
+      applyWorkflowResetToUi("Workflow reset.");
     });
 
     refs.btnDrawProcessingRoi.addEventListener("click", () => {
@@ -5496,14 +5387,9 @@
     refs.btnCaptureFinalJewelCount.addEventListener("click", withButtonGuard(refs.btnCaptureFinalJewelCount, captureFinalJewelCount));
     refs.btnSkipFinalCount.addEventListener("click", withButtonGuard(refs.btnSkipFinalCount, async () => {
       if (await skipOptionalStage("final_count", "Final jewel count")) {
-        flow.packetSealingOpen = true;
         renderPledgeClosure();
       }
     }));
-    refs.btnOpenPacketSealing.addEventListener("click", () => {
-      flow.packetSealingOpen = !flow.packetSealingOpen;
-      renderPledgeClosure();
-    });
     refs.btnStartPacketSealing.addEventListener("click", withButtonGuard(refs.btnStartPacketSealing, startPacketSealing));
     refs.btnStopPacketSealing.addEventListener("click", withButtonGuard(refs.btnStopPacketSealing, stopPacketSealing));
     refs.btnSkipPacketSealing.addEventListener("click", withButtonGuard(refs.btnSkipPacketSealing, async () => {
@@ -5521,6 +5407,16 @@
 
     refs.btnGeneratePdf.addEventListener("click", () => {
       window.open("/api/report/pdf", "_blank");
+    });
+    refs.btnNewPledge.addEventListener("click", async () => {
+      try {
+        const data = await postJson("/api/reset", {});
+        backendState = data.state;
+      } catch (error) {
+        setStatusWithIndicator(error.message, "error");
+        return;
+      }
+      applyWorkflowResetToUi("New pledge ready. Set a Pledge ID to start.");
     });
 
     async function initialize() {
@@ -5587,7 +5483,445 @@
         statusElement.innerHTML = `<span class="status-indicator status-${type}"></span>${message}`;
       }
     }
+
+    /* ===================== Redesigned UI wiring (appended) ===================== */
+
+    const settingsOverlay = document.getElementById("settingsOverlay");
+    const moreMenu = document.getElementById("moreMenu");
+    const speakToggle = document.getElementById("speakToggle");
+
+    function settingsIsOpen() {
+      return Boolean(settingsOverlay && !settingsOverlay.classList.contains("hidden"));
+    }
+
+    function hideMoreMenu() {
+      if (moreMenu) moreMenu.classList.add("hidden");
+    }
+
+    function openSettings() {
+      if (!settingsOverlay) return;
+      settingsOverlay.classList.remove("hidden");
+      hideMoreMenu();
+      refreshSystemStatus(false);
+    }
+
+    function closeSettings() {
+      if (!settingsOverlay) return;
+      settingsOverlay.classList.add("hidden");
+      hideMoreMenu();
+    }
+
+    if (document.getElementById("btnOpenSettings")) {
+      document.getElementById("btnOpenSettings").addEventListener("click", openSettings);
+      document.getElementById("btnCloseSettings").addEventListener("click", closeSettings);
+    }
+
+    const settingsViews = ["settingsAudio", "settingsSystem", "settingsDeveloper"];
+    document.querySelectorAll(".settingsNavBtn").forEach((navBtn) => {
+      navBtn.addEventListener("click", () => {
+        settingsViews.forEach((viewId) => {
+          const view = document.getElementById(viewId);
+          if (view) view.classList.add("hidden");
+        });
+        document.querySelectorAll(".settingsNavBtn").forEach((b) => b.classList.remove("active"));
+        navBtn.classList.add("active");
+        const view = document.getElementById(navBtn.dataset.view);
+        if (view) view.classList.remove("hidden");
+        if (navBtn.dataset.view === "settingsSystem") refreshSystemStatus(false);
+      });
+    });
+
+    /* ---------- System status chip / popover ---------- */
+    let audioDeviceSnapshot = null;
+    let reportsInfoSnapshot = null;
+
+    function updateSystemStatusChip() {
+      const label = document.getElementById("systemStatusLabel");
+      const dot = document.getElementById("systemStatusDot");
+      if (!label || !dot) return;
+      if (!backendState) {
+        dot.className = "statusDot warn";
+        label.textContent = "Connecting...";
+        return;
+      }
+      const issues = [];
+      if (!(cameraFocusState && cameraFocusState.ready)) issues.push("Camera");
+      const purity = backendState.purity_test;
+      if (purity && !purity.available) issues.push("AI models");
+      if (audioDeviceSnapshot) {
+        if (audioDeviceSnapshot.audio_sensor && !audioDeviceSnapshot.audio_sensor.connected) issues.push("Microphone");
+        if (audioDeviceSnapshot.tts_output && !audioDeviceSnapshot.tts_output.connected) issues.push("Speaker");
+      }
+      dot.className = "statusDot " + (issues.length ? "warn" : "ok");
+      label.textContent = issues.length ? "Attention: " + issues.join(", ") : "All systems ready";
+    }
+
+    function refreshSystemStatus(force) {
+      const rows = document.getElementById("systemStatusRows");
+      if (!rows) return;
+      const build = () => {
+        rows.innerHTML = "";
+        const pushRow = (name, ok) => {
+          const row = document.createElement("div");
+          row.className = "statusRow";
+          const dotEl = document.createElement("span");
+          dotEl.className = "rowDot " + (ok ? "ok" : "warn");
+          const nameEl = document.createElement("span");
+          nameEl.className = "rowName";
+          nameEl.textContent = name;
+          const valueEl = document.createElement("span");
+          valueEl.className = "rowValue " + (ok ? "ok" : "warn");
+          valueEl.textContent = ok ? "OK" : "Check";
+          row.appendChild(dotEl);
+          row.appendChild(nameEl);
+          row.appendChild(valueEl);
+          rows.appendChild(row);
+        };
+        pushRow("Workbench connection", Boolean(backendState));
+        pushRow("Camera feed", Boolean(cameraFocusState && cameraFocusState.ready));
+        const purity = backendState && backendState.purity_test;
+        pushRow("AI models", Boolean(purity && purity.available));
+        if (audioDeviceSnapshot) {
+          pushRow("Microphone", Boolean(audioDeviceSnapshot.audio_sensor && audioDeviceSnapshot.audio_sensor.connected));
+          pushRow("Speaker", Boolean(audioDeviceSnapshot.tts_output && audioDeviceSnapshot.tts_output.connected));
+        }
+        if (reportsInfoSnapshot) {
+          pushRow("Report storage", Boolean(reportsInfoSnapshot.ok));
+        }
+      };
+      build();
+      updateSystemStatusChip();
+      if (!force) return;
+      Promise.all([
+        fetch("/api/purity/audio-devices", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+        fetch("/api/reports", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+      ]).then(([audioData, reportsData]) => {
+        if (audioData && audioData.ok) audioDeviceSnapshot = audioData;
+        if (reportsData) reportsInfoSnapshot = reportsData;
+        build();
+        updateSystemStatusChip();
+        if (settingsIsOpen()) {
+          renderSetupDevices();
+        }
+      });
+    }
+
+    function renderSetupDevices() {
+      const container = document.getElementById("setupDevicesStatus");
+      if (!container) return;
+      container.innerHTML = "";
+      const add = (name, ok, statusText) => {
+        const line = document.createElement("div");
+        line.className = "deviceLine";
+        const dotEl = document.createElement("span");
+        dotEl.className = "rowDot " + (ok ? "ok" : "warn");
+        const nameEl = document.createElement("span");
+        nameEl.textContent = name;
+        const valueEl = document.createElement("span");
+        valueEl.className = "tiny";
+        valueEl.textContent = statusText || (ok ? "Connected" : "Not connected");
+        line.appendChild(dotEl);
+        line.appendChild(nameEl);
+        line.appendChild(valueEl);
+        container.appendChild(line);
+      };
+      const purity = backendState && backendState.purity_test;
+      add("Camera", Boolean(cameraFocusState && cameraFocusState.ready),
+        cameraFocusState && cameraFocusState.status ? cameraFocusState.status : "Live feed");
+      add("AI models", Boolean(purity && purity.available),
+        purity && purity.models_loaded ? "Models loaded" : "Models not loaded");
+      if (audioDeviceSnapshot) {
+        add("Microphone", Boolean(audioDeviceSnapshot.audio_sensor && audioDeviceSnapshot.audio_sensor.connected),
+          audioDeviceSnapshot.audio_sensor && audioDeviceSnapshot.audio_sensor.status ? audioDeviceSnapshot.audio_sensor.status : "");
+        add("Speaker", Boolean(audioDeviceSnapshot.tts_output && audioDeviceSnapshot.tts_output.connected),
+          audioDeviceSnapshot.tts_output && audioDeviceSnapshot.tts_output.status ? audioDeviceSnapshot.tts_output.status : "");
+      }
+      if (reportsInfoSnapshot) {
+        add("Report storage", Boolean(reportsInfoSnapshot.ok), reportsInfoSnapshot.error || "");
+      }
+    }
+
+    const statusChip = document.getElementById("systemStatusChip");
+    const statusPopover = document.getElementById("systemStatusPopover");
+    if (statusChip && statusPopover) {
+      statusChip.addEventListener("click", (event) => {
+        event.stopPropagation();
+        statusPopover.classList.toggle("hidden");
+        if (!statusPopover.classList.contains("hidden")) {
+          refreshSystemStatus(false);
+        }
+      });
+      document.addEventListener("click", (event) => {
+        if (!statusPopover.classList.contains("hidden") && !statusPopover.contains(event.target)) {
+          statusPopover.classList.add("hidden");
+        }
+      });
+    }
+    ["btnRunSystemCheck", "btnRunSystemCheckPopover"].forEach((checkId) => {
+      const checkBtn = document.getElementById(checkId);
+      if (checkBtn) checkBtn.addEventListener("click", () => refreshSystemStatus(true));
+    });
+
+    /* ---------- Start screen / header / test image badge ---------- */
+    function updateStartScreen() {
+      const screen = document.getElementById("pledgeStartScreen");
+      if (!screen) return;
+      const show = !flow.pledgeSetupComplete;
+      screen.classList.toggle("hidden", !show);
+    }
+
+    function updateHeaderInfo() {
+      const pledgeEl = document.getElementById("headerPledgeId");
+      const progressEl = document.getElementById("headerJewelProgress");
+      if (!pledgeEl || !progressEl) return;
+      if (!backendState || !backendState.pledge_id) {
+        pledgeEl.textContent = "No pledge";
+        progressEl.classList.add("hidden");
+        return;
+      }
+      pledgeEl.textContent = "Pledge: " + backendState.pledge_id;
+      if (backendState.jewel_count_saved) {
+        progressEl.textContent = jewelProgressText();
+        progressEl.classList.remove("hidden");
+      } else {
+        progressEl.classList.add("hidden");
+      }
+    }
+
+    function updateTestImageBadge() {
+      const badge = document.getElementById("testImageBadge");
+      if (!badge) return;
+      const isTest = previewState.main.kind === "upload";
+      badge.classList.toggle("hidden", !isTest);
+      if (isTest) {
+        badge.textContent = "Test image: " + (previewState.main.filename || "uploaded");
+      }
+      const modeEl = document.getElementById("cameraModeLabel");
+      if (!modeEl) return;
+      const backendIsTest = Boolean(backendState && backendState.source && backendState.source.kind === "test_image");
+      const backendCaptured = Boolean(backendState && backendState.source && backendState.source.kind === "camera" && backendState.source.working_image);
+      let mode = "LIVE";
+      let cls = "";
+      if (isTest || backendIsTest) {
+        mode = "TEST IMAGE MODE";
+        cls = "cameraModeTest";
+      } else if (previewState.main.dataUrl || backendCaptured) {
+        mode = "CAPTURED FRAME";
+        cls = "cameraModeCaptured";
+      }
+      modeEl.textContent = mode;
+      const head = modeEl.closest(".liveHeading");
+      if (head) {
+        head.classList.remove("cameraModeTest", "cameraModeCaptured");
+        if (cls) head.classList.add(cls);
+      }
+    }
+
+    /* ---------- Continue buttons: reveal only when the step is complete ---------- */
+    function syncVisibility() {
+      ["btnWeightNext", "btnDimensionNext", "btnSegmentationNext",
+       "btnShowFinalFromSide", "btnShowFinalFromMain"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.toggle("hidden", Boolean(el.disabled));
+        }
+      });
+    }
+
+    /* ---------- Step labels ---------- */
+    function updateStepLabels() {
+      const order = getStageOrder();
+      const total = order.length;
+      order.forEach((stageKey, idx) => {
+        document.querySelectorAll('[data-step-label="' + stageKey + '"]').forEach((el) => {
+          el.textContent = "Step " + (idx + 1) + " of " + total;
+        });
+      });
+    }
+
+    /* ---------- More (…) menu ---------- */
+    const MORE_ACTIONS = {
+      classification: [
+        { label: "Back to Setup", target: "btnClassificationPrev" },
+        { label: "Retake Image", target: "btnCaptureMainImage" },
+        { label: "Re-run Jewel Type", target: "btnRunClassification" },
+      ],
+      weight: [
+        { label: "Previous Step", target: "btnWeightPrev" },
+        { label: "Skip Stage", target: "btnSkipWeight" },
+        { label: "Retake Weight", target: "btnRetakeWeight" },
+      ],
+      dimension: [
+        { label: "Previous Step", target: "btnDimensionPrev" },
+        { label: "Skip Stage", target: "btnSkipDimension" },
+        { label: "Restart Measurement", target: "btnRunDimension" },
+      ],
+      side: [
+        { label: "Previous Step", target: "btnSidePrev" },
+        { label: "Skip Stage", target: "btnSkipSide" },
+        { label: "Retake Side Image", target: "btnCaptureSideLive" },
+      ],
+      segmentation: [
+        { label: "Previous Step", target: "btnSegmentationPrev" },
+        { label: "Skip Stage", target: "btnSkipSegmentation" },
+        { label: "Re-run Analysis", target: "btnRunSegmentation" },
+      ],
+      mainStone: [
+        { label: "Previous Step", target: "btnMainStonePrev" },
+        { label: "Skip Stage", target: "btnSkipMainStone" },
+        { label: "Re-run Analysis", target: "btnRunMainStoneDetection" },
+      ],
+      purity: [
+        { label: "Previous Step", target: "btnPurityPrev" },
+        { label: "Skip Acid Test", target: "btnSkipPurityTest" },
+      ],
+      final: [
+        { label: "Previous Step", target: "btnFinalPrev" },
+        { label: "Skip Final Count", target: "btnSkipFinalCount" },
+        { label: "Skip Packet Sealing", target: "btnSkipPacketSealing" },
+      ],
+    };
+
+    const MORE_GLOBAL_ITEMS = [
+      { label: "Reset Workflow", action: "reset" },
+    ];
+
+    function showSettingsView(viewId) {
+      settingsViews.forEach((viewName) => {
+        const view = document.getElementById(viewName);
+        if (view) view.classList.add("hidden");
+      });
+      document.querySelectorAll(".settingsNavBtn").forEach((b) => b.classList.remove("active"));
+      const navBtn = document.querySelector('.settingsNavBtn[data-view="' + viewId + '"]');
+      if (navBtn) navBtn.classList.add("active");
+      const view = document.getElementById(viewId);
+      if (view) view.classList.remove("hidden");
+    }
+
+    function buildMoreMenu(container, items) {
+      container.innerHTML = "";
+      items.forEach((item) => {
+        if (item === "divider") {
+          const divider = document.createElement("div");
+          divider.className = "moreDivider";
+          container.appendChild(divider);
+          return;
+        }
+        const itemBtn = document.createElement("button");
+        itemBtn.type = "button";
+        itemBtn.className = "moreItem";
+        if (item.action) itemBtn.classList.add("moreItemDanger");
+        itemBtn.textContent = item.label;
+        itemBtn.addEventListener("click", () => {
+          hideMoreMenu();
+          if (item.action === "reset") {
+            openResetConfirm();
+            return;
+          }
+          if (item.view) {
+            showSettingsView(item.view);
+            openSettings();
+            return;
+          }
+          const el = document.getElementById(item.target);
+          if (el && !el.disabled) el.click();
+        });
+        container.appendChild(itemBtn);
+      });
+    }
+
+    document.querySelectorAll(".moreBtn").forEach((moreBtn) => {
+      moreBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const stage = moreBtn.dataset.stage;
+        const items = (MORE_ACTIONS[stage] || []).filter((item) => {
+          const el = item.target ? document.getElementById(item.target) : null;
+          return !el || !el.disabled;
+        });
+        if (!moreMenu) return;
+        buildMoreMenu(moreMenu, items.concat("divider", MORE_GLOBAL_ITEMS));
+        const rect = moreBtn.getBoundingClientRect();
+        moreMenu.classList.remove("hidden");
+        moreMenu.style.top = Math.max(8, rect.bottom + 6) + "px";
+        moreMenu.style.left = Math.min(
+          window.innerWidth - 12 - 190,
+          Math.max(8, rect.left)
+        ) + "px";
+      });
+    });
+
+    document.addEventListener("click", (event) => {
+      if (moreMenu && !moreMenu.classList.contains("hidden") &&
+          !moreMenu.contains(event.target) && !event.target.classList.contains("moreBtn")) {
+        hideMoreMenu();
+      }
+    });
+    window.addEventListener("scroll", hideMoreMenu, true);
+    window.addEventListener("resize", hideMoreMenu);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") hideMoreMenu();
+    });
+
+    /* ---------- Stone setting chips ---------- */
+    function syncStoneSettingChips() {
+      document.querySelectorAll(".chipBtn").forEach((chip) => {
+        const active = refs.mainStoneSettingProfile &&
+          refs.mainStoneSettingProfile.value === chip.dataset.chip;
+        chip.classList.toggle("active", Boolean(active));
+      });
+    }
+
+    document.querySelectorAll(".chipBtn").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        if (refs.mainStoneSettingProfile) {
+          refs.mainStoneSettingProfile.value = chip.dataset.chip;
+          refs.mainStoneSettingProfile.dispatchEvent(new Event("change"));
+          syncStoneSettingChips();
+        }
+      });
+    });
+
+    /* ---------- Segmentation correction toggle ---------- */
+    const btnShowSegCorrections = document.getElementById("btnShowSegCorrections");
+    const segCorrectionArea = document.getElementById("segCorrectionArea");
+    if (btnShowSegCorrections && segCorrectionArea) {
+      btnShowSegCorrections.addEventListener("click", () => {
+        const nowHidden = segCorrectionArea.classList.toggle("hidden");
+        btnShowSegCorrections.textContent = nowHidden ? "Correct Result" : "Hide Correction Options";
+      });
+    }
+
+    /* ---------- Speak toggle persistence ---------- */
+    if (speakToggle) {
+      try {
+        const savedSpeak = localStorage.getItem("speakEnabled");
+        if (savedSpeak !== null) speakToggle.checked = savedSpeak === "1";
+      } catch (error) { /* storage unavailable */ }
+      speakToggle.addEventListener("change", () => {
+        try {
+          localStorage.setItem("speakEnabled", speakToggle.checked ? "1" : "0");
+        } catch (error) { /* storage unavailable */ }
+      });
+    }
+
+    /* ---------- renderPanels wrapper ---------- */
+    const _renderPanelsOriginal = renderPanels;
+    renderPanels = function () {
+      const result = _renderPanelsOriginal();
+      updateStartScreen();
+      updateHeaderInfo();
+      updateTestImageBadge();
+      updateSystemStatusChip();
+      syncVisibility();
+      updateStepLabels();
+      syncStoneSettingChips();
+      return result;
+    };
+
+    updateStartScreen();
+    updateHeaderInfo();
+    refreshSystemStatus(true);
+
   </script>
 </body>
-
 </html>

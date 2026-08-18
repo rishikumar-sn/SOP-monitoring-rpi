@@ -427,7 +427,7 @@ TTS_WORKFLOW_PHRASES = {
     "Jewel image is captured. Run jewel type.",
     "Jewel image is captured. Running jewel type.",
     "This does not look like gold jewelry. Click Yes if correct, or No to override.",
-    "Jewel type confirmed. Click next for Jewel Weight Extraction.",
+    "Jewel type confirmed. Click next for Jewel Weight.",
     "Weight could not be detected. Place the weight scale inside the box region and recapture.",
     "Side image captured. Click Start Stone Analysis.",
     "Stone analysis completed. Click next for Acid Test.",
@@ -471,7 +471,7 @@ def _all_tts_preload_phrases() -> list[str]:
     class_labels = set(globals().get("ALL_DISPLAY_LABELS", []))
     class_labels.update(globals().get("MODEL_LABELS", []))
     for label in class_labels:
-        phrases.add(f"Jewel type predicted as {label}. Click Yes if correct, or No to override.")
+        phrases.add(f"Jewel type identified as {label}. Click Yes if correct, or No to change.")
     return sorted(phrase for phrase in phrases if phrase)
 
 
@@ -704,7 +704,7 @@ APP_PORT = 5050
 ESTIMATED_TASSEL_WEIGHT_G = 1.5
 
 STAGE_DISPLAY_NAMES = {
-    "weight_extraction": "Jewel Weight Extraction",
+    "weight_extraction": "Jewel Weight",
     "dimension": "Dimension Analysis",
     "side_stone": "Stone Detection",
     "jewellery_analysis": "Jewellery Analysis",
@@ -9766,7 +9766,7 @@ def api_classify():
             if not is_gold:
                 speak("This does not look like gold jewelry. Click Yes if correct, or No to override.")
             else:
-                speak(f"Jewel type predicted as {prediction.label}. Click Yes if correct, or No to override.")
+                speak(f"Jewel type identified as {prediction.label}. Click Yes if correct, or No to change.")
         except Exception as exc:  # noqa: BLE001
             import traceback
             error_trace = traceback.format_exc()
@@ -9838,7 +9838,7 @@ def api_classification_confirm():
             learn_from_confirmation = state.get("source", {}).get("kind") != "upload"
 
             if is_not_gold:
-                speak("Jewel type confirmed. Click next for Jewel Weight Extraction.")
+                speak("Jewel type confirmed. Click next for Jewel Weight.")
                 # Store "Not Gold Jewelry" in gallery so similar non-gold items
                 # will be recognised as non-gold in future classifications
                 if learn_from_confirmation:
@@ -9853,7 +9853,7 @@ def api_classification_confirm():
                 return jsonify({"ok": True, "state": copy.deepcopy(state)})
 
             # Instruction 4 continued: Click next for ____next-stage___
-            speak("Jewel type confirmed. Click next for Jewel Weight Extraction.")
+            speak("Jewel type confirmed. Click next for Jewel Weight.")
 
             # Gallery corrections support every UI class, including classes that
             # do not have a dedicated SigLIP text prompt (for example Mangalsutra).

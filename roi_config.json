@@ -1,9 +1,9 @@
 {
   "processing_roi": {
-    "x": 385,
-    "y": 3,
-    "w": 1801,
-    "h": 1410
+    "x": 383,
+    "y": 2,
+    "w": 1813,
+    "h": 1391
   },
   "aruco_roi": {
     "x": 420,
@@ -18,17 +18,17 @@
     "h": 500
   },
   "color_correction": {
-    "saturation": 1.15,
-    "contrast": 1.1,
+    "saturation": 1.0,
+    "contrast": 1.0,
     "brightness": 16.0
   },
   "analysis_normalization": {
     "white_balance": true,
     "clahe_clip_limit": 1.8,
     "shadow_gamma": 0.92,
-    "color_boost": 1.15,
-    "green_recovery": 1.15,
-    "dark_green_recovery": 1.2
+    "color_boost": 1.0,
+    "green_recovery": 1.0,
+    "dark_green_recovery": 1.0
   },
   "background_calibration": {
     "point": {
