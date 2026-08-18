@@ -3752,14 +3752,36 @@
       return number < 0.1 ? number.toFixed(2) : number.toFixed(1);
     }
 
+    function isStoneWeightExempt(label) {
+      const normalized = String(label || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+      return [
+        "bangle",
+        "finger ring",
+        "earing / jumkha",
+        "earrings/ jhumki",
+      ].includes(normalized);
+    }
+
+    function stoneDetected(result) {
+      if (!result) return false;
+      return Number(result.stone_instance_count || 0) > 0 ||
+        Number(result.stone_percentage || 0) > 0;
+    }
+
     function displayStoneColor(color) {
       return color === "Multicolor/Color-changing"
         ? "Multicolor / Mixed Appearance"
         : color;
     }
 
-    function stoneSurfaceStatus(result) {
+    function stoneSurfaceStatus(result, label) {
       if (!result) return "--";
+      if (isStoneWeightExempt(label)) {
+        return stoneDetected(result) ? "HIGH RISK" : "LOW RISK";
+      }
       const weight = result.weight_estimate || {};
       if (!weight.success || weight.weight_estimate_suppressed) return "NOT ASSESSED";
       const maximumG = Number(
@@ -3769,7 +3791,10 @@
       return maximumG > 1 ? "HIGH RISK" : "LOW RISK";
     }
 
-    function stoneAnalysisText(result) {
+    function stoneAnalysisText(result, label) {
+      if (isStoneWeightExempt(label)) {
+        return `${label} ${stoneDetected(result) ? "with" : "without"} stones`;
+      }
       return stoneWeightText(result.weight_estimate || {});
     }
 
@@ -4041,6 +4066,7 @@
       updateRoiSummaryText();
 
       const notGold = classification.predicted_label && classification.is_gold_jewelry === false;
+      const currentJewelLabel = classification.confirmed_label || classification.predicted_label || "";
       const displayedClassification = classification.confirmed
         ? classification.confirmed_label
         : classification.predicted_label;
@@ -4164,9 +4190,9 @@
 
       if (mainStone) {
         const mainStats = mainStone.stone_area_statistics;
-        refs.mainStoneValue.textContent = stoneSurfaceStatus(mainStone);
+        refs.mainStoneValue.textContent = stoneSurfaceStatus(mainStone, currentJewelLabel);
         setRiskResultStyle(refs.mainStoneValue, refs.mainStoneValue.textContent);
-        refs.mainStoneSub.textContent = stoneAnalysisText(mainStone);
+        refs.mainStoneSub.textContent = stoneAnalysisText(mainStone, currentJewelLabel);
         renderArtifactStrip(refs.mainStoneArtifacts, [
           source.working_image || source.original_image,
           mainStone.gallery,
@@ -4213,9 +4239,9 @@
 
       if (sideStone) {
         const sideStats = sideStone.stone_area_statistics;
-        refs.sideStoneValue.textContent = stoneSurfaceStatus(sideStone);
+        refs.sideStoneValue.textContent = stoneSurfaceStatus(sideStone, currentJewelLabel);
         setRiskResultStyle(refs.sideStoneValue, refs.sideStoneValue.textContent);
-        refs.sideStoneSub.textContent = stoneAnalysisText(sideStone);
+        refs.sideStoneSub.textContent = stoneAnalysisText(sideStone, currentJewelLabel);
         renderArtifactStrip(refs.sideArtifacts, [
           (backendState.side_capture || {}).original_image,
           sideStone.gallery,

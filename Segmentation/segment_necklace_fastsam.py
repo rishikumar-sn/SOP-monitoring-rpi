@@ -23,6 +23,11 @@ try:
 except ImportError:
     _SKIMAGE_AVAILABLE = False
 
+try:
+    from scipy.signal import fftconvolve as _fftconvolve
+except ImportError:
+    _fftconvolve = None
+
 PARTS = [
     ("pendant", "Pendant", (255, 60, 160)),
     ("chain", "Chain Region", (70, 190, 70)),
@@ -1727,6 +1732,21 @@ def dilate(mask: np.ndarray, ksize: int, shape: int = cv2.MORPH_ELLIPSE) -> np.n
     return cv2.dilate(mask.astype(np.uint8), kernel, iterations=1)
 
 
+def dilate_large_ellipse(mask: np.ndarray, ksize: int) -> np.ndarray:
+    if _fftconvolve is None or ksize < 63:
+        return dilate(mask, ksize)
+    kernel = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE,
+        (ksize, ksize),
+    ).astype(np.float32)
+    expanded = _fftconvolve(
+        mask.astype(np.float32),
+        kernel[::-1, ::-1],
+        mode="same",
+    )
+    return (expanded > 0.5).astype(np.uint8)
+
+
 def erode(mask: np.ndarray, ksize: int, shape: int = cv2.MORPH_ELLIPSE) -> np.ndarray:
     kernel = cv2.getStructuringElement(shape, (ksize, ksize))
     return cv2.erode(mask.astype(np.uint8), kernel, iterations=1)
@@ -2647,10 +2667,30 @@ def _largest_contour_shape_metrics(mask: np.ndarray) -> Tuple[float, float]:
     return float(circularity), float(contour_solidity)
 
 
+def _build_candidate_analysis_context(
+    image: np.ndarray,
+    necklace_mask: np.ndarray,
+) -> Dict[str, object]:
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    return {
+        "hsv": cv2.cvtColor(image, cv2.COLOR_BGR2HSV),
+        "gray": gray,
+        "edge_map": cv2.Canny(gray, 45, 135),
+        "necklace_area": int(necklace_mask.sum()),
+        "necklace_bbox": bounding_box(necklace_mask),
+        "necklace_distance": cv2.distanceTransform(
+            necklace_mask.astype(np.uint8),
+            cv2.DIST_L2,
+            5,
+        ),
+    }
+
+
 def pendant_candidate_evidence(
     mask: np.ndarray,
     necklace_mask: np.ndarray,
     image: np.ndarray,
+    analysis_context: Dict[str, object] | None = None,
 ) -> Dict[str, object]:
     """Measure whether a region is a distinct bottom-middle compact pendant."""
     evidence: Dict[str, object] = {
@@ -2662,7 +2702,14 @@ def pendant_candidate_evidence(
         return evidence
 
     area = int(mask.sum())
-    necklace_area = max(1, int(necklace_mask.sum()))
+    necklace_area = max(
+        1,
+        int(
+            analysis_context["necklace_area"]
+            if analysis_context is not None
+            else necklace_mask.sum()
+        ),
+    )
     area_ratio = area / float(necklace_area)
     ys, xs = np.where(mask > 0)
     if not len(xs):
@@ -2676,7 +2723,11 @@ def pendant_candidate_evidence(
     solidity = compute_solidity(mask)
     circularity, contour_solidity = _largest_contour_shape_metrics(mask)
 
-    necklace_x1, necklace_y1, necklace_x2, necklace_y2 = bounding_box(necklace_mask)
+    necklace_x1, necklace_y1, necklace_x2, necklace_y2 = (
+        analysis_context["necklace_bbox"]
+        if analysis_context is not None
+        else bounding_box(necklace_mask)
+    )
     range_x = max(1.0, float(necklace_x2 - necklace_x1))
     range_y = max(1.0, float(necklace_y2 - necklace_y1))
     center_x = float(xs.mean())
@@ -2686,7 +2737,11 @@ def pendant_candidate_evidence(
     center_offset = abs(x_fraction - 0.5)
     bottom_reach = (float(y2) - necklace_y1) / range_y
 
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    hsv = (
+        analysis_context["hsv"]
+        if analysis_context is not None
+        else cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    )
     hue = hsv[:, :, 0][mask > 0]
     sat = hsv[:, :, 1][mask > 0]
     val = hsv[:, :, 2][mask > 0]
@@ -2724,7 +2779,15 @@ def pendant_candidate_evidence(
         )
         top_contact_ratio = float((shell_y <= top_limit).mean())
 
-    thickness = cv2.distanceTransform(necklace_mask.astype(np.uint8), cv2.DIST_L2, 5)
+    thickness = (
+        analysis_context["necklace_distance"]
+        if analysis_context is not None
+        else cv2.distanceTransform(
+            necklace_mask.astype(np.uint8),
+            cv2.DIST_L2,
+            5,
+        )
+    )
     candidate_peak = float(thickness[mask > 0].max()) if area else 0.0
     comparison_mask = necklace_mask & (1 - dilate(mask.astype(np.uint8), 5))
     comparison_values = thickness[comparison_mask > 0]
@@ -2875,8 +2938,12 @@ def is_valid_pendant(mask: np.ndarray, necklace_mask: np.ndarray, image: np.ndar
     return bool(pendant_candidate_evidence(mask, necklace_mask, image)["accepted"])
 
 
-def _skeleton_endpoint_count(mask: np.ndarray) -> int:
-    skeleton = _skeletonize(mask.astype(np.uint8))
+def _skeleton_endpoint_count(
+    mask: np.ndarray,
+    skeleton: np.ndarray | None = None,
+) -> int:
+    if skeleton is None:
+        skeleton = _skeletonize(mask.astype(np.uint8))
     if not skeleton.any():
         return 0
     neighbors = cv2.filter2D(
@@ -2888,14 +2955,23 @@ def _skeleton_endpoint_count(mask: np.ndarray) -> int:
     return int(((skeleton > 0) & (neighbors == 2)).sum())
 
 
-def _parallel_line_metrics(mask: np.ndarray, image: np.ndarray) -> Tuple[int, float]:
+def _parallel_line_metrics(
+    mask: np.ndarray,
+    image: np.ndarray,
+    gray_image: np.ndarray | None = None,
+    bbox: Tuple[int, int, int, int] | None = None,
+) -> Tuple[int, float]:
     if not mask.any():
         return 0, 0.0
-    x1, y1, x2, y2 = bounding_box(mask)
+    x1, y1, x2, y2 = bbox if bbox is not None else bounding_box(mask)
     crop_mask = mask[y1 : y2 + 1, x1 : x2 + 1].astype(np.uint8)
-    crop_gray = cv2.cvtColor(
-        image[y1 : y2 + 1, x1 : x2 + 1],
-        cv2.COLOR_BGR2GRAY,
+    crop_gray = (
+        gray_image[y1 : y2 + 1, x1 : x2 + 1]
+        if gray_image is not None
+        else cv2.cvtColor(
+            image[y1 : y2 + 1, x1 : x2 + 1],
+            cv2.COLOR_BGR2GRAY,
+        )
     )
     edges = cv2.Canny(crop_gray, 40, 120)
     edges[crop_mask == 0] = 0
@@ -2936,6 +3012,7 @@ def tassel_candidate_evidence(
     necklace_mask: np.ndarray,
     image: np.ndarray,
     jewel_type: str | None = None,
+    analysis_context: Dict[str, object] | None = None,
 ) -> Dict[str, object]:
     """Require colorful, filament-like, terminal evidence for tassels."""
     evidence: Dict[str, object] = {
@@ -2950,14 +3027,27 @@ def tassel_candidate_evidence(
     if len(xs) == 0:
         return evidence
 
-    bbox_w = int(xs.max()) - int(xs.min()) + 1
-    bbox_h = int(ys.max()) - int(ys.min()) + 1
-    area = int(mask.sum())
+    candidate_bbox = (
+        int(xs.min()),
+        int(ys.min()),
+        int(xs.max()),
+        int(ys.max()),
+    )
+    bbox_w = candidate_bbox[2] - candidate_bbox[0] + 1
+    bbox_h = candidate_bbox[3] - candidate_bbox[1] + 1
+    x1, y1, x2, y2 = candidate_bbox
+    candidate_pixels = mask[y1 : y2 + 1, x1 : x2 + 1] > 0
+    area = int(candidate_pixels.sum())
 
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    hue = hsv[:, :, 0][mask > 0]
-    sat = hsv[:, :, 1][mask > 0]
-    val = hsv[:, :, 2][mask > 0]
+    hsv = (
+        analysis_context["hsv"]
+        if analysis_context is not None
+        else cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    )
+    hsv_crop = hsv[y1 : y2 + 1, x1 : x2 + 1]
+    hue = hsv_crop[:, :, 0][candidate_pixels]
+    sat = hsv_crop[:, :, 1][candidate_pixels]
+    val = hsv_crop[:, :, 2][candidate_pixels]
 
     gold_ratio = float(((hue > 8) & (hue < 40) & (sat > 40)).mean())
     textile_pixels = (
@@ -2981,15 +3071,42 @@ def tassel_candidate_evidence(
     aspect_ratio = bbox_w / max(1, bbox_h)
     fill_ratio = area / max(1, bbox_w * bbox_h)
 
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    edge_map = cv2.Canny(gray, 45, 135)
-    edge_ratio = float((edge_map[mask > 0] > 0).mean())
-    necklace_area = max(1, int(necklace_mask.sum()))
+    gray = (
+        analysis_context["gray"]
+        if analysis_context is not None
+        else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    )
+    edge_map = (
+        analysis_context["edge_map"]
+        if analysis_context is not None
+        else cv2.Canny(gray, 45, 135)
+    )
+    edge_ratio = float(
+        (
+            edge_map[y1 : y2 + 1, x1 : x2 + 1][candidate_pixels]
+            > 0
+        ).mean()
+    )
+    necklace_area = max(
+        1,
+        int(
+            analysis_context["necklace_area"]
+            if analysis_context is not None
+            else necklace_mask.sum()
+        ),
+    )
     area_ratio = area / float(necklace_area)
-    skeleton = _skeletonize(mask.astype(np.uint8))
+    skeleton = _skeletonize(
+        np.pad(candidate_pixels.astype(np.uint8), 1),
+    )[1:-1, 1:-1]
     skeleton_ratio = float(skeleton.sum()) / float(max(1, area))
-    endpoint_count = _skeleton_endpoint_count(mask)
-    long_line_count, line_concentration = _parallel_line_metrics(mask, image)
+    endpoint_count = _skeleton_endpoint_count(mask, skeleton)
+    long_line_count, line_concentration = _parallel_line_metrics(
+        mask,
+        image,
+        gray,
+        candidate_bbox,
+    )
     pale_thread_bundle = bool(
         area_ratio >= 0.12
         and saturated_ratio <= 0.34
@@ -3064,7 +3181,11 @@ def tassel_candidate_evidence(
     if pale_thread_bundle:
         score += 4.0
 
-    necklace_x1, necklace_y1, necklace_x2, necklace_y2 = bounding_box(necklace_mask)
+    necklace_x1, necklace_y1, necklace_x2, necklace_y2 = (
+        analysis_context["necklace_bbox"]
+        if analysis_context is not None
+        else bounding_box(necklace_mask)
+    )
     range_x = max(1.0, float(necklace_x2 - necklace_x1))
     range_y = max(1.0, float(necklace_y2 - necklace_y1))
     center_x = float(xs.mean())
@@ -3272,11 +3393,16 @@ def is_likely_tassel(
     necklace_mask: np.ndarray,
     image: np.ndarray,
     jewel_type: str | None = None,
+    analysis_context: Dict[str, object] | None = None,
 ) -> bool:
     geometry_accepted = bool(
-        tassel_candidate_evidence(mask, necklace_mask, image, jewel_type)[
-            "accepted"
-        ]
+        tassel_candidate_evidence(
+            mask,
+            necklace_mask,
+            image,
+            jewel_type,
+            analysis_context,
+        )["accepted"]
     )
     if not geometry_accepted:
         return False
@@ -3380,6 +3506,7 @@ def pick_pendant_seed(
     necklace_mask: np.ndarray,
     image: np.ndarray,
     jewel_type: str | None = None,
+    analysis_context: Dict[str, object] | None = None,
 ) -> np.ndarray:
     """Find the pendant region using multi-candidate blob scoring.
 
@@ -3443,7 +3570,7 @@ def pick_pendant_seed(
                 if stats[idx, cv2.CC_STAT_AREA] < max(20, necklace_area // 5000):
                     continue
                 comp = (labels == idx).astype(np.uint8)
-                candidate = dilate(comp, expand_radius) & necklace_mask
+                candidate = dilate_large_ellipse(comp, expand_radius) & necklace_mask
                 candidate = close(candidate, 7)
                 blob_candidates.append(candidate)
 
@@ -3468,12 +3595,23 @@ def pick_pendant_seed(
     for cand in all_candidates:
         if not cand.any():
             continue
-        # Skip candidates that look like tassels
-        if is_likely_tassel(cand, necklace_mask, image, jewel_type):
+        if is_likely_tassel(
+            cand,
+            necklace_mask,
+            image,
+            jewel_type,
+            analysis_context,
+        ):
             continue
-        if not is_valid_pendant(cand, necklace_mask, image):
+        evidence = pendant_candidate_evidence(
+            cand,
+            necklace_mask,
+            image,
+            analysis_context,
+        )
+        if not evidence["accepted"]:
             continue
-        sc = _score_pendant_candidate(cand, necklace_mask, image)
+        sc = float(evidence["score"])
         if sc > best_score:
             best_score = sc
             best_seed = cand.copy()
@@ -3485,13 +3623,24 @@ def detect_pendant_seed(
     necklace_mask: np.ndarray,
     image: np.ndarray,
     jewel_type: str | None = None,
+    analysis_context: Dict[str, object] | None = None,
 ) -> Tuple[np.ndarray, float]:
-    candidate = pick_pendant_seed(necklace_mask, image, jewel_type)
+    candidate = pick_pendant_seed(
+        necklace_mask,
+        image,
+        jewel_type,
+        analysis_context,
+    )
     if not candidate.any():
         return np.zeros_like(necklace_mask, dtype=np.uint8), -999.0
 
-    score = _score_pendant_candidate(candidate, necklace_mask, image)
-    evidence = pendant_candidate_evidence(candidate, necklace_mask, image)
+    evidence = pendant_candidate_evidence(
+        candidate,
+        necklace_mask,
+        image,
+        analysis_context,
+    )
+    score = float(evidence["score"])
     if not evidence["accepted"]:
         return np.zeros_like(necklace_mask, dtype=np.uint8), score
     return candidate.astype(np.uint8), score
@@ -3576,6 +3725,7 @@ def detect_tassel_seed(
     textile_mask: np.ndarray,
     jewel_type: str | None = None,
     use_classifier: bool = True,
+    analysis_context: Dict[str, object] | None = None,
 ) -> Tuple[np.ndarray, np.ndarray, float, Dict[str, object] | None]:
     h, w = necklace_mask.shape
     if _tassel_auto_policy(jewel_type) == "disabled":
@@ -3707,6 +3857,7 @@ def detect_tassel_seed(
             necklace_mask,
             image,
             jewel_type,
+            analysis_context,
         )
         geometry_accepted = bool(evidence["accepted"])
         classifier = (
@@ -4131,6 +4282,7 @@ def reclassify_pendant_if_tassel(
     lock_pendant: bool = False,
     lock_tassel: bool = False,
     jewel_type: str | None = None,
+    analysis_context: Dict[str, object] | None = None,
 ) -> Dict[str, np.ndarray]:
     """Post-processing: if the final pendant region looks like a tassel, move it to the tassel/thread class."""
     pendant = parts.get("pendant")
@@ -4139,7 +4291,13 @@ def reclassify_pendant_if_tassel(
     if lock_pendant or lock_tassel:
         return parts
 
-    if is_likely_tassel(pendant, necklace_mask, image, jewel_type):
+    if is_likely_tassel(
+        pendant,
+        necklace_mask,
+        image,
+        jewel_type,
+        analysis_context,
+    ):
         parts["tassel"] = ((parts["tassel"] | pendant) & necklace_mask).astype(np.uint8)
         parts["pendant"] = np.zeros_like(necklace_mask, dtype=np.uint8)
         parts["tassel"] = close(parts["tassel"], 9)
@@ -4562,16 +4720,19 @@ def segment_necklace(
     elif necklace_mask.any():
         necklace_mask = keep_primary_jewelry_components(necklace_mask)
 
+    analysis_context = _build_candidate_analysis_context(image, necklace_mask)
     tassel_seed, chain_seed_hint, tassel_score, tassel_presence_evidence = detect_tassel_seed(
         necklace_mask,
         image,
         color_maps.get("textile_mask", color_maps["red_mask"]),
         jewel_type,
+        analysis_context=analysis_context,
     )
     pendant_seed, pendant_score = detect_pendant_seed(
         necklace_mask,
         image,
         jewel_type,
+        analysis_context,
     )
     tassel_locked = False
     pendant_locked = False
@@ -4586,6 +4747,7 @@ def segment_necklace(
                 necklace_mask,
                 image,
                 jewel_type,
+                analysis_context,
             )
             source_type = _normalized_jewel_type(manual_feedback.source_jewel_type)
             current_type = _normalized_jewel_type(jewel_type)
@@ -4620,6 +4782,7 @@ def segment_necklace(
                 feedback_seed,
                 necklace_mask,
                 image,
+                analysis_context,
             )
             if authoritative_feedback or pendant_feedback_evidence["accepted"]:
                 pendant_seed = feedback_seed
@@ -4663,6 +4826,7 @@ def segment_necklace(
             necklace_mask,
             image,
             jewel_type,
+            analysis_context,
         )
     ):
         tassel_seed |= pendant_seed
@@ -4684,6 +4848,7 @@ def segment_necklace(
         lock_pendant=pendant_locked,
         lock_tassel=tassel_locked,
         jewel_type=jewel_type,
+        analysis_context=analysis_context,
     )
 
     # Voronoi assignment can grow a good seed into an implausibly large region.
@@ -4694,12 +4859,14 @@ def segment_necklace(
             parts["pendant"],
             necklace_mask,
             image,
+            analysis_context,
         )
         if not final_pendant_evidence["accepted"]:
             seed_evidence = pendant_candidate_evidence(
                 pendant_seed,
                 necklace_mask,
                 image,
+                analysis_context,
             )
             parts["pendant"] = (
                 pendant_seed.copy()
@@ -4713,6 +4880,7 @@ def segment_necklace(
             necklace_mask,
             image,
             jewel_type,
+            analysis_context,
         )
         if not final_tassel_evidence["accepted"]:
             seed_evidence = tassel_candidate_evidence(
@@ -4720,6 +4888,7 @@ def segment_necklace(
                 necklace_mask,
                 image,
                 jewel_type,
+                analysis_context,
             )
             parts["tassel"] = (
                 tassel_seed.copy()
@@ -4749,12 +4918,14 @@ def segment_necklace(
         parts["pendant"],
         necklace_mask,
         image,
+        analysis_context,
     )
     tassel_evidence = tassel_candidate_evidence(
         parts["tassel"],
         necklace_mask,
         image,
         jewel_type,
+        analysis_context,
     )
     debug = {
         "bead_analysis": bead_result,

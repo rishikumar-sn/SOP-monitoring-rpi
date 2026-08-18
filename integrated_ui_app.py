@@ -970,6 +970,33 @@ SEGMENTATION_CLASSES = {
     "Kasu Malai",
     "Mangalsutra",
 }
+# Stone weight is not estimated for these jewel types; the stone analysis
+# result is reported as "<jewel type> with stones" / "<jewel type> without stones".
+STONE_WEIGHT_EXEMPT_CLASSES = {
+    "Bangle",
+    "Finger ring",
+    "Finger Ring",
+    "Earing / Jumkha",
+    "Earrings/ Jhumki",
+}
+
+
+def stone_weight_exempt_for_label(label: Any) -> bool:
+    normalized = str(label or "").strip()
+    if not normalized:
+        return False
+    return normalized.casefold() in {
+        item.casefold() for item in STONE_WEIGHT_EXEMPT_CLASSES
+    }
+
+
+def stone_weight_exempt_for_state(state: dict[str, Any]) -> bool:
+    classification = state.get("classification") or {}
+    return stone_weight_exempt_for_label(
+        classification.get("confirmed_label") or classification.get("predicted_label")
+    )
+
+
 HIGH_RISK_STONE_WEIGHT_G = 1.0
 STONE_ANALYSIS_V2_DEBUG = os.environ.get(
     "STONE_ANALYSIS_V2_DEBUG",
@@ -5375,6 +5402,7 @@ def weight_summary_for_state(state: dict[str, Any]) -> dict[str, Any]:
     jewel_weight = weights.get("jewel_weight_g")
     appraiser_stone_weight = weights.get("appraiser_stone_weight_g")
     stones = state.get("stone_detection") or {}
+    stone_weight_exempt = stone_weight_exempt_for_state(state)
     stone_setting_profile = stone_area_calculator.normalize_stone_setting_profile(
         stones.get("setting_profile")
     )
@@ -5393,9 +5421,17 @@ def weight_summary_for_state(state: dict[str, Any]) -> dict[str, Any]:
     weight_confidences: list[str] = []
     weight_methods: list[str] = []
     v2_geometry_estimate = False
+    stones_detected = False
     for stone_key in ("main", "side"):
         result = stones.get(stone_key)
         if not isinstance(result, dict):
+            continue
+        if (
+            int(result.get("stone_instance_count") or 0) > 0
+            or float(result.get("stone_percentage") or 0.0) > 0
+        ):
+            stones_detected = True
+        if stone_weight_exempt:
             continue
         estimate = result.get("weight_estimate") or {}
         if estimate.get("success"):
@@ -5484,6 +5520,9 @@ def weight_summary_for_state(state: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "jewel_weight_g": round(float(jewel_weight), 4) if jewel_weight is not None else None,
+        "stone_weight_exempt": stone_weight_exempt,
+        "stones_detected": stones_detected,
+        "stone_analysis_ran": bool(stones.get("main") or stones.get("side")),
         "estimated_stone_weight_g": (
             round(float(estimated_stone_weight), 4)
             if estimated_stone_weight is not None
@@ -5533,8 +5572,23 @@ def risk_factors_for_state(
     if maximum_g is None and summary["estimated_stone_weight_g"] is not None:
         minimum_g = summary["estimated_stone_weight_g"]
         maximum_g = summary["estimated_stone_weight_g"]
-    stone_assessed = maximum_g is not None
-    stone_high = bool(stone_assessed and float(maximum_g) > HIGH_RISK_STONE_WEIGHT_G)
+    if summary.get("stone_weight_exempt"):
+        stones = state.get("stone_detection") or {}
+        stone_assessed = bool(stones.get("main") or stones.get("side"))
+        stone_high = bool(stone_assessed and summary.get("stones_detected"))
+        stone_result = (
+            "Detected"
+            if stone_high
+            else ("Not detected" if stone_assessed else "Analysis not run")
+        )
+    else:
+        stone_assessed = maximum_g is not None
+        stone_high = bool(stone_assessed and float(maximum_g) > HIGH_RISK_STONE_WEIGHT_G)
+        stone_result = (
+            f"{float(minimum_g):.2f}-{float(maximum_g):.2f} g"
+            if stone_assessed
+            else "Weight unavailable"
+        )
 
     return {
         "thread": {
@@ -5556,11 +5610,7 @@ def risk_factors_for_state(
             "assessed": stone_assessed,
             "high": stone_high,
             "status": "HIGH RISK" if stone_high else ("LOW RISK" if stone_assessed else "NOT ASSESSED"),
-            "result": (
-                f"{float(minimum_g):.2f}-{float(maximum_g):.2f} g"
-                if stone_assessed
-                else "Weight unavailable"
-            ),
+            "result": stone_result,
         },
     }
 
@@ -5610,7 +5660,10 @@ def build_final_summary(state: dict[str, Any]) -> None:
     if bead_risk_high:
         risk_reasons.append("beads detected")
     if stone_risk_high:
-        risk_reasons.append("stone weight range exceeds 1.00 g")
+        if weight_summary.get("stone_weight_exempt"):
+            risk_reasons.append("stones detected")
+        else:
+            risk_reasons.append("stone weight range exceeds 1.00 g")
     if branch_key == "dimension":
         if dimension.get("done"):
             if dimension.get("od_mm") is not None:
@@ -5667,6 +5720,12 @@ def build_final_summary(state: dict[str, Any]) -> None:
         maximum_g = weight_summary["estimated_stone_weight_g"] if maximum_g is None else maximum_g
         lines.append(f"Stone Weight: {minimum_g:.2f}-{maximum_g:.2f} g")
         lines.append(f"Stone Risk: {risk_factors['stones']['status']}")
+    elif weight_summary.get("stone_weight_exempt"):
+        if weight_summary.get("stone_analysis_ran"):
+            lines.append(
+                f"{label} {'with' if weight_summary.get('stones_detected') else 'without'} stones"
+            )
+            lines.append(f"Stone Risk: {risk_factors['stones']['status']}")
     if weight_summary["appraiser_stone_weight_g"] is not None:
         lines.append(f"Appraiser stone weight: {weight_summary['appraiser_stone_weight_g']:.4f} g")
     if weight_summary["tassel_present"]:
@@ -5733,7 +5792,12 @@ def build_final_summary(state: dict[str, Any]) -> None:
         "reflective_surface_flag": bool(reflective_surface_flag),
         "weight_summary": weight_summary,
         "stone_weight_summary": {
-            "success": weight_summary["estimated_stone_weight_g"] is not None,
+            "success": (
+                weight_summary["estimated_stone_weight_g"] is not None
+                or bool(weight_summary.get("stone_weight_exempt"))
+            ),
+            "stone_weight_exempt": bool(weight_summary.get("stone_weight_exempt")),
+            "stones_detected": bool(weight_summary.get("stones_detected")),
             "estimated_total_average_g": weight_summary["estimated_stone_weight_g"] or 0.0,
             "estimated_total_typical_g": weight_summary["estimated_stone_weight_g"] or 0.0,
             "estimated_total_minimum_g": weight_summary["estimated_stone_weight_minimum_g"] or 0.0,
@@ -6157,6 +6221,11 @@ def generate_pdf_report(
             minimum_g = weight_summary["estimated_stone_weight_g"] if minimum_g is None else minimum_g
             maximum_g = weight_summary["estimated_stone_weight_g"] if maximum_g is None else maximum_g
             weight_rows.append(["Stone Weight", f"{minimum_g:.2f}-{maximum_g:.2f} g"])
+        elif weight_summary.get("stone_weight_exempt"):
+            weight_rows.append([
+                "Stones",
+                "Detected" if weight_summary.get("stones_detected") else "Not detected",
+            ])
         else:
             weight_rows.append(["Stone Weight", "Not available"])
         if weight_summary["appraiser_stone_weight_g"] is not None:
@@ -6276,6 +6345,7 @@ def generate_pdf_report(
         if main_stones:
             story.append(PageBreak())
             story.append(Paragraph("Stone Analysis - Main Image", heading_style))
+            jewel_label = _jewel_type_for_state(state)
             main_weight = stone_area_calculator.calibrate_weight_estimate_to_jewel_weight(
                 main_stones.get("weight_estimate") or {},
                 weight_summary["jewel_weight_g"],
@@ -6300,6 +6370,16 @@ def generate_pdf_report(
                 ))
                 main_risk = "HIGH RISK" if main_maximum_g > HIGH_RISK_STONE_WEIGHT_G else "LOW RISK"
                 story.append(Paragraph(f"<b>Result:</b> {main_risk}", normal_style))
+            elif main_stones.get("stone_weight_exempt"):
+                stones_detected = bool(
+                    int(main_stones.get("stone_instance_count") or 0) > 0
+                    or float(main_stones.get("stone_percentage") or 0.0) > 0
+                )
+                story.append(Paragraph(
+                    f"<b>Result:</b> {jewel_label} "
+                    f"{'with' if stones_detected else 'without'} stones",
+                    normal_style,
+                ))
             else:
                 story.append(Paragraph(
                     "<b>Stone Weight:</b> Not available",
@@ -6322,6 +6402,7 @@ def generate_pdf_report(
         if side_stones:
             story.append(PageBreak())
             story.append(Paragraph("Stone Analysis - Side Image", heading_style))
+            jewel_label = _jewel_type_for_state(state)
             side_weight = stone_area_calculator.calibrate_weight_estimate_to_jewel_weight(
                 side_stones.get("weight_estimate") or {},
                 weight_summary["jewel_weight_g"],
@@ -6346,6 +6427,16 @@ def generate_pdf_report(
                 ))
                 side_risk = "HIGH RISK" if side_maximum_g > HIGH_RISK_STONE_WEIGHT_G else "LOW RISK"
                 story.append(Paragraph(f"<b>Result:</b> {side_risk}", normal_style))
+            elif side_stones.get("stone_weight_exempt"):
+                stones_detected = bool(
+                    int(side_stones.get("stone_instance_count") or 0) > 0
+                    or float(side_stones.get("stone_percentage") or 0.0) > 0
+                )
+                story.append(Paragraph(
+                    f"<b>Result:</b> {jewel_label} "
+                    f"{'with' if stones_detected else 'without'} stones",
+                    normal_style,
+                ))
             else:
                 story.append(Paragraph(
                     "<b>Stone Weight:</b> Not available",
@@ -8256,12 +8347,30 @@ def run_stone_pipeline(
             * float(analysis_measurement_scale["mm_per_pixel_x"])
             * float(analysis_measurement_scale["mm_per_pixel_y"])
         )
-    weight_estimate = stone_area_calculator.apply_stone_setting_weight_model(
-        face_up_weight_estimate,
-        stone_setting_profile,
-        visible_stone_area_mm2,
-        entered_weight,
-    )
+    stone_weight_exempt = stone_weight_exempt_for_label(confirmed_label)
+    if stone_weight_exempt:
+        weight_estimate = {
+            "success": False,
+            "weight_estimate_suppressed": True,
+            "stone_weight_exempt": True,
+            "stone_setting_profile": stone_area_calculator.normalize_stone_setting_profile(
+                stone_setting_profile
+            ),
+            "visible_stone_area_mm2": (
+                round(visible_stone_area_mm2, 4)
+                if visible_stone_area_mm2 is not None
+                else None
+            ),
+            "entered_jewel_weight_g": entered_weight,
+            "error": "Stone weight is not estimated for this jewel type.",
+        }
+    else:
+        weight_estimate = stone_area_calculator.apply_stone_setting_weight_model(
+            face_up_weight_estimate,
+            stone_setting_profile,
+            visible_stone_area_mm2,
+            entered_weight,
+        )
     report["stone_setting_profile"] = weight_estimate["stone_setting_profile"]
     report["stone_weight_estimate"] = weight_estimate
     surface_risk = report.get("stone_surface_risk") or (
@@ -8400,6 +8509,11 @@ def run_stone_pipeline(
             "analysis_mask": artifact_payload(state, analysis_mask_path),
         },
         "weight_estimate": weight_estimate,
+        "stone_weight_exempt": stone_weight_exempt,
+        "stones_detected": bool(
+            int(report.get("stone_instance_count", 0)) > 0
+            or float(report.get("stone_percentage", 0.0)) > 0
+        ),
         "estimated_total_minimum_g": weight_estimate.get(
             "estimated_total_minimum_g"
         ),
