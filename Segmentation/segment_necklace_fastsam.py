@@ -43,7 +43,8 @@ TASSEL_AUTO_MIN_SCORE_NECKLACE = 9.0
 TASSEL_AUTO_MIN_SCORE_OTHER = 11.5
 TASSEL_AUTO_DISABLED_TYPES = frozenset({"dollar chain", "dollar"})
 TASSEL_CLASSIFIER_PATH = Path(__file__).resolve().parent / "tassel_mobilenet_v3_small.pt"
-TASSEL_CLASSIFIER_THRESHOLD = 0.5
+TASSEL_CLASSIFIER_MIN_THRESHOLD = 0.6
+TASSEL_CLASSIFIER_THRESHOLD = TASSEL_CLASSIFIER_MIN_THRESHOLD
 
 _TASSEL_CLASSIFIER = None
 _TASSEL_CLASSIFIER_TRANSFORM = None
@@ -52,7 +53,7 @@ _TASSEL_CLASSIFIER_ERROR: str | None = None
 
 def configure_tassel_classifier(
     checkpoint_path: Path | str,
-    threshold: float = 0.5,
+    threshold: float = TASSEL_CLASSIFIER_MIN_THRESHOLD,
 ) -> None:
     """Select a checkpoint and clear the cached classifier for the next analysis."""
     global TASSEL_CLASSIFIER_PATH
@@ -62,7 +63,10 @@ def configure_tassel_classifier(
     global _TASSEL_CLASSIFIER_ERROR
 
     TASSEL_CLASSIFIER_PATH = Path(checkpoint_path).resolve()
-    TASSEL_CLASSIFIER_THRESHOLD = max(0.05, min(0.95, float(threshold)))
+    TASSEL_CLASSIFIER_THRESHOLD = max(
+        TASSEL_CLASSIFIER_MIN_THRESHOLD,
+        min(0.95, float(threshold)),
+    )
     _TASSEL_CLASSIFIER = None
     _TASSEL_CLASSIFIER_TRANSFORM = None
     _TASSEL_CLASSIFIER_ERROR = None

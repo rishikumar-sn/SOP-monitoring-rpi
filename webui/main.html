@@ -383,6 +383,19 @@
       font-weight: 600;
     }
     .micStatus { margin-top: 10px; padding: 8px 11px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12.5px; color: var(--muted); font-weight: 600; }
+    .stoneJobBanner {
+      margin-top: 10px;
+      padding: 9px 12px;
+      border-radius: 9px;
+      background: var(--primary-soft);
+      border: 1px solid #bfdbfe;
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    .stoneJobBanner.error { background: var(--danger-soft); border-color: #fecaca; color: var(--danger); }
+    .stoneJobBanner.success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
 
     .chipRow { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
     .chipBtn {
@@ -655,6 +668,43 @@
     .statBox .k { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
     .statBox .v { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
 
+    /* ============ Results overlay ============ */
+    .resultsOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 160;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+    }
+    .resultsShell { display: flex; flex-direction: column; height: 100%; max-width: 980px; width: 100%; margin: 0 auto; background: var(--surface); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+    .resultsBody { flex: 1; overflow-y: auto; padding: 20px; }
+    .resultsView { max-width: 720px; }
+    .resultsEmpty { padding: 40px 20px; text-align: center; color: var(--muted); }
+    .resultsNavCount {
+      display: inline-block;
+      min-width: 18px;
+      padding: 0 7px;
+      margin-left: 8px;
+      border-radius: 999px;
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 18px;
+    }
+    .resultsSection {
+      margin-bottom: 22px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+    }
+    .resultsSection h3 { margin: 0 0 6px; font-size: 14.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text); }
+    .resultsSection .tiny { margin: 0 0 12px; }
+    .loading-timer { margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--muted); min-height: 18px; }
+
     /* ============ Responsive ============ */
     @media (max-width: 900px) {
       .mainGrid { grid-template-columns: 1fr; height: auto; }
@@ -677,6 +727,7 @@
     <div class="loadingCard">
       <div class="loading-spinner"></div>
       <div class="loading-text">Processing...</div>
+      <div id="loadingTimer" class="loading-timer"></div>
     </div>
   </div>
 
@@ -727,6 +778,7 @@
       </button>
       <a class="btn secondary smallBtn headerBtn" href="/report">Reports</a>
       <button id="btnOpenSettings" class="btn secondary smallBtn headerBtn">Settings</button>
+      <button id="btnOpenResults" class="btn secondary smallBtn headerBtn hidden">Results</button>
     </div>
   </header>
 
@@ -863,8 +915,6 @@
           <label for="sideStoneSettingProfile">Stone Setting Type</label>
           <select id="sideStoneSettingProfile">
             <option value="front_only_shallow">Half cut / front-only stones</option>
-            <option value="open_back_faceted">Full cut / open-back stones</option>
-            <option value="unknown">Unknown — visible area only</option>
           </select>
         </div>
         <div class="twoCol">
@@ -938,20 +988,14 @@
           <span class="stepNum" data-step-label="mainStone"></span>
           <button type="button" class="moreBtn" data-stage="mainStone" aria-label="More actions">&#8943;</button>
         </div>
-        <p class="stepInstruction">Choose the stone setting, then run the stone analysis.</p>
-        <div class="chipRow">
-          <button type="button" class="chipBtn active" data-chip="front_only_shallow">Half Cut</button>
-          <button type="button" class="chipBtn" data-chip="open_back_faceted">Full Cut</button>
-          <button type="button" class="chipBtn" data-chip="unknown">Unsure</button>
-        </div>
+        <p class="stepInstruction">Stone weight mode: Half Cut (front-only). Run the stone analysis, then continue.</p>
         <select id="mainStoneSettingProfile" class="hidden">
           <option value="front_only_shallow">Half cut / front-only stones</option>
-          <option value="open_back_faceted">Full cut / open-back stones</option>
-          <option value="unknown">Unknown — visible area only</option>
         </select>
         <span id="mainStoneTag" class="hidden"></span>
         <div class="toolRow">
           <button id="btnRunMainStoneDetection" class="btn primary">Start Stone Analysis</button>
+          <button id="btnNextFromMainStone" class="btn gold hidden">Next: Acid Test</button>
         </div>
         <div class="resultBox">
           <div class="heroValue" id="mainStoneValue">Waiting for analysis...</div>
@@ -980,6 +1024,7 @@
         </div>
         <p class="stepInstruction">Rub the jewel on the test stone and listen for the result.</p>
         <span id="purityTag" class="hidden"></span>
+        <div id="stoneJobBanner" class="stoneJobBanner hidden"></div>
         <div id="purityAudioStatus" class="micStatus">Waiting for microphone selection.</div>
         <div id="purityAudioLive" class="purityAudioLive hidden">
           <div class="purityAudioHead">
@@ -1409,6 +1454,23 @@
     </div>
   </div>
 
+  <!-- ==================== Results ==================== -->
+  <div id="resultsOverlay" class="resultsOverlay hidden">
+    <div class="resultsShell">
+      <header class="settingsHead">
+        <div class="brand">
+          <img class="logoImage" src="/webui/embsys_logo.png" alt="Embsys logo" />
+          <h2 class="settingsTitle">Results</h2>
+        </div>
+        <button id="btnCloseResults" class="btn secondary smallBtn">Back to Workflow</button>
+      </header>
+      <nav id="resultsTabs" class="settingsNav"></nav>
+      <div id="resultsBody" class="resultsBody">
+        <div id="resultsContent" class="resultsView"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== More menu ==================== -->
   <div id="moreMenu" class="moreMenu hidden"></div>
 
@@ -1558,6 +1620,7 @@
       mainStoneSettingProfile: document.getElementById("mainStoneSettingProfile"),
       btnRunMainStoneDetection: document.getElementById("btnRunMainStoneDetection"),
       btnShowFinalFromMain: document.getElementById("btnShowFinalFromMain"),
+      btnNextFromMainStone: document.getElementById("btnNextFromMainStone"),
       btnMainStonePrev: document.getElementById("btnMainStonePrev"),
       btnSkipMainStone: document.getElementById("btnSkipMainStone"),
       mainStoneValue: document.getElementById("mainStoneValue"),
@@ -1568,6 +1631,7 @@
       purityPanel: document.getElementById("purityPanel"),
       purityTitle: document.getElementById("purityTitle"),
       purityTag: document.getElementById("purityTag"),
+      stoneJobBanner: document.getElementById("stoneJobBanner"),
       purityMicSelect: document.getElementById("purityMicSelect"),
       purityAudioStatus: document.getElementById("purityAudioStatus"),
       purityMicWarning: document.getElementById("purityMicWarning"),
@@ -1632,6 +1696,11 @@
       btnClearJewelCount: document.getElementById("btnClearJewelCount"),
       btnPledgeSetupNext: document.getElementById("btnPledgeSetupNext"),
       jewelCountStatus: document.getElementById("jewelCountStatus"),
+      btnOpenResults: document.getElementById("btnOpenResults"),
+      resultsOverlay: document.getElementById("resultsOverlay"),
+      btnCloseResults: document.getElementById("btnCloseResults"),
+      resultsTabs: document.getElementById("resultsTabs"),
+      resultsContent: document.getElementById("resultsContent"),
     };
 
     const ctx = refs.previewCanvas.getContext("2d");
@@ -2682,9 +2751,16 @@
       );
       refs.purityMicSelect.innerHTML = "";
 
+      const audioSensor = data.audio_sensor || {};
       const autoOption = document.createElement("option");
       autoOption.value = "__AUTO__";
-      autoOption.textContent = "Auto (prefer AB13X USB mic)";
+      if (audioSensor.connected) {
+        autoOption.textContent = "Auto (AB13X USB mic)";
+        autoOption.disabled = false;
+      } else {
+        autoOption.textContent = "Auto (AB13X USB mic not connected)";
+        autoOption.disabled = true;
+      }
       refs.purityMicSelect.appendChild(autoOption);
 
       (data.devices || []).forEach((device) => {
@@ -2723,7 +2799,6 @@
       }
       refs.ttsOutputStatus.textContent = ttsState.status || "Preferred USB speaker not connected.";
 
-      const audioSensor = data.audio_sensor || {};
       refs.purityMicWarning.textContent = audioSensor.status || "Audio sensor not connected.";
       refs.purityMicWarning.classList.toggle("hidden", Boolean(audioSensor.connected));
     }
@@ -3144,6 +3219,9 @@
 
     async function runSegmentation() {
       try {
+        const estimates = (backendState && backendState.timing_estimates) || {};
+        const jewelleryEstimate = estimates.jewellery_analysis && estimates.jewellery_analysis.estimated_seconds;
+        startLoadingTimer("Jewellery Analysis", jewelleryEstimate);
         showLoading("Starting jewellery risk analysis...");
         setStatus("Jewellery risk analysis initiated...");
         const data = await postJson("/api/segmentation/run");
@@ -3218,16 +3296,27 @@
     async function runMainStoneDetection() {
       try {
         await saveStoneSettings();
-        showLoading("Running main image stone detection...");
-        setStatus("Running main image stone detection...");
+        const estimates = (backendState && backendState.timing_estimates) || {};
+        const stoneEstimate = estimates.stone_analysis && estimates.stone_analysis.estimated_seconds;
+        showLoading("Starting stone analysis...");
+        startLoadingTimer("Stone Analysis", stoneEstimate);
+        setStatus("Starting stone analysis...");
         const data = await postJson("/api/stone-detection/main", {
           stone_setting_profile: refs.mainStoneSettingProfile.value,
         });
         backendState = data.state;
         pendingStoneSettingProfile = null;
-        refs.btnShowFinalFromMain.disabled = false;
         hideLoading();
-        setStatusWithIndicator("Stone detection completed successfully", "success");
+        const job = stoneJobFromState();
+        if (job.status === "queued" || job.status === "running") {
+          setStatusWithIndicator(
+            "Stone analysis is running in the background. You may continue with the acid test.",
+            "success"
+          );
+        } else {
+          refs.btnShowFinalFromMain.disabled = false;
+          setStatusWithIndicator("Stone detection completed successfully", "success");
+        }
         renderServerState();
       } catch (error) {
         hideLoading();
@@ -3241,7 +3330,10 @@
         showLoading("Saving side image...");
         setStatus("Saving side image...");
         await ensureSideSourceSaved();
+        const estimates = (backendState && backendState.timing_estimates) || {};
+        const stoneEstimate = estimates.stone_analysis && estimates.stone_analysis.estimated_seconds;
         showLoading("Running stone analysis...");
+        startLoadingTimer("Stone Analysis", stoneEstimate);
         setStatus("Running stone analysis...");
         const data = await postJson("/api/side-stones/run", {
           stone_setting_profile: refs.sideStoneSettingProfile.value,
@@ -3503,6 +3595,190 @@
       };
 
       renderCurrent();
+    }
+
+    /* ---------- Results overlay ---------- */
+    let resultsActiveTab = null;
+    let resultsSignature = "";
+
+    function resultsSignatureOf(categories) {
+      return categories
+        .map((category) => category.key + "|" + category.items.map((item) => item.url).join(","))
+        .join(";");
+    }
+
+    function resultsCategories() {
+      const state = backendState || {};
+      const categories = [];
+
+      const weight = state.weight_extraction || {};
+      const weightItems = [weight.captured_image, weight.lcd_image].filter(Boolean);
+      if (weightItems.length) {
+        categories.push({ key: "weight", label: "Weight", items: weightItems });
+      }
+
+      const segmentation = state.segmentation || {};
+      const segmentationItems = [
+        segmentation.composite_layout,
+        segmentation.bead_analysis_image,
+        segmentation.overlay_image,
+        segmentation.preprocessed_image,
+        segmentation.bead_finder_image,
+      ].filter(Boolean);
+      if (segmentationItems.length) {
+        categories.push({
+          key: "segmentation",
+          label: "Jewellery Analysis",
+          items: segmentationItems,
+        });
+      }
+
+      const stones = state.stone_detection || {};
+      const stoneItems = [];
+      if (stones.main && stones.main.gallery) {
+        stoneItems.push(stones.main.gallery);
+      }
+      if (stones.side && stones.side.gallery) {
+        stoneItems.push(stones.side.gallery);
+      }
+      if (stoneItems.length) {
+        categories.push({
+          key: "stone",
+          label: "Stone Analysis",
+          items: stoneItems,
+        });
+      }
+      return categories;
+    }
+
+    function hasAnyResults() {
+      return resultsCategories().length > 0;
+    }
+
+    function renderResultsOverlay() {
+      const categories = resultsCategories();
+      if (!refs.resultsTabs || !refs.resultsContent) return;
+
+      if (!categories.length) {
+        refs.resultsTabs.innerHTML = "";
+        refs.resultsContent.innerHTML =
+          '<div class="resultsEmpty">No analysis results available yet.</div>';
+        resultsSignature = "";
+        return;
+      }
+      resultsSignature = resultsSignatureOf(categories);
+
+      const activeKey = categories.some((category) => category.key === resultsActiveTab)
+        ? resultsActiveTab
+        : categories[0].key;
+      resultsActiveTab = activeKey;
+
+      refs.resultsTabs.innerHTML = "";
+      categories.forEach((category) => {
+        const tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = "settingsNavBtn" + (category.key === activeKey ? " active" : "");
+        tab.dataset.view = category.key;
+        tab.textContent = category.label;
+        const count = document.createElement("span");
+        count.className = "resultsNavCount";
+        count.textContent = String(category.items.length);
+        tab.appendChild(count);
+        tab.addEventListener("click", () => {
+          resultsActiveTab = category.key;
+          renderResultsOverlay();
+        });
+        refs.resultsTabs.appendChild(tab);
+      });
+
+      const activeCategory = categories.find((category) => category.key === activeKey);
+      refs.resultsContent.innerHTML = "";
+      const section = document.createElement("div");
+      section.className = "resultsSection";
+      const heading = document.createElement("h3");
+      heading.textContent = activeCategory.label;
+      section.appendChild(heading);
+      const hint = document.createElement("p");
+      hint.className = "tiny";
+      hint.textContent = "Analysis result images for the current jewel.";
+      section.appendChild(hint);
+      const strip = document.createElement("div");
+      strip.className = "artifactStrip";
+      section.appendChild(strip);
+      refs.resultsContent.appendChild(section);
+      renderArtifactStrip(strip, activeCategory.items);
+    }
+
+    function openResultsOverlay() {
+      if (!refs.resultsOverlay) return;
+      refs.resultsOverlay.classList.remove("hidden");
+      renderResultsOverlay();
+    }
+
+    function closeResultsOverlay() {
+      if (refs.resultsOverlay) refs.resultsOverlay.classList.add("hidden");
+    }
+
+    function refreshResultsOverlayIfChanged() {
+      if (!refs.resultsOverlay || refs.resultsOverlay.classList.contains("hidden")) return;
+      const current = resultsSignatureOf(resultsCategories());
+      if (current !== resultsSignature) renderResultsOverlay();
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && refs.resultsOverlay && !refs.resultsOverlay.classList.contains("hidden")) {
+        closeResultsOverlay();
+      }
+    });
+
+    refs.btnOpenResults.addEventListener("click", openResultsOverlay);
+    refs.btnCloseResults.addEventListener("click", closeResultsOverlay);
+    refs.resultsOverlay.addEventListener("click", (event) => {
+      if (event.target === refs.resultsOverlay) closeResultsOverlay();
+    });
+
+    /* ---------- Background stone job helpers ---------- */
+    function stoneJobFromState() {
+      return ((backendState && backendState.stone_detection) || {}).job || {};
+    }
+
+    function stoneJobActive() {
+      const job = stoneJobFromState();
+      return job.status === "queued" || job.status === "running";
+    }
+
+    function stoneAnalysisEstimateSeconds() {
+      const estimates = (backendState && backendState.timing_estimates && backendState.timing_estimates.stone_analysis) || {};
+      const estimate = estimates.estimated_seconds;
+      return (estimate !== null && estimate !== undefined && Number.isFinite(Number(estimate)) && Number(estimate) > 0)
+        ? Number(estimate)
+        : null;
+    }
+
+    function stoneJobStatusText(job) {
+      if (!job || job.status === "idle") return "";
+      if (job.status === "failed") {
+        return `Stone Analysis failed: ${job.error || "unknown error"}. Go back to Stone Analysis and run it again.`;
+      }
+      if (job.status === "queued") return "Stone Analysis is starting...";
+      const estimate = stoneAnalysisEstimateSeconds();
+      const started = job.started_at ? new Date(String(job.started_at).replace(" ", "T")).getTime() : null;
+      if (!started) {
+        return estimate !== null
+          ? `Stone Analysis is running in the background · ~${formatDuration(estimate)} remaining`
+          : "Stone Analysis is running in the background · Estimating completion time...";
+      }
+      const elapsed = Math.max(0, (Date.now() - started) / 1000);
+      let text = `Stone Analysis is running in the background · Elapsed ${formatDuration(elapsed)}`;
+      if (estimate !== null) {
+        const remaining = estimate - elapsed;
+        text += remaining > 0
+          ? ` · ~${formatDuration(remaining)} remaining`
+          : " · Finishing analysis...";
+      } else {
+        text += " · Estimating completion time...";
+      }
+      return text;
     }
 
     function renderClassificationTable(scores) {
@@ -3854,6 +4130,7 @@
       refs.sideStoneSettingProfile.value = settingProfile;
       const mainStone = stoneDetection.main;
       const sideStone = stoneDetection.side;
+      const stoneJob = stoneDetection.job || {};
       const purity = backendState.purity_test || {};
       const finalState = backendState.final || {};
 
@@ -3864,13 +4141,17 @@
       }
       refs.appraiserStoneWeight.disabled = Boolean(weightExtraction.success);
 
-      flow.classificationConfirmed = Boolean(classification.confirmed);
-      if (!flow.classificationConfirmed) {
-        flow.classificationNext = false;
-        flow.weightNext = false;
-        flow.dimensionNext = false;
-        flow.segmentationNext = false;
-        flow.currentStage = "classification";
+      if (!initialFlowRestored) {
+        flow.classificationConfirmed = Boolean(classification.confirmed);
+        if (!flow.classificationConfirmed) {
+          flow.classificationNext = false;
+          flow.weightNext = false;
+          flow.dimensionNext = false;
+          flow.segmentationNext = false;
+          flow.currentStage = "classification";
+        }
+      } else {
+        flow.classificationConfirmed = Boolean(classification.confirmed);
       }
 
       refs.workflowStage.textContent = stageDisplayName(flow.currentStage);
@@ -4063,12 +4344,34 @@
         } else {
           refs.mainStoneTable.classList.add("hidden");
         }
+        refs.btnNextFromMainStone.classList.add("hidden");
+        refs.btnNextFromMainStone.classList.remove("next-action");
+        refs.btnShowFinalFromMain.classList.remove("hidden");
+      } else if (stoneJob.status === "queued" || stoneJob.status === "running") {
+        refs.mainStoneValue.textContent = "RUNNING IN BACKGROUND";
+        setRiskResultStyle(refs.mainStoneValue, "RUNNING IN BACKGROUND");
+        refs.mainStoneSub.textContent = stoneJobStatusText(stoneJob);
+        refs.mainStoneArtifacts.innerHTML = "";
+        refs.mainStoneTable.classList.add("hidden");
+        refs.btnNextFromMainStone.classList.remove("hidden");
+        refs.btnNextFromMainStone.classList.add("next-action");
+        refs.btnShowFinalFromMain.classList.add("hidden");
+      } else if (stoneJob.status === "failed") {
+        refs.btnNextFromMainStone.classList.add("hidden");
+        refs.btnNextFromMainStone.classList.remove("next-action");
+        refs.mainStoneValue.textContent = "ANALYSIS FAILED";
+        setRiskResultStyle(refs.mainStoneValue, "ANALYSIS FAILED");
+        refs.mainStoneSub.textContent = stoneJobStatusText(stoneJob);
+        refs.mainStoneArtifacts.innerHTML = "";
+        refs.mainStoneTable.classList.add("hidden");
       } else {
         refs.mainStoneValue.textContent = "--";
         setRiskResultStyle(refs.mainStoneValue, "NOT ASSESSED");
         refs.mainStoneSub.textContent = "Select the stone type and start analysis.";
         refs.mainStoneArtifacts.innerHTML = "";
         refs.mainStoneTable.classList.add("hidden");
+        refs.btnNextFromMainStone.classList.add("hidden");
+        refs.btnNextFromMainStone.classList.remove("next-action");
       }
 
       if (sideStone) {
@@ -4171,6 +4474,25 @@
       renderArtifactStrip(refs.finalArtifacts, finalState.artifacts || []);
       renderPledgeClosure();
 
+      refs.btnOpenResults.classList.toggle("hidden", !hasAnyResults());
+      refreshResultsOverlayIfChanged();
+
+      if (refs.stoneJobBanner) {
+        const banner = refs.stoneJobBanner;
+        if (stoneJob.status === "queued" || stoneJob.status === "running") {
+          banner.classList.remove("hidden", "error", "success");
+          banner.textContent = stoneJobStatusText(stoneJob);
+        } else if (stoneJob.status === "failed") {
+          banner.classList.remove("hidden", "success");
+          banner.classList.add("error");
+          banner.textContent = stoneJobStatusText(stoneJob);
+        } else {
+          banner.classList.add("hidden");
+          banner.classList.remove("error", "success");
+          banner.textContent = "";
+        }
+      }
+
       setStatus(backendState.status || "Ready.");
       renderPanels();
     }
@@ -4257,7 +4579,7 @@
       const purityAvailable = backendState && backendState.purity_test && backendState.purity_test.available;
       const purityStartReady = backendState && (
         (branchKey === "dimension" && ((backendState.stone_detection && backendState.stone_detection.side) || stageSkipped("side_stone"))) ||
-        (branchKey !== "dimension" && ((backendState.stone_detection && backendState.stone_detection.main) || stageSkipped("stone_detection")))
+        (branchKey !== "dimension" && ((backendState.stone_detection && backendState.stone_detection.main) || stageSkipped("stone_detection") || stoneJobActive()))
       );
       const nextJewelAvailable = Boolean(backendState && backendState.next_jewel_available);
       const retryJewelAvailable = Boolean(backendState && backendState.retry_jewel_available);
@@ -4267,6 +4589,7 @@
 
       refs.btnClassificationNext.disabled = !classificationDone || !pledgeCountSaved();
       refs.btnRunSegmentation.disabled = !(classificationDone && flow.weightNext && branchKey === "segmentation");
+      refs.btnRunMainStoneDetection.disabled = stoneJobActive();
       refs.btnSkipDimension.disabled = Boolean((state.dimension || {}).done) || stageSkipped("dimension");
       refs.btnSkipSide.disabled = Boolean((state.stone_detection || {}).side) || stageSkipped("side_stone");
       refs.btnSkipSegmentation.disabled = Boolean((state.segmentation || {}).done) || stageSkipped("jewellery_analysis");
@@ -4365,7 +4688,7 @@
         (branchKey === "segmentation" && flow.weightNext && flow.segmentationNext);
       const showPurity =
         (branchKey === "dimension" && backendState && ((backendState.stone_detection && backendState.stone_detection.side) || stageSkipped("side_stone"))) ||
-        (branchKey !== "dimension" && backendState && ((backendState.stone_detection && backendState.stone_detection.main) || stageSkipped("stone_detection")));
+        (branchKey !== "dimension" && backendState && ((backendState.stone_detection && backendState.stone_detection.main) || stageSkipped("stone_detection") || stoneJobActive()));
 
       if (flow.currentStage !== "purity" && previewState.context === "purity") {
         previewState.context = "source";
@@ -4455,6 +4778,8 @@
     function renderStageProgress() {
       const order = getStageOrder();
       const currentIndex = getCurrentStageIndex();
+      const stoneJob = stoneJobFromState();
+      const isStoneJobRunning = stoneJob.status === "queued" || stoneJob.status === "running";
 
       const container = document.getElementById("stageProgressFlow");
       if (!container) return;
@@ -4466,6 +4791,7 @@
         const stageKey = order[idx];
         const skipped = stageSkipped(skipKeyForUiStage(stageKey));
         const isCurrent = idx === currentIndex;
+        const isStoneAnalysisRunning = isStoneJobRunning && stageKey === "mainStone";
 
         const pill = document.createElement("div");
         pill.className = "progressStep";
@@ -4473,6 +4799,8 @@
           pill.classList.add("progressFailed");
         } else if (skipped) {
           pill.classList.add("progressSkipped");
+        } else if (isStoneAnalysisRunning) {
+          pill.classList.add("progressCurrent");
         } else if (idx < currentIndex) {
           pill.classList.add("progressDone");
         } else if (isCurrent) {
@@ -4487,6 +4815,8 @@
           icon.textContent = "!";
         } else if (skipped) {
           icon.textContent = "\u2014";
+        } else if (isStoneAnalysisRunning) {
+          icon.textContent = "\u25CF";
         } else if (idx < currentIndex) {
           icon.textContent = "\u2713";
         } else if (isCurrent) {
@@ -4501,6 +4831,7 @@
           ? (countVerificationDone() && packetSealingDone() ? "Closure \u00B7 Complete" : "Closure")
           : stageDisplayName(stageKey);
         if (skipped) label.textContent += " \u00B7 Skipped";
+        if (isStoneAnalysisRunning) label.textContent += " \u00B7 Running";
 
         pill.appendChild(icon);
         pill.appendChild(label);
@@ -5353,6 +5684,10 @@
       previewState.context = "purity";
       goToNextStage();
     });
+    refs.btnNextFromMainStone.addEventListener("click", () => {
+      previewState.context = "purity";
+      goToNextStage();
+    });
     refs.btnMainStonePrev.addEventListener("click", () => {
       goToPreviousStage();
     });
@@ -5455,10 +5790,66 @@
 
     // Hide loading overlay
     function hideLoading() {
+      stopLoadingTimer();
       const overlay = document.getElementById('loadingOverlay');
       if (overlay) {
         overlay.classList.add('hidden');
       }
+    }
+
+    /* ---------- Foreground analysis timer (honest elapsed + ETA) ---------- */
+    let loadingTimerHandle = null;
+    let loadingTimerStart = 0;
+    let loadingTimerEstimate = null;
+    let loadingTimerLabel = "";
+
+    function formatDuration(totalSeconds) {
+      const total = Math.max(0, Math.floor(totalSeconds));
+      const hours = Math.floor(total / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      const seconds = total % 60;
+      const mm = String(minutes).padStart(2, "0");
+      const ss = String(seconds).padStart(2, "0");
+      return hours > 0 ? `${hours}:${mm}:${ss}` : `${mm}:${ss}`;
+    }
+
+    function updateLoadingTimerText() {
+      const timer = document.getElementById("loadingTimer");
+      if (!timer) return;
+      const elapsed = (performance.now() - loadingTimerStart) / 1000;
+      let text = `${loadingTimerLabel} · Elapsed ${formatDuration(elapsed)}`;
+      if (loadingTimerEstimate === null || loadingTimerEstimate === undefined) {
+        text += " · Estimating completion time...";
+      } else {
+        const remaining = loadingTimerEstimate - elapsed;
+        text += remaining > 0
+          ? ` · ~${formatDuration(remaining)} remaining`
+          : " · Finishing analysis...";
+      }
+      timer.textContent = text;
+    }
+
+    function startLoadingTimer(label, estimateSeconds) {
+      stopLoadingTimer();
+      loadingTimerLabel = label || "Analysis";
+      loadingTimerStart = performance.now();
+      loadingTimerEstimate = (estimateSeconds !== null && estimateSeconds !== undefined && Number.isFinite(Number(estimateSeconds)) && Number(estimateSeconds) > 0)
+        ? Number(estimateSeconds)
+        : null;
+      updateLoadingTimerText();
+      loadingTimerHandle = setInterval(updateLoadingTimerText, 250);
+    }
+
+    function stopLoadingTimer() {
+      if (loadingTimerHandle !== null) {
+        clearInterval(loadingTimerHandle);
+        loadingTimerHandle = null;
+      }
+      loadingTimerStart = 0;
+      loadingTimerEstimate = null;
+      loadingTimerLabel = "";
+      const timer = document.getElementById("loadingTimer");
+      if (timer) timer.textContent = "";
     }
 
     // Enhanced status setting with visual indicators

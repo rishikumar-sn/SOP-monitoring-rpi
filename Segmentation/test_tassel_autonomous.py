@@ -18,6 +18,21 @@ def decode_png(value: str, flags: int) -> np.ndarray:
 
 
 class TasselAutonomousTests(unittest.TestCase):
+    def test_classifier_uses_conservative_minimum_threshold(self) -> None:
+        previous_path = segmentation.TASSEL_CLASSIFIER_PATH
+        previous_threshold = segmentation.TASSEL_CLASSIFIER_THRESHOLD
+        try:
+            segmentation.configure_tassel_classifier(
+                Path("TasselTraining/checkpoints/latest.pt"),
+                0.5,
+            )
+            self.assertEqual(segmentation.TASSEL_CLASSIFIER_THRESHOLD, 0.6)
+        finally:
+            segmentation.configure_tassel_classifier(
+                previous_path,
+                previous_threshold,
+            )
+
     def test_absorbs_smaller_chain_fragment_touching_detected_tassel(self) -> None:
         necklace_mask = np.zeros((80, 140), dtype=np.uint8)
         necklace_mask[25:55, 10:75] = 1

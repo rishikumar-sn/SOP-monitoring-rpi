@@ -553,6 +553,12 @@ class PurityTestManager:
                 self.stone_model_path,
                 self.model_dir / "gold.hef",
                 self.model_dir / "bestnewacid.hef",
+                self.base_dir
+                / "BeadFalsePositive"
+                / "model_projects"
+                / "bestnewacid"
+                / "MobileNetV3"
+                / "bestnewacid_mobilenet_v3_candidate.pt",
             ]
             missing_files = [str(path) for path in required_files if not path.is_file()]
             if missing_files:
@@ -616,6 +622,7 @@ class PurityTestManager:
                         contract["dtype"],
                         contract["bytes"],
                     )
+                module.init_acid_fp_filter()
                 self._models_loaded = True
                 created_models = []
             if self._audio_bundle is None and bool(getattr(module, "AUDIO_AVAILABLE", False)):
@@ -642,6 +649,7 @@ class PurityTestManager:
                 module.MODEL_STONE = None
                 module.MODEL_GOLD = None
                 module.MODEL_ACID = None
+                module.ACID_FP_FILTER = None
             logger.exception("Purity test preload failed")
             self._availability_error = str(exc)
             with self._state_lock:
@@ -687,6 +695,7 @@ class PurityTestManager:
             module.MODEL_STONE = None
             module.MODEL_GOLD = None
             module.MODEL_ACID = None
+            module.ACID_FP_FILTER = None
 
         closed_model_ids: set[int] = set()
         for adapter in adapters:
@@ -713,6 +722,14 @@ class PurityTestManager:
         module.MODEL_GOLD_PATH = str(self.model_dir / "gold.hef")
         module.MODEL_STONE_PATH = str(self.stone_model_path)
         module.MODEL_ACID_PATH = str(self.model_dir / "bestnewacid.hef")
+        module.ACID_FP_MODEL_PATH = str(
+            self.base_dir
+            / "BeadFalsePositive"
+            / "model_projects"
+            / "bestnewacid"
+            / "MobileNetV3"
+            / "bestnewacid_mobilenet_v3_candidate.pt"
+        )
         rubbing_audio_dir = self.base_dir / "new_audio_rubbing" / "models"
         module.SOUND_MODEL_DIR = str(rubbing_audio_dir)
         module.SOUND_MODEL_PATH = str(rubbing_audio_dir / "gold_rub_cnn.tflite")
@@ -788,9 +805,15 @@ class PurityTestManager:
         auto_token = getattr(module, "AUDIO_DEVICE_AUTO", "__AUTO__")
         if selected_data == auto_token:
             selected_data = module.find_preferred_audio_input_device()
-            allow_fallback = True
+            # Only allow fallback if the specific AB13X device was found
+            if selected_data is None:
+                raise RuntimeError(
+                    "AB13X purity audio sensor (USB ID 001f:0b21) not connected. "
+                    "Please connect the sensor or manually select an audio device."
+                )
+            allow_fallback = False
         elif selected_data is None:
-            allow_fallback = True
+            allow_fallback = False
         else:
             selected_data = module.resolve_audio_input_device(selected_data)
         worker = module.AudioWorker(

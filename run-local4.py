@@ -9,6 +9,7 @@ import numpy as np
 import os
 import sys
 import json
+import math
 import threading
 import queue
 import time
@@ -16,6 +17,7 @@ import logging
 import re
 import subprocess
 from collections import deque
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
 import scipy.signal
@@ -79,6 +81,10 @@ def resolve_model_path(*candidates: str) -> str:
 MODEL_GOLD_PATH = resolve_model_path("models/gold.hef")
 MODEL_STONE_PATH = resolve_model_path("models/yolov8s_seg.hef")
 MODEL_ACID_PATH = resolve_model_path("models/bestnewacid.hef")
+ACID_FP_MODEL_PATH = resolve_model_path(
+    "BeadFalsePositive/model_projects/bestnewacid/MobileNetV3/"
+    "bestnewacid_mobilenet_v3_candidate.pt"
+)
 SOUND_MODEL_DIR = resolve_model_path("new_audio_rubbing/models")
 SOUND_MODEL_PATH = resolve_model_path(
     "new_audio_rubbing/models/gold_rub_cnn.tflite",
@@ -133,6 +139,8 @@ ACID_CONF_THRESH = 0.70
 ACID_IOU_THRESH = 0.45
 ACID_MIN_AREA_PX = 140
 ACID_CONFIRM_FRAMES = 3
+ACID_FP_TRUE_THRESHOLD = 0.75
+ACID_FP_CROP_PADDING_RATIO = 0.05
 
 # ====================== IMPROVED AUDIO & SYNC ======================
 AUDIO_WINDOW_SEC = 1.0
@@ -149,6 +157,8 @@ AUDIO_DEVICE_KEYWORDS = ("walmart ab13x", "ab13x", "usb audio", "headset", "adap
 AUDIO_WEBCAM_KEYWORDS = ("brio", "logitech", "webcam", "camera")
 AUDIO_DEVICE_AUTO = "__AUTO__"
 AUDIO_DEVICE_NAME_PREFIX = "name:"
+
+PURITY_AUDIO_SENSOR_USB_ID = "001f:0b21"
 
 AUDIO_N_MELS = 64
 JEWEL_RUB_OK_LABEL = "JEWEL_RUB_OK"
@@ -2217,12 +2227,103 @@ HAILO_RUNTIME: Optional[HailoRuntime] = None
 MODEL_STONE: Optional[HailoHEFModel] = None
 MODEL_GOLD: Optional[HailoHEFModel] = None
 MODEL_ACID: Optional[HailoHEFModel] = None
+ACID_FP_FILTER: Optional["AcidMobileNetV3Filter"] = None
+
+
+class AcidMobileNetV3Filter:
+    """Accept only true-acid crops from bestnewacid.hef candidate boxes."""
+
+    def __init__(
+        self,
+        model_path: str | Path,
+        true_detection_threshold: float = ACID_FP_TRUE_THRESHOLD,
+    ) -> None:
+        self.model_path = Path(model_path)
+        self.true_detection_threshold = float(true_detection_threshold)
+        self.model: Any = None
+        self.torch: Any = None
+        self.transform: Any = None
+        self.image_type: Any = None
+        self.lock = threading.Lock()
+
+    def load(self) -> None:
+        with self.lock:
+            if self.model is not None:
+                return
+            if not self.model_path.is_file():
+                raise FileNotFoundError(
+                    f"Acid MobileNetV3 false-positive model not found: {self.model_path}"
+                )
+
+            import torch
+            from PIL import Image
+            from torch import nn
+            from torchvision import models, transforms
+
+            model = models.mobilenet_v3_small(weights=None)
+            model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, 2)
+            state_dict = torch.load(
+                self.model_path,
+                map_location="cpu",
+                weights_only=True,
+            )
+            model.load_state_dict(state_dict)
+            model.eval()
+            self.torch = torch
+            self.model = model
+            self.transform = transforms.Compose(
+                [
+                    transforms.Resize((224, 224)),
+                    transforms.ToTensor(),
+                    transforms.Normalize(
+                        mean=[0.485, 0.456, 0.406],
+                        std=[0.229, 0.224, 0.225],
+                    ),
+                ]
+            )
+            self.image_type = Image
+
+    def predict(self, crop_bgr: np.ndarray) -> Tuple[bool, float]:
+        if crop_bgr is None or crop_bgr.size == 0:
+            return False, 0.0
+        self.load()
+        with self.lock:
+            crop_rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
+            tensor = self.transform(self.image_type.fromarray(crop_rgb)).unsqueeze(0)
+            with self.torch.inference_mode():
+                probabilities = self.torch.softmax(self.model(tensor), dim=1)
+            true_probability = float(probabilities[0, 1])
+        return true_probability >= self.true_detection_threshold, true_probability
+
+
+def init_acid_fp_filter() -> AcidMobileNetV3Filter:
+    global ACID_FP_FILTER
+    classifier = AcidMobileNetV3Filter(ACID_FP_MODEL_PATH)
+    classifier.load()
+    ACID_FP_FILTER = classifier
+    logger.info(
+        "Acid MobileNetV3 false-positive filter loaded: %s (threshold %.2f)",
+        ACID_FP_MODEL_PATH,
+        ACID_FP_TRUE_THRESHOLD,
+    )
+    return classifier
 
 
 def init_hailo_models() -> Tuple[HailoRuntime, HailoHEFModel, HailoHEFModel, HailoHEFModel]:
-    missing = [p for p in (MODEL_STONE_PATH, MODEL_GOLD_PATH, MODEL_ACID_PATH) if not os.path.exists(p)]
+    missing = [
+        p
+        for p in (
+            MODEL_STONE_PATH,
+            MODEL_GOLD_PATH,
+            MODEL_ACID_PATH,
+            ACID_FP_MODEL_PATH,
+        )
+        if not os.path.exists(p)
+    ]
     if missing:
-        raise FileNotFoundError(f"Missing HEF files: {missing}")
+        raise FileNotFoundError(f"Missing purity model files: {missing}")
+
+    init_acid_fp_filter()
 
     runtime = HailoRuntime()
 
@@ -2239,6 +2340,49 @@ def init_hailo_models() -> Tuple[HailoRuntime, HailoHEFModel, HailoHEFModel, Hai
 def _bbox_area(box: Tuple[int, int, int, int]) -> int:
     x1, y1, x2, y2 = box
     return max(1, (x2 - x1) * (y2 - y1))
+
+
+def make_acid_classifier_crop(
+    image_bgr: np.ndarray,
+    bbox: Tuple[int, int, int, int],
+    padding_ratio: float = ACID_FP_CROP_PADDING_RATIO,
+) -> np.ndarray:
+    """Match the padded, square letterbox crops used to train the PT model."""
+    x1, y1, x2, y2 = (int(value) for value in bbox)
+    width = max(1, x2 - x1)
+    height = max(1, y2 - y1)
+    crop_width = max(1, int(math.ceil(width * (1.0 + 2.0 * padding_ratio))))
+    crop_height = max(1, int(math.ceil(height * (1.0 + 2.0 * padding_ratio))))
+    center_x = (x1 + x2) / 2.0
+    center_y = (y1 + y2) / 2.0
+    crop_x1 = int(math.floor(center_x - crop_width / 2.0))
+    crop_y1 = int(math.floor(center_y - crop_height / 2.0))
+    crop_x2 = crop_x1 + crop_width
+    crop_y2 = crop_y1 + crop_height
+
+    image_h, image_w = image_bgr.shape[:2]
+    source_x1 = max(0, crop_x1)
+    source_y1 = max(0, crop_y1)
+    source_x2 = min(image_w, crop_x2)
+    source_y2 = min(image_h, crop_y2)
+    rectangular_crop = np.full((crop_height, crop_width, 3), 114, dtype=np.uint8)
+    if source_x2 > source_x1 and source_y2 > source_y1:
+        target_x1 = source_x1 - crop_x1
+        target_y1 = source_y1 - crop_y1
+        rectangular_crop[
+            target_y1 : target_y1 + (source_y2 - source_y1),
+            target_x1 : target_x1 + (source_x2 - source_x1),
+        ] = image_bgr[source_y1:source_y2, source_x1:source_x2]
+
+    side = max(crop_width, crop_height)
+    crop = np.full((side, side, 3), 114, dtype=np.uint8)
+    letterbox_x = (side - crop_width) // 2
+    letterbox_y = (side - crop_height) // 2
+    crop[
+        letterbox_y : letterbox_y + crop_height,
+        letterbox_x : letterbox_x + crop_width,
+    ] = rectangular_crop
+    return crop
 
 
 def _expand_bbox(box: Tuple[int, int, int, int], pad: int, w: int, h: int) -> Tuple[int, int, int, int]:
@@ -2603,10 +2747,15 @@ def process_acid_frame(frame: np.ndarray) -> Tuple[np.ndarray, bool, Dict[str, A
     annotated = frame.copy()
     acid_detected = False
     acid_bbox: Optional[Tuple[int, int, int, int]] = None
+    accepted_count = 0
+    rejected_count = 0
+    true_detection_probability = 0.0
     inference_error = ""
     STATE["last_acid_bbox"] = None
 
     try:
+        if ACID_FP_FILTER is None:
+            raise RuntimeError("Acid MobileNetV3 false-positive filter is not initialized.")
         acid_dets = MODEL_ACID.predict(
             frame,
             conf_thresh=ACID_CONF_THRESH,
@@ -2626,6 +2775,19 @@ def process_acid_frame(frame: np.ndarray) -> Tuple[np.ndarray, bool, Dict[str, A
             if conf < ACID_CONF_THRESH or _bbox_area((x1, y1, x2, y2)) < ACID_MIN_AREA_PX:
                 continue
 
+            crop = make_acid_classifier_crop(frame, (x1, y1, x2, y2))
+            accepted, probability = ACID_FP_FILTER.predict(crop)
+            true_detection_probability = float(probability)
+            logger.info(
+                "[AcidFP] HEF score=%.2f true_detection_probability=%.2f accepted=%s",
+                conf,
+                probability,
+                accepted,
+            )
+            if not accepted:
+                rejected_count += 1
+                continue
+
             cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 255), 3)
             cv2.putText(
                 annotated,
@@ -2637,6 +2799,7 @@ def process_acid_frame(frame: np.ndarray) -> Tuple[np.ndarray, bool, Dict[str, A
                 2,
             )
             acid_detected = True
+            accepted_count += 1
             acid_bbox = (x1, y1, x2, y2)
             STATE["last_acid_bbox"] = acid_bbox
 
@@ -2646,6 +2809,11 @@ def process_acid_frame(frame: np.ndarray) -> Tuple[np.ndarray, bool, Dict[str, A
 
     return annotated, acid_detected, {
         "acid_bbox": acid_bbox,
+        "classifier_model": Path(ACID_FP_MODEL_PATH).name,
+        "classifier_threshold": ACID_FP_TRUE_THRESHOLD,
+        "true_detection_probability": true_detection_probability,
+        "accepted_count": accepted_count,
+        "rejected_count": rejected_count,
         "error": inference_error,
     }
 
@@ -2804,21 +2972,60 @@ def get_audio_device_name(device_index: Optional[int]) -> str:
         return f"{device_index}"
 
 
+def _get_usb_ids_for_sounddevice_index(device_index: int) -> Optional[tuple[str, str]]:
+    """Return (vendor_id, product_id) for a sounddevice input index by correlating with ALSA card."""
+    if not SOUNDDEVICE_AVAILABLE:
+        return None
+    try:
+        dev = sd.query_devices(device_index)
+        name = str(dev.get("name", ""))
+        # ALSA device name format: "AB13X USB Audio: - (hw:2,0)"
+        # Extract card number from hw:X,Y
+        import re
+        match = re.search(r'hw:(\d+),', name)
+        if not match:
+            return None
+        card_index = int(match.group(1))
+        card_path = Path(f"/sys/class/sound/card{card_index}")
+        try:
+            current = card_path.resolve()
+        except Exception:
+            return None
+        for path in (current, *current.parents):
+            vendor_path = path / "idVendor"
+            product_path = path / "idProduct"
+            if vendor_path.exists() and product_path.exists():
+                try:
+                    vendor = vendor_path.read_text(encoding="utf-8").strip().lower()
+                    product = product_path.read_text(encoding="utf-8").strip().lower()
+                    if vendor and product:
+                        return vendor, product
+                except Exception:
+                    return None
+        return None
+    except Exception:
+        return None
+
+
 def find_preferred_audio_input_device() -> Optional[int]:
-    """Pick the most likely external microphone over webcam/default inputs."""
+    """Pick the most likely external microphone over webcam/default inputs.
+    Only returns the specific AB13X device (USB ID 001f:0b21) for purity test.
+    """
     devices = list_audio_devices()
     if not devices:
         return None
 
-    ranked = sorted(devices, key=lambda item: (score_audio_input_device(item["name"]), item["index"]), reverse=True)
-    best = ranked[0]
+    # Only select the specific AB13X device (USB ID 001f:0b21)
+    for device in devices:
+        usb_ids = _get_usb_ids_for_sounddevice_index(device["index"])
+        if usb_ids:
+            vendor, product = usb_ids
+            if f"{vendor}:{product}".lower() == PURITY_AUDIO_SENSOR_USB_ID.lower():
+                logger.info("[Audio] Found AB13X purity audio sensor: %s (%s)", device["index"], device["name"])
+                return int(device["index"])
 
-    if score_audio_input_device(best["name"]) > 0:
-        logger.info("[Audio] Preferred input device: %s (%s)", best["index"], best["name"])
-        return int(best["index"])
-
-    logger.warning("[Audio] No strong preferred mic match found. Using first available input device.")
-    return int(devices[0]["index"])
+    logger.warning("[Audio] AB13X purity audio sensor (USB ID 001f:0b21) not found.")
+    return None
 
 
 # ====================== GUI ======================

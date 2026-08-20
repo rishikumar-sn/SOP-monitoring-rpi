@@ -18,6 +18,7 @@ import uuid
 import wave
 import subprocess
 from collections import defaultdict, deque
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -42,6 +43,16 @@ PLEDGE_DIR = RUNTIME_DIR / "_pledges"
 PLEDGE_DIR.mkdir(parents=True, exist_ok=True)
 PLEDGE_MEDIA_DIR = PLEDGE_DIR / "media"
 PLEDGE_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+
+TIMING_HISTORY_FILE = RUNTIME_DIR / "analysis_timing.json"
+TIMING_LOCK = threading.Lock()
+TIMING_HISTORY_MAX_RUNS = 12
+
+STONE_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stone-analysis")
+STONE_JOBS_LOCK = threading.Lock()
+STONE_JOBS_REGISTRY: dict[str, dict[str, Any]] = {}
+
+atexit.register(STONE_EXECUTOR.shutdown, wait=False)
 
 CLASSIFICATION_DIR = BASE_DIR / "Classification"
 DIMENSION_DIR = BASE_DIR / "Dimension"
@@ -1240,7 +1251,7 @@ def inspect_tassel_classifier_checkpoint(path: Path) -> dict[str, Any]:
         "trained_at": None,
         "class_counts": None,
         "validation_metrics": None,
-        "threshold": 0.5,
+        "threshold": necklace_segmentation.TASSEL_CLASSIFIER_MIN_THRESHOLD,
         "error": None,
     }
     if not resolved.is_file():
@@ -1267,7 +1278,10 @@ def inspect_tassel_classifier_checkpoint(path: Path) -> dict[str, Any]:
         input_features = model.classifier[0].in_features
         model.classifier = torch.nn.Linear(input_features, 1)
         model.load_state_dict(state_dict)
-        threshold = max(0.05, min(0.95, float(payload.get("threshold", 0.5))))
+        threshold = max(
+            necklace_segmentation.TASSEL_CLASSIFIER_MIN_THRESHOLD,
+            min(0.95, float(payload.get("threshold", 0.5))),
+        )
         info.update(
             {
                 "available": True,
@@ -2875,6 +2889,108 @@ def now_stamp() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def load_timing_history() -> dict[str, list[float]]:
+    """Median-of-last-N run durations per analysis key, persisted as JSON."""
+    with TIMING_LOCK:
+        try:
+            if TIMING_HISTORY_FILE.exists():
+                data = json.loads(TIMING_HISTORY_FILE.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    history: dict[str, list[float]] = {}
+                    for key, values in data.items():
+                        if not isinstance(values, list):
+                            continue
+                        runs = [
+                            float(value)
+                            for value in values
+                            if _is_positive_finite_float(value)
+                        ]
+                        if runs:
+                            history[str(key)] = runs[-TIMING_HISTORY_MAX_RUNS:]
+                    return history
+        except Exception as exc:  # noqa: BLE001
+            print(f"Warning: Failed to load analysis timing history: {exc}")
+        return {}
+
+
+def _is_positive_finite_float(value: Any) -> bool:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return False
+    return math.isfinite(number) and number > 0
+
+
+def save_timing_history(history: dict[str, list[float]]) -> None:
+    with TIMING_LOCK:
+        try:
+            TIMING_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+            TIMING_HISTORY_FILE.write_text(
+                json.dumps(history, indent=2),
+                encoding="utf-8",
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"Warning: Failed to save analysis timing history: {exc}")
+
+
+def record_analysis_duration(key: str, seconds: float) -> None:
+    duration = float(seconds)
+    if not math.isfinite(duration) or duration <= 0:
+        return
+    history = load_timing_history()
+    runs = history.setdefault(key, [])
+    runs.append(round(duration, 2))
+    history[key] = runs[-TIMING_HISTORY_MAX_RUNS:]
+    save_timing_history(history)
+
+
+def _median_duration(runs: list[float]) -> float | None:
+    """Median of the last 5 successful runs, or None when there are none."""
+    if not runs:
+        return None
+    ordered = sorted(runs[-5:])
+    count = len(ordered)
+    if count % 2 == 1:
+        median = ordered[count // 2]
+    else:
+        median = (ordered[count // 2 - 1] + ordered[count // 2]) / 2.0
+    return round(median, 2)
+
+
+def estimated_duration_seconds(key: str) -> float | None:
+    """Median of the last 5 successful runs for the key, or None when unknown."""
+    return _median_duration(load_timing_history().get(key) or [])
+
+
+def _stone_timing_label_slug(label: str) -> str:
+    """Slugify a confirmed jewel label for per-type stone timing history."""
+    slug = re.sub(r"[^a-z0-9]+", "_", str(label or "").lower()).strip("_")
+    return slug
+
+
+def timing_estimates_payload() -> dict[str, dict[str, Any]]:
+    history = load_timing_history()
+    estimates: dict[str, dict[str, Any]] = {}
+    for key in ("jewellery_analysis", "stone_analysis"):
+        runs = history.get(key) or []
+        estimates[key] = {
+            "estimated_seconds": _median_duration(runs),
+            "runs": len(runs),
+        }
+    by_label: dict[str, dict[str, Any]] = {}
+    for key, runs in history.items():
+        if not key.startswith("stone_analysis:"):
+            continue
+        slug = key.split(":", 1)[1]
+        by_label[slug] = {
+            "estimated_seconds": _median_duration(runs),
+            "runs": len(runs),
+        }
+    if by_label:
+        estimates["stone_analysis_by_label"] = by_label
+    return estimates
+
+
 try:
     STORAGE_CLEANUP_THRESHOLD_PERCENT = max(
         1.0,
@@ -3018,6 +3134,20 @@ def build_empty_state() -> dict[str, Any]:
             "setting_profile": stone_area_calculator.DEFAULT_STONE_SETTING_PROFILE,
             "main": None,
             "side": None,
+            "job": {
+                "job_id": None,
+                "status": "idle",
+                "session_id": None,
+                "pledge_id": None,
+                "jewel_index": None,
+                "working_image_path": None,
+                "queued_at": None,
+                "started_at": None,
+                "estimated_seconds": None,
+                "runtime_seconds": None,
+                "finished_at": None,
+                "error": None,
+            },
         },
         "side_capture": {
             "filename": None,
@@ -5815,7 +5945,271 @@ def purity_upstream_ready(state: dict[str, Any]) -> bool:
 
     if branch_key == "dimension":
         return bool(stones.get("side") or stage_is_skipped(state, "side_stone"))
-    return bool(stones.get("main") or stage_is_skipped(state, "stone_detection"))
+    if bool(stones.get("main")) or stage_is_skipped(state, "stone_detection"):
+        return True
+    return stone_job_active(state)
+
+
+def stone_job_active(state: dict[str, Any]) -> bool:
+    job = (state.get("stone_detection") or {}).get("job") or {}
+    return job.get("status") in ("queued", "running")
+
+
+def stone_analysis_job_eligible(state: dict[str, Any]) -> bool:
+    """Stone analysis may run in the background only for branches that use the
+    main-image stone pipeline, and never for stone-weight-exempt jewel types
+    (Bangle, Finger ring, Earrings)."""
+    branch_key = (state.get("branch") or {}).get("key")
+    if branch_key not in ("segmentation", "direct_stone"):
+        return False
+    classification = state.get("classification") or {}
+    label = classification.get("confirmed_label") or classification.get(
+        "predicted_label"
+    )
+    return not stone_weight_exempt_for_label(label)
+
+
+def invalidate_stone_job(state: dict[str, Any]) -> None:
+    """Cancel the current background stone job and drop it from the registry.
+
+    The worker thread may still be computing; its result is discarded by
+    _stone_job_context_matches on merge. Must be called with STATE_LOCK held
+    (registry access keeps the STATE_LOCK -> STONE_JOBS_LOCK order).
+    """
+    stones = state.get("stone_detection") or {}
+    job = stones.get("job") or {}
+    job_id = job.get("job_id")
+    if not job_id:
+        return
+    if job.get("status") in ("queued", "running"):
+        job["status"] = "cancelled"
+        job["error"] = "Cancelled by a workflow state change."
+    with STONE_JOBS_LOCK:
+        STONE_JOBS_REGISTRY.pop(job_id, None)
+
+
+def _drop_stone_job(job_id: str) -> None:
+    with STONE_JOBS_LOCK:
+        STONE_JOBS_REGISTRY.pop(job_id, None)
+
+
+def _stone_job_context_matches(state: dict[str, Any], job: dict[str, Any]) -> bool:
+    if job.get("cancelled"):
+        return False
+    if str(state.get("session_id") or "") != str(job.get("session_id") or ""):
+        return False
+    if str(state.get("pledge_id") or "") != str(job.get("pledge_id") or ""):
+        return False
+    if str(state.get("jewel_index") or "") != str(job.get("jewel_index") or ""):
+        return False
+    # The stone pipeline may run against the preprocessed image (segmentation
+    # branch) or the source working image (direct-stone branch). Compare the
+    # source identity captured at submit time with the current one; a
+    # re-captured source or re-run segmentation must invalidate a stale result.
+    source = state.get("source") or {}
+    if str((source.get("working_image") or {}).get("path") or "") != str(
+        job.get("source_working_image_path") or ""
+    ):
+        return False
+    if str((source.get("preprocessed_image") or {}).get("path") or "") != str(
+        job.get("preprocessed_image_path") or ""
+    ):
+        return False
+    return True
+
+
+def submit_stone_analysis_job(
+    state: dict[str, Any],
+    *,
+    working_path: Path,
+    working_bgr: np.ndarray,
+    stone_candidate_mask: np.ndarray,
+    ignore_mask: np.ndarray | None,
+    jewel_total_px_override: int | None,
+    calibration: dict[str, Any] | None,
+    entered_jewel_weight_g: float | None,
+    stone_setting_profile: str,
+) -> dict[str, Any]:
+    """Queue a background stone analysis job for the current session.
+
+    Caller holds STATE_LOCK. Heavy compute happens on STONE_EXECUTOR without
+    STATE_LOCK; the result is merged back only when the workflow context
+    (session / pledge / jewel / source image) is unchanged.
+    """
+    job_id = uuid.uuid4().hex
+    source = state.get("source") or {}
+    job: dict[str, Any] = {
+        "job_id": job_id,
+        "status": "queued",
+        "session_id": state.get("session_id"),
+        "pledge_id": state.get("pledge_id"),
+        "jewel_index": state.get("jewel_index"),
+        "working_image_path": str(working_path),
+        "source_working_image_path": str(
+            (source.get("working_image") or {}).get("path") or ""
+        ),
+        "preprocessed_image_path": str(
+            (source.get("preprocessed_image") or {}).get("path") or ""
+        ),
+        "queued_at": now_stamp(),
+        "started_at": None,
+        "estimated_seconds": estimated_duration_seconds("stone_analysis"),
+        "runtime_seconds": None,
+        "finished_at": None,
+        "error": None,
+    }
+    with STONE_JOBS_LOCK:
+        STONE_JOBS_REGISTRY[job_id] = {
+            "job": job,
+            "inputs": {
+                "working_path": str(working_path),
+                "working_bgr": working_bgr,
+                "stone_candidate_mask": stone_candidate_mask,
+                "ignore_mask": ignore_mask,
+                "jewel_total_px_override": jewel_total_px_override,
+                "calibration": calibration,
+                "entered_jewel_weight_g": entered_jewel_weight_g,
+                "stone_setting_profile": stone_setting_profile,
+            },
+        }
+    state["stone_detection"]["main"] = None
+    state["stone_detection"]["job"] = job
+    STONE_EXECUTOR.submit(_run_stone_job_worker, job_id)
+    return job
+
+
+def _apply_segmentation_area_override(
+    main_result: dict[str, Any] | None,
+    jewel_total_px_override: int | None,
+) -> None:
+    if main_result is None or not jewel_total_px_override:
+        return
+    analyzed_area = int(main_result.get("jewel_total_px", 0))
+    main_result["segmentation_jewel_area_px"] = jewel_total_px_override
+    main_result["segmentation_area_difference_px"] = (
+        jewel_total_px_override - analyzed_area
+    )
+
+
+def _run_stone_job_worker(job_id: str) -> None:
+    with STONE_JOBS_LOCK:
+        record = STONE_JOBS_REGISTRY.get(job_id)
+        if record is None:
+            return
+        job = record["job"]
+        inputs = record["inputs"]
+    started_monotonic = time.monotonic()
+    with STATE_LOCK:
+        state = ensure_state()
+        current_job = (state.get("stone_detection") or {}).get("job") or {}
+        if (
+            current_job.get("job_id") != job_id
+            or current_job.get("status") == "cancelled"
+        ):
+            _drop_stone_job(job_id)
+            return
+        job["status"] = "running"
+        job["started_at"] = now_stamp()
+        state["stone_detection"]["job"] = copy.deepcopy(job)
+        state["updated_at"] = now_stamp()
+        # run_stone_pipeline only reads the state, but snapshot_state /
+        # json.dump and the purity manager mutate it concurrently on the main
+        # thread. Give the long-running worker its own immutable snapshot so it
+        # never reads a half-updated dict.
+        pipeline_state = copy.deepcopy(state)
+    try:
+        main_result = run_stone_pipeline(
+            pipeline_state,
+            Path(job["working_image_path"]),
+            "main_stone_detection",
+            ignore_mask=inputs["ignore_mask"],
+            preset_binary_mask=inputs["stone_candidate_mask"],
+            calibration=inputs["calibration"],
+            entered_jewel_weight_g=inputs["entered_jewel_weight_g"],
+            stone_setting_profile=inputs["stone_setting_profile"],
+            image_bgr=inputs["working_bgr"],
+        )
+        _apply_segmentation_area_override(
+            main_result, inputs["jewel_total_px_override"]
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"Stone analysis background job {job_id} failed: {exc}")
+        with STATE_LOCK:
+            state = ensure_state()
+            current_job = (state.get("stone_detection") or {}).get("job") or {}
+            if (
+                current_job.get("job_id") == job_id
+                and current_job.get("status") != "cancelled"
+            ):
+                current_job["status"] = "failed"
+                current_job["error"] = str(exc)
+                current_job["finished_at"] = now_stamp()
+                state["updated_at"] = now_stamp()
+                build_final_summary(state)
+        _drop_stone_job(job_id)
+        return
+
+    with STATE_LOCK:
+        state = ensure_state()
+        current_job = (state.get("stone_detection") or {}).get("job") or {}
+        if (
+            current_job.get("job_id") != job_id
+            or current_job.get("status") == "cancelled"
+        ):
+            _drop_stone_job(job_id)
+            return
+        if not _stone_job_context_matches(state, job):
+            # The source image / session changed while the analysis ran. Record
+            # an explicit failure instead of leaving a stale "running" state so
+            # the UI shows a Retry rather than silently dropping the result.
+            current_job["status"] = "failed"
+            current_job["error"] = (
+                "The source image or session changed while the analysis was "
+                "running. Re-run the stone analysis."
+            )
+            current_job["finished_at"] = now_stamp()
+            state["updated_at"] = now_stamp()
+            build_final_summary(state)
+            _drop_stone_job(job_id)
+            return
+        runtime_seconds = round(time.monotonic() - started_monotonic, 2)
+        state["stone_detection"]["main"] = main_result
+        state["stone_detection"]["job"]["status"] = "completed"
+        state["stone_detection"]["job"]["runtime_seconds"] = runtime_seconds
+        state["stone_detection"]["job"]["finished_at"] = now_stamp()
+        clear_stage_skip(state, "stone_detection")
+        record_analysis_duration("stone_analysis", runtime_seconds)
+        label = (
+            (state.get("classification") or {}).get("confirmed_label")
+            or (state.get("classification") or {}).get("predicted_label")
+            or ""
+        )
+        label_slug = _stone_timing_label_slug(label)
+        if label_slug:
+            record_analysis_duration(f"stone_analysis:{label_slug}", runtime_seconds)
+        build_final_summary(state)
+        state["status"] = "Stone detection completed in the background."
+        state["updated_at"] = now_stamp()
+    _drop_stone_job(job_id)
+    speak("Stone analysis completed.")
+    try:
+        snapshot_state()
+    except Exception as exc:  # noqa: BLE001
+        print(f"Warning: Failed to persist state after stone job {job_id}: {exc}")
+
+
+def _reconcile_stone_job_after_restart(state: dict[str, Any]) -> None:
+    """After an app restart, queued/running jobs no longer exist in memory."""
+    job = (state.get("stone_detection") or {}).get("job") or {}
+    job_id = job.get("job_id")
+    if not job_id or job.get("status") not in ("queued", "running"):
+        return
+    with STONE_JOBS_LOCK:
+        in_registry = job_id in STONE_JOBS_REGISTRY
+    if not in_registry:
+        job["status"] = "failed"
+        job["error"] = "Interrupted by an application restart. Re-run the stone analysis."
+        job["finished_at"] = now_stamp()
 
 
 def _pdf_image(
@@ -6642,12 +7036,14 @@ def snapshot_state() -> dict[str, Any]:
         refresh_purity_state(state)
         build_final_summary(state)
         update_pledge_progress(state)
+        _reconcile_stone_job_after_restart(state)
         if (
             recorder is not None
             and state.get("pledge_id")
             and str(getattr(recorder, "_pledge_id", "") or "") == str(state["pledge_id"])
         ):
             state["packet_sealing"] = recorder.snapshot()
+        state["timing_estimates"] = timing_estimates_payload()
         state_copy = copy.deepcopy(state)
         
         session_id = state_copy.get("session_id")
@@ -8100,6 +8496,12 @@ def _normalized_binary_mask(
             (image_shape[1], image_shape[0]),
             interpolation=cv2.INTER_NEAREST,
         )
+        return (mask_bin > 0).astype(np.uint8)
+    # Already on the target grid. Downstream consumers only read the mask
+    # (thresholds with "> 0"), so an already-binary mask can be returned
+    # without a full-array copy and re-threshold.
+    if mask_bin.size and mask_bin.max() <= 1:
+        return mask_bin
     return (mask_bin > 0).astype(np.uint8)
 
 
@@ -8162,8 +8564,10 @@ def run_stone_pipeline(
     calibration: dict[str, Any] | None = None,
     entered_jewel_weight_g: float | None = None,
     stone_setting_profile: str = stone_area_calculator.DEFAULT_STONE_SETTING_PROFILE,
+    image_bgr: np.ndarray | None = None,
 ) -> dict[str, Any]:
-    image_bgr = cv2.imread(str(image_path))
+    if image_bgr is None:
+        image_bgr = cv2.imread(str(image_path))
     if image_bgr is None:
         raise RuntimeError(f"Could not load image for stone detection: {image_path}")
 
@@ -8835,10 +9239,12 @@ def api_stage_skip():
                 state["dimension"] = {"done": False, "skipped": True}
             elif stage_key == "jewellery_analysis":
                 state["segmentation"] = {"done": False, "skipped": True}
+                invalidate_stone_job(state)
                 state["stone_detection"]["main"] = None
             elif stage_key == "side_stone":
                 state["stone_detection"]["side"] = None
             elif stage_key == "stone_detection":
+                invalidate_stone_job(state)
                 state["stone_detection"]["main"] = None
             elif stage_key in {"final_count", "packet_sealing"}:
                 pledge_id = str(state.get("pledge_id") or "").strip()
@@ -8985,6 +9391,7 @@ def api_reset():
     if recorder is not None and recorder.is_recording():
         return fail("Stop packet sealing recording before resetting the workflow.")
     with STATE_LOCK:
+        invalidate_stone_job(ensure_state())
         CURRENT_STATE = build_empty_state()
     lcd_show_pledge_status(None)
     speak("Enter the Pledge ID")
@@ -9060,6 +9467,7 @@ def api_stone_settings():
                     PERSISTENT_ROIS["stone_super_resolution"]
                 )
                 CURRENT_STATE["source"] = source
+                invalidate_stone_job(CURRENT_STATE)
                 CURRENT_STATE["stone_detection"]["main"] = None
                 CURRENT_STATE["stone_detection"]["side"] = None
                 CURRENT_STATE["updated_at"] = now_stamp()
@@ -9124,6 +9532,7 @@ def api_stone_background_calibrate():
                 source = CURRENT_STATE.get("source") or {}
                 source["background_calibration"] = copy.deepcopy(calibration)
                 CURRENT_STATE["source"] = source
+                invalidate_stone_job(CURRENT_STATE)
                 CURRENT_STATE["stone_detection"]["main"] = None
                 CURRENT_STATE["stone_detection"]["side"] = None
                 CURRENT_STATE["updated_at"] = now_stamp()
@@ -9184,6 +9593,7 @@ def api_stone_learn_color():
                     PERSISTENT_ROIS["learned_stone_profiles"]
                 )
                 CURRENT_STATE["source"] = source
+                invalidate_stone_job(CURRENT_STATE)
                 CURRENT_STATE["stone_detection"]["main"] = None
                 CURRENT_STATE["stone_detection"]["side"] = None
                 CURRENT_STATE["updated_at"] = now_stamp()
@@ -9509,6 +9919,7 @@ def api_next_jewel():
             return fail("All jewels for this pledge are already completed.")
 
         next_index = current_index if retry_same_index else current_index + 1
+        invalidate_stone_job(state)
         CURRENT_STATE = build_empty_state()
         state = CURRENT_STATE
         apply_pledge_metadata_to_state(state, metadata, jewel_index=next_index)
@@ -9645,6 +10056,7 @@ def api_source():
         )
 
         with STATE_LOCK:
+            invalidate_stone_job(ensure_state())
             CURRENT_STATE = build_empty_state()
             state = CURRENT_STATE
             apply_pledge_context_to_state(state, pledge_context, jewel_index=jewel_index)
@@ -9829,6 +10241,7 @@ def api_classification_confirm():
             state["updated_at"] = now_stamp()
             state["dimension"] = {"done": False}
             state["segmentation"] = {"done": False}
+            invalidate_stone_job(state)
             state["stone_detection"]["main"] = None
             state["stone_detection"]["side"] = None
             state["stage_skips"] = {}
@@ -10149,9 +10562,9 @@ def api_side_stones_run():
             return fail("Capture or upload the side image first.")
 
         try:
-            payload = parse_post_payload()
+            # Half-cut (front-only) is the only supported stone weight mode.
             setting_profile = stone_area_calculator.normalize_stone_setting_profile(
-                payload.get("stone_setting_profile")
+                stone_area_calculator.STONE_SETTING_PROFILE_FRONT_ONLY
             )
             state["stone_detection"]["setting_profile"] = setting_profile
             entered_weight = (state.get("weight_details") or {}).get("jewel_weight_g")
@@ -10356,9 +10769,20 @@ def api_segmentation_run():
             return fail("Jewellery analysis is only available for Haram, Necklace, Dollar chain, and Kasu Mala.")
         try:
             speak("Jewelry risk analysis initiated.")
-            state["segmentation"] = run_segmentation_pipeline(state)
-            clear_stage_skip(state, "jewellery_analysis")
+            invalidate_stone_job(state)
             state["stone_detection"]["main"] = None
+            started_at = now_stamp()
+            started_monotonic = time.monotonic()
+            state["segmentation"] = run_segmentation_pipeline(state)
+            state["segmentation"]["started_at"] = started_at
+            state["segmentation"]["runtime_seconds"] = round(
+                time.monotonic() - started_monotonic, 2
+            )
+            record_analysis_duration(
+                "jewellery_analysis",
+                state["segmentation"]["runtime_seconds"],
+            )
+            clear_stage_skip(state, "jewellery_analysis")
             if state["segmentation"].get("bead_risk_high"):
                 state["status"] = "Jewellery analysis completed. RISK JEWEL: Round beads detected in chain."
             else:
@@ -10399,9 +10823,11 @@ def api_stone_detection_main():
             return fail("Capture or upload the main jewelry image first.")
 
         try:
-            payload = parse_post_payload()
+            # Half-cut (front-only) is the only supported stone weight mode.
+            # The client payload is ignored so Full Cut / Unknown can never be
+            # selected even by an older or modified frontend.
             setting_profile = stone_area_calculator.normalize_stone_setting_profile(
-                payload.get("stone_setting_profile")
+                stone_area_calculator.STONE_SETTING_PROFILE_FRONT_ONLY
             )
             state["stone_detection"]["setting_profile"] = setting_profile
             entered_weight = (state.get("weight_details") or {}).get("jewel_weight_g")
@@ -10427,36 +10853,66 @@ def api_stone_detection_main():
             if ignore_mask is not None:
                 stone_candidate_mask[ignore_mask > 0] = 0
 
-            state["stone_detection"]["main"] = run_stone_pipeline(
-                state,
-                working_path,
-                "main_stone_detection",
-                ignore_mask=ignore_mask,
-                preset_binary_mask=stone_candidate_mask,
-                calibration=stone_calibration_for_state(state),
-                entered_jewel_weight_g=entered_weight,
-                stone_setting_profile=setting_profile,
-            )
-            
-            # Keep the stone pipeline's cleaned jewel mask as the percentage
-            # denominator. Segmentation area is useful for auditing, but it may
-            # contain filled hollow/background pixels and must not overwrite the
-            # exact mask used to detect stones.
-            if jewel_total_px_override is not None:
-                main_stones = state["stone_detection"]["main"]
-                analyzed_area = int(main_stones.get("jewel_total_px", 0))
-                main_stones["segmentation_jewel_area_px"] = jewel_total_px_override
-                main_stones["segmentation_area_difference_px"] = (
-                    jewel_total_px_override - analyzed_area
+            if stone_analysis_job_eligible(state):
+                submit_stone_analysis_job(
+                    state,
+                    working_path=working_path,
+                    working_bgr=working_bgr,
+                    stone_candidate_mask=stone_candidate_mask,
+                    ignore_mask=ignore_mask,
+                    jewel_total_px_override=jewel_total_px_override,
+                    calibration=stone_calibration_for_state(state),
+                    entered_jewel_weight_g=entered_weight,
+                    stone_setting_profile=setting_profile,
+                )
+                state["status"] = (
+                    "Stone analysis started in the background. "
+                    "You may continue with the acid test."
+                )
+                state["updated_at"] = now_stamp()
+                build_final_summary(state)
+                speak("Stone analysis started in the background. Continue with the acid test.")
+            else:
+                started_monotonic = time.monotonic()
+                state["stone_detection"]["main"] = run_stone_pipeline(
+                    state,
+                    working_path,
+                    "main_stone_detection",
+                    ignore_mask=ignore_mask,
+                    preset_binary_mask=stone_candidate_mask,
+                    calibration=stone_calibration_for_state(state),
+                    entered_jewel_weight_g=entered_weight,
+                    stone_setting_profile=setting_profile,
+                    image_bgr=working_bgr,
+                )
+                runtime_seconds = round(time.monotonic() - started_monotonic, 2)
+
+                # Keep the stone pipeline's cleaned jewel mask as the percentage
+                # denominator. Segmentation area is useful for auditing, but it may
+                # contain filled hollow/background pixels and must not overwrite the
+                # exact mask used to detect stones.
+                _apply_segmentation_area_override(
+                    state["stone_detection"]["main"],
+                    jewel_total_px_override,
                 )
 
-            state["status"] = "Main image stone detection completed."
-            clear_stage_skip(state, "stone_detection")
-            state["updated_at"] = now_stamp()
-            reset_purity_state(state)
-            build_final_summary(state)
+                record_analysis_duration("stone_analysis", runtime_seconds)
+                label = (
+                    (state.get("classification") or {}).get("confirmed_label")
+                    or (state.get("classification") or {}).get("predicted_label")
+                    or ""
+                )
+                label_slug = _stone_timing_label_slug(label)
+                if label_slug:
+                    record_analysis_duration(f"stone_analysis:{label_slug}", runtime_seconds)
 
-            speak("Stone detection completed. Click next for Acid Test.")
+                state["status"] = "Main image stone detection completed."
+                clear_stage_skip(state, "stone_detection")
+                state["updated_at"] = now_stamp()
+                reset_purity_state(state)
+                build_final_summary(state)
+
+                speak("Stone detection completed. Click next for Acid Test.")
         except Exception as exc:  # noqa: BLE001
             return fail(str(exc))
 
@@ -10703,6 +11159,14 @@ def api_generate_pdf():
             active_state = ensure_state()
             if (
                 active_state.get("pledge_id") == pledge_id
+                and stone_job_active(active_state)
+            ):
+                return fail(
+                    "Waiting for Stone Analysis to finish before generating the report.",
+                    409,
+                )
+            if (
+                active_state.get("pledge_id") == pledge_id
                 and is_appraised_jewel_state(active_state)
                 and active_state.get("session_id")
                 and all(s.get("session_id") != active_state.get("session_id") for s in states)
@@ -10740,6 +11204,12 @@ def api_generate_pdf():
             if not state.get("session_id"):
                 return fail("No active session. Please capture or upload an image first.", 404)
             
+            if stone_job_active(state):
+                return fail(
+                    "Waiting for Stone Analysis to finish before generating the report.",
+                    409,
+                )
+
             if not is_appraised_jewel_state(state):
                 return fail("Analysis not complete. Please complete the workflow before generating a report.", 400)
             
