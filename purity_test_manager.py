@@ -352,6 +352,7 @@ class PurityTestManager:
         speak_fn: Callable[[str], None] | None = None,
         session_start_fn: SessionCallback | None = None,
         session_stop_fn: SessionCallback | None = None,
+        now_fn: Callable[[], datetime] | None = None,
     ) -> None:
         self.base_dir = Path(base_dir)
         self.frame_getter = frame_getter
@@ -359,6 +360,7 @@ class PurityTestManager:
         self.speak_fn = speak_fn or (lambda _text: None)
         self.session_start_fn = session_start_fn or (lambda: None)
         self.session_stop_fn = session_stop_fn or (lambda: None)
+        self.now_fn = now_fn or datetime.now
 
         self._module: Any = None
         self._module_lock = threading.Lock()
@@ -1001,7 +1003,7 @@ class PurityTestManager:
     def _capture_session_image(self, field_name: str, prefix: str, frame: np.ndarray | None) -> str:
         if self._session_root is None:
             return ""
-        filename = f"{prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+        filename = f"{prefix}_{self.now_fn().strftime('%Y%m%d_%H%M%S')}.jpg"
         saved_path = self._save_frame(self._session_root / filename, frame)
         if saved_path:
             with self._state_lock:
@@ -1047,7 +1049,7 @@ class PurityTestManager:
         return self._capture_session_image(field_name, prefix, crop)
 
     def _stamp(self) -> str:
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return self.now_fn().strftime("%Y-%m-%d %H:%M:%S")
 
     def _build_progress_snapshot(self, session: dict[str, Any]) -> dict[str, Any]:
         module = self._module

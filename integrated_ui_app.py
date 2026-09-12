@@ -19,7 +19,7 @@ import wave
 import subprocess
 from collections import defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -43,6 +43,12 @@ PLEDGE_DIR = RUNTIME_DIR / "_pledges"
 PLEDGE_DIR.mkdir(parents=True, exist_ok=True)
 PLEDGE_MEDIA_DIR = PLEDGE_DIR / "media"
 PLEDGE_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+ARTIFACT_COMPRESSION_SCRIPT = BASE_DIR / "artifact_compression.py"
+PDF_IMAGE_DPI = 180
+PDF_IMAGE_JPEG_QUALITY = 90
+
+PLEDGE_COMPRESSION_LOCK = threading.Lock()
+PLEDGE_COMPRESSION_STARTED: set[str] = set()
 
 TIMING_HISTORY_FILE = RUNTIME_DIR / "analysis_timing.json"
 TIMING_LOCK = threading.Lock()
@@ -90,6 +96,7 @@ from HandRemover.handremover import (  # noqa: E402
     HAND_REMOVAL_PIPELINE_VERSION,
     extract_bangles,
     get_hand_model,
+    infer_hand_mask,
 )
 import StoneDetection.jewel_gem_hsv_report as stone_detection  # noqa: E402
 import StoneDetection.stone_analysis_v2 as stone_analysis_v2  # noqa: E402
@@ -457,11 +464,16 @@ TTS_WORKFLOW_PHRASES = {
     "Jewel count captured. Start packet sealing.",
     "Jewel count mismatch. Please verify before packet sealing.",
     "Capture the final jewel count before packet sealing.",
+    "Packet sealing process started. Put all jewels into the packet and seal it.",
     "Packet sealing recording started.",
     "Packet sealing recording started. Put all jewels into the packet and seal it.",
     "Packet sealing stopped. Video is still compressing.",
+    "Packet sealing process completed. Final report is ready.",
     "Packet sealing video saved. Final report is ready.",
-    "Remove the packet strip, then press Hand Clear.",
+    "Remove only the packet strip and hands. Keep the packet on the test bed, then click Hand Check Seal.",
+    "Hand detected. Remove your hands from the test bed, then click Hand Check Seal again.",
+    "Hands clear. Checking strip removal.",
+    "Strip is still present. Remove only the strip and hands. Keep the packet on the test bed, then click Hand Check Seal again.",
     "Packet sealed.",
     "Packet not sealed.",
     "Acid test has been started, keep the rubbing stone inside the camera feed.",
@@ -1036,7 +1048,7 @@ PACKET_TARGET_MIN_VIDEO_KBPS = int(os.environ.get("PACKET_TARGET_MIN_VIDEO_KBPS"
 PACKET_TARGET_MAX_VIDEO_KBPS = int(os.environ.get("PACKET_TARGET_MAX_VIDEO_KBPS", "1800"))
 STRIPING_PROCESS_DIR = BASE_DIR / "jewel_tracka_rpi"
 STRIPING_BAG_HEF_PATH = STRIPING_PROCESS_DIR / "bag.hef"
-STRIPING_HEF_PATH = STRIPING_PROCESS_DIR / "strip-m.hef"
+STRIPING_HEF_PATH = BASE_DIR / "models" / "packetstrip.hef"
 
 PROMPT_CONFIG = json.loads(CLASS_PROMPT_PATH.read_text(encoding="utf-8"))
 MODEL_LABELS = list(PROMPT_CONFIG["classes"].keys())
@@ -2137,6 +2149,7 @@ class CameraBackend:
         self._exposure_control: str | None = None
         self._auto_gain_control: str | None = None
         self._gain_control: str | None = None
+        self._focus_check_enabled = True
         self._autofocus_enabled = False
         self._focus_frame_count = 0
         self._focus_scores: deque[float] = deque(maxlen=CAMERA_FOCUS_STABILITY_FRAMES)
@@ -2162,8 +2175,14 @@ class CameraBackend:
                     requested_height,
                 )
                 try:
+                    autofocus_set = bool(
+                        self._cap.set(
+                            cv2.CAP_PROP_AUTOFOCUS,
+                            1 if self._focus_check_enabled else 0,
+                        )
+                    )
                     self._autofocus_enabled = bool(
-                        self._cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+                        self._focus_check_enabled and autofocus_set
                     )
                 except Exception:
                     self._autofocus_enabled = False
@@ -2300,11 +2319,39 @@ class CameraBackend:
             "warmup_frames": min(self._focus_frame_count, CAMERA_FOCUS_WARMUP_FRAMES),
             "required_warmup_frames": CAMERA_FOCUS_WARMUP_FRAMES,
             "roi": copy.deepcopy(self._focus_roi),
+            "enabled": bool(self._focus_check_enabled),
             "autofocus_enabled": bool(self._autofocus_enabled),
         }
 
     def focus_snapshot(self) -> dict[str, Any]:
         with self._lock:
+            return self._focus_payload_unlocked()
+
+    def set_autofocus_enabled(self, enabled: bool) -> dict[str, Any]:
+        with self._lock:
+            self._focus_check_enabled = bool(enabled)
+            autofocus_set = False
+            if self._cap is not None:
+                try:
+                    autofocus_set = bool(
+                        self._cap.set(cv2.CAP_PROP_AUTOFOCUS, 1 if enabled else 0)
+                    )
+                except Exception:
+                    autofocus_set = False
+            self._autofocus_enabled = bool(enabled and autofocus_set)
+            self._focus_frame_count = 0
+            self._focus_scores.clear()
+            self._focus_relative_spread = None
+            self._focus_ready = bool(not enabled and self._focus_roi is not None)
+            self._focus_status = (
+                "Draw the Processing ROI before capture."
+                if self._focus_roi is None
+                else (
+                    "Camera autofocus is warming up."
+                    if enabled
+                    else "Autofocus is off. Capture is available immediately."
+                )
+            )
             return self._focus_payload_unlocked()
 
     def _record_focus_unlocked(
@@ -2318,6 +2365,16 @@ class CameraBackend:
             self._focus_scores.clear()
             self._focus_ready = False
             self._focus_relative_spread = None
+
+        if not self._focus_check_enabled:
+            self._focus_score = float(score or 0.0)
+            self._focus_ready = roi is not None
+            self._focus_status = (
+                "Autofocus is off. Capture is available immediately."
+                if roi is not None
+                else "Draw the Processing ROI before capture."
+            )
+            return
 
         if roi is None or score is None:
             self._focus_score = 0.0
@@ -2871,6 +2928,7 @@ def get_purity_manager() -> PurityTestManager:
                     speak_fn=speak,
                     session_start_fn=_start_purity_camera_mode,
                     session_stop_fn=_stop_purity_camera_mode,
+                    now_fn=application_now,
                 )
                 PURITY_MANAGER.set_audio_ok_confidence_threshold(
                     purity_audio_settings()["ok_confidence_threshold"]
@@ -2884,9 +2942,47 @@ def get_purity_manager() -> PurityTestManager:
 app = Flask(__name__, static_folder=str(WEBUI_DIR), static_url_path="/webui")
 app.config["MAX_CONTENT_LENGTH"] = 80 * 1024 * 1024
 
+APPLICATION_CLOCK_LOCK = threading.Lock()
+APPLICATION_CLOCK_SYNC: dict[str, Any] | None = None
+
+
+def wifi_connected(net_root: Path = Path("/sys/class/net")) -> bool:
+    try:
+        interfaces = list(net_root.iterdir())
+    except OSError:
+        return False
+    for interface in interfaces:
+        if not (interface / "wireless").exists():
+            continue
+        try:
+            if (interface / "operstate").read_text().strip() != "up":
+                continue
+            carrier = interface / "carrier"
+            if not carrier.exists() or carrier.read_text().strip() == "1":
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def application_now() -> datetime:
+    global APPLICATION_CLOCK_SYNC
+    if wifi_connected():
+        with APPLICATION_CLOCK_LOCK:
+            APPLICATION_CLOCK_SYNC = None
+        return datetime.now()
+    with APPLICATION_CLOCK_LOCK:
+        sync = dict(APPLICATION_CLOCK_SYNC) if APPLICATION_CLOCK_SYNC else None
+    if not sync:
+        return datetime.now()
+    elapsed = max(0.0, time.monotonic() - float(sync["monotonic_seconds"]))
+    current_epoch = float(sync["epoch_seconds"]) + elapsed
+    client_timezone = timezone(timedelta(minutes=int(sync["utc_offset_minutes"])))
+    return datetime.fromtimestamp(current_epoch, client_timezone)
+
 
 def now_stamp() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return application_now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def load_timing_history() -> dict[str, list[float]]:
@@ -3045,7 +3141,7 @@ def storage_cleanup_worker() -> None:
 
 def new_session_id(pledge_id: str | None = None) -> str:
     prefix = f"{pledge_id}_" if pledge_id else ""
-    return f"{prefix}{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+    return f"{prefix}{application_now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
 
 
 def build_empty_purity_state() -> dict[str, Any]:
@@ -3307,8 +3403,12 @@ def pledge_artifact_payload(pledge_id: str | None, path: Path | None) -> dict[st
 def _default_packet_sealing_state() -> dict[str, Any]:
     return {
         "status": "idle",
+        "active": False,
         "recording": False,
+        "record_video": False,
         "compressing": False,
+        "finishing": False,
+        "completed": False,
         "started_at": None,
         "stopped_at": None,
         "video": None,
@@ -3386,6 +3486,51 @@ def save_pledge_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
     return metadata
+
+
+def schedule_pledge_artifact_compression(
+    pledge_id: str,
+    metadata: dict[str, Any] | None,
+) -> None:
+    if not pledge_id or not _pledge_closure_complete(metadata):
+        return
+    with PLEDGE_COMPRESSION_LOCK:
+        if pledge_id in PLEDGE_COMPRESSION_STARTED:
+            return
+        PLEDGE_COMPRESSION_STARTED.add(pledge_id)
+    try:
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                str(ARTIFACT_COMPRESSION_SCRIPT),
+                "--runtime-dir",
+                str(RUNTIME_DIR),
+                "--pledge-id",
+                pledge_id,
+            ],
+            cwd=str(BASE_DIR),
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+            close_fds=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        with PLEDGE_COMPRESSION_LOCK:
+            PLEDGE_COMPRESSION_STARTED.discard(pledge_id)
+        print(f"[ArtifactCompression] Could not start for {pledge_id}: {exc}")
+        return
+
+    def wait_for_compression() -> None:
+        return_code = process.wait()
+        if return_code:
+            print(
+                f"[ArtifactCompression] {pledge_id} exited with code {return_code}."
+            )
+
+    threading.Thread(
+        target=wait_for_compression,
+        name=f"artifact-compression-{sanitize_filename(pledge_id, 'pledge')}",
+        daemon=True,
+    ).start()
 
 
 def get_or_create_pledge_metadata(pledge_id: str) -> dict[str, Any]:
@@ -3859,13 +4004,85 @@ def refresh_packet_striping_hailo_models() -> dict[str, Any]:
             PACKET_STRIP_HAILO_MODELS = None
             raise
         print(
-            "[PacketStriping] Refreshed and tested packet HEFs before recording."
+            "[PacketStriping] Refreshed and tested packet HEFs before packet sealing."
         )
         return models
 
 
+PACKET_HAND_CONFIDENCE = 0.45
+PACKET_HAND_MASK_THRESHOLD = 0.65
+PACKET_HAND_CHECK_FRAMES = 5
+PACKET_HAND_REQUIRED_FRAMES = 2
+PACKET_HAND_MIN_AREA_FRACTION = 0.02
+PACKET_HAND_MIN_HEIGHT_FRACTION = 0.20
+
+
+class PacketHandWorker(threading.Thread):
+    """Run the startup-loaded hand HEF without blocking packet sealing."""
+
+    def __init__(self) -> None:
+        super().__init__(daemon=True)
+        self._in: queue.Queue[np.ndarray | None] = queue.Queue(maxsize=1)
+        self._out: queue.Queue[tuple[Any, float | None]] = queue.Queue(maxsize=1)
+        self.error = ""
+        self.last_confidence: float | None = None
+
+    def submit(self, frame: np.ndarray) -> None:
+        try:
+            self._in.get_nowait()
+        except queue.Empty:
+            pass
+        self._in.put(frame.copy())
+
+    def stop(self) -> None:
+        try:
+            self._in.get_nowait()
+        except queue.Empty:
+            pass
+        self._in.put(None)
+
+    def get_result(self):
+        try:
+            result, confidence = self._out.get_nowait()
+            self.last_confidence = confidence
+            return result
+        except queue.Empty:
+            return None
+
+    def run(self) -> None:
+        while True:
+            frame = self._in.get()
+            if frame is None:
+                return
+            try:
+                mask = infer_hand_mask(
+                    frame,
+                    confidence=PACKET_HAND_CONFIDENCE,
+                    mask_threshold=PACKET_HAND_MASK_THRESHOLD,
+                )
+                moments = cv2.moments(mask)
+                centroid = (
+                    (
+                        int(moments["m10"] / moments["m00"]),
+                        int(moments["m01"] / moments["m00"]),
+                    )
+                    if moments["m00"]
+                    else None
+                )
+                result = (centroid, mask if centroid is not None else None)
+            except Exception as exc:  # noqa: BLE001
+                self.error = str(exc)
+                print(f"[packet-hand] inference stopped: {self.error}")
+                return
+            try:
+                self._out.get_nowait()
+            except queue.Empty:
+                pass
+            self._out.put((result, None))
+
+
 class PacketStripingVerifier:
-    """Run the existing striping HEFs beside packet video recording."""
+    """Run the existing striping HEFs during live packet sealing."""
 
     def __init__(
         self,
@@ -3882,7 +4099,6 @@ class PacketStripingVerifier:
             self._roi = (x, y, x + width, y + height)
         self._bag_hailo_model = None
         self._strip_hailo_model = None
-        self._strip_fp_filter = None
         self._active_model = None
         self._active_worker = None
         self._active_kind = None
@@ -3893,19 +4109,22 @@ class PacketStripingVerifier:
         self._evidence_path: Path | None = None
         self._started_at: str | None = None
         self._updated_at: str | None = None
-        self._hand_clear_requested = False
+        self._hand_mask = None
+        self._hand_present = False
+        self._hand_check_frames = 0
+        self._hand_detected_frames = 0
         self._cover_mask = None
         self._cover_confidence: float | None = None
         self._rectangularity = 0.0
-        self._target_bag_mask = None
-        self._target_bag_zone = None
+        self._cover_confirm_count = 0
         self._current_strip_mask = None
         self._strip_appearance_change = 0.0
         self._strip_confidence: float | None = None
         self._strip_present = False
-        self._strip_confirm_count = 0
-        self._seal_gone_checks = 0
+        self._strip_search_misses = 0
         self._verification_strip_misses = 0
+        self._verification_strip_hits = 0
+        self._live_strip_misses = 0
         self._last_frame: np.ndarray | None = None
 
     def start(self) -> None:
@@ -3920,11 +4139,6 @@ class PacketStripingVerifier:
                 models = get_packet_striping_hailo_models()
                 self._bag_hailo_model = models["bag"]
                 self._strip_hailo_model = models["strip"]
-                fp_filter = striping.HSVFPFilter(
-                    str(STRIPING_PROCESS_DIR / striping.DEFAULT_STRIP_FP_MODEL),
-                    striping.DEFAULT_STRIP_FP_CONFIDENCE,
-                )
-                self._strip_fp_filter = fp_filter if fp_filter.enabled else None
                 self._status = "tracking"
                 self._start_model("cover")
             except Exception as exc:  # noqa: BLE001
@@ -3943,12 +4157,14 @@ class PacketStripingVerifier:
                 "started_at": self._started_at,
                 "updated_at": self._updated_at,
                 "hand_clear_enabled": self._status == "strip_detected",
+                "hand_present": self._hand_present,
                 "evidence_image": pledge_artifact_payload(
                     self._pledge_id, self._evidence_path
                 ),
                 "overlay": {
                     "bag": self._mask_overlay(self._cover_mask),
                     "strip": self._mask_overlay(self._current_strip_mask),
+                    "hand": self._mask_overlay(self._hand_mask),
                     "bag_confidence": self._cover_confidence,
                     "strip_confidence": self._strip_confidence,
                     "strip_appearance_change": round(
@@ -3972,6 +4188,7 @@ class PacketStripingVerifier:
             masks = (
                 (self._cover_mask, (50, 220, 50), bag_label),
                 (self._current_strip_mask, (0, 140, 255), strip_label),
+                (self._hand_mask, (220, 70, 220), "HAND - WAIT CLEAR"),
             )
             for mask, color, label in masks:
                 if mask is None or mask.shape[:2] != annotated.shape[:2]:
@@ -4033,12 +4250,18 @@ class PacketStripingVerifier:
     def request_hand_clear(self) -> None:
         with self._lock:
             if self._status != "strip_detected":
-                raise ValueError("Wait until the strip is detected before pressing Hand Clear.")
-            self._hand_clear_requested = True
-            self._verification_strip_misses = 0
+                raise ValueError("Wait until the strip is detected before checking hands and seal.")
             self._strip_appearance_change = 0.0
-            self._reason = "Confirming that the strip is absent inside the packet mask."
+            self._hand_mask = None
+            self._hand_present = False
+            self._hand_check_frames = 0
+            self._hand_detected_frames = 0
+            self._status = "hand_check"
+            self._reason = (
+                f"Checking the test bed for hands (0 of {PACKET_HAND_CHECK_FRAMES})."
+            )
             self._updated_at = now_stamp()
+            self._start_model("hand")
 
     def restart(self, *, reload_hailo_models: bool = False) -> None:
         with self._lock:
@@ -4071,7 +4294,13 @@ class PacketStripingVerifier:
             if frame is None or frame.size == 0:
                 return
             self._last_frame = frame.copy()
-            if self._status not in {"tracking", "strip_mode", "strip_detected", "cover_check"}:
+            if self._status not in {
+                "tracking",
+                "strip_mode",
+                "strip_detected",
+                "hand_check",
+                "strip_check",
+            }:
                 return
             if self._active_worker is None or self._support is None:
                 return
@@ -4099,10 +4328,10 @@ class PacketStripingVerifier:
                 worker_result, frame.shape[:2]
             )
 
-            if self._status == "tracking":
-                self._process_cover_result(result, frame.shape[:2], confidence)
-            elif self._status == "cover_check":
-                self._process_cover_check(result, confidence)
+            if self._active_kind == "hand":
+                self._process_hand_result(result)
+            elif self._active_kind == "cover":
+                self._process_cover_result(result, confidence)
             else:
                 self._process_strip_result(result, confidence)
 
@@ -4116,7 +4345,7 @@ class PacketStripingVerifier:
                 self._reason = (
                     "Strip verification was unavailable."
                     if self._error
-                    else "Strip removal was not verified before recording stopped."
+                    else "Strip removal was not verified before packet sealing finished."
                 )
                 self._updated_at = now_stamp()
                 self._save_evidence(self._last_frame)
@@ -4129,6 +4358,8 @@ class PacketStripingVerifier:
         self._rectangularity = 0.0
         self._current_strip_mask = None
         self._strip_confidence = None
+        self._hand_mask = None
+        self._hand_present = False
 
     def _reset_cycle(self) -> None:
         self._stop_active_model()
@@ -4137,25 +4368,34 @@ class PacketStripingVerifier:
         self._reason = ""
         self._error = ""
         self._evidence_path = None
-        self._hand_clear_requested = False
+        self._hand_mask = None
+        self._hand_present = False
+        self._hand_check_frames = 0
+        self._hand_detected_frames = 0
         self._cover_mask = None
         self._cover_confidence = None
         self._rectangularity = 0.0
-        self._target_bag_mask = None
-        self._target_bag_zone = None
+        self._cover_confirm_count = 0
         self._current_strip_mask = None
         self._strip_appearance_change = 0.0
         self._strip_confidence = None
         self._strip_present = False
-        self._strip_confirm_count = 0
-        self._seal_gone_checks = 0
+        self._strip_search_misses = 0
         self._verification_strip_misses = 0
+        self._verification_strip_hits = 0
+        self._live_strip_misses = 0
 
     def _start_model(self, kind: str) -> None:
         self._stop_active_model()
         if self._support is None:
             return
-        is_cover = kind in {"cover", "cover_check"}
+        if kind == "hand":
+            worker = PacketHandWorker()
+            worker.start()
+            self._active_worker = worker
+            self._active_kind = kind
+            return
+        is_cover = kind == "cover"
         model = self._support.HailoSegModel(
             str(STRIPING_BAG_HEF_PATH if is_cover else STRIPING_HEF_PATH),
             conf=(
@@ -4163,14 +4403,11 @@ class PacketStripingVerifier:
                 if is_cover
                 else self._support.STRIP_CONF_THRESHOLD
             ),
-            rgb_input=is_cover,
+            rgb_input=True,
             label=f"packet-{kind}",
             hailo_model=self._bag_hailo_model if is_cover else self._strip_hailo_model,
         )
-        worker = self._support.SegWorker(
-            model,
-            self._strip_fp_filter if not is_cover else None,
-        )
+        worker = self._support.SegWorker(model)
         worker.start()
         self._active_model = model
         self._active_worker = worker
@@ -4219,7 +4456,6 @@ class PacketStripingVerifier:
     def _process_cover_result(
         self,
         result,
-        frame_shape: tuple[int, int],
         confidence: float | None,
     ) -> None:
         if result is None:
@@ -4231,13 +4467,13 @@ class PacketStripingVerifier:
             if self._cover_mask is not None
             else 0.0
         )
+
         if self._cover_mask is None or self._rectangularity < self._support.DEFAULT_RECT_THRESHOLD:
+            self._cover_confirm_count = 0
             return
-        self._target_bag_mask = self._cover_mask.copy()
-        self._target_bag_zone = self._support.make_target_zone(
-            self._cover_mask, frame_shape
-        )
-        if self._target_bag_zone is None:
+        self._cover_confirm_count += 1
+        self._reason = "Confirming the rectangular packet before looking for the strip."
+        if self._cover_confirm_count < self._support.STRIP_CONFIRM_FRAMES:
             return
         self._status = "strip_mode"
         self._reason = "Packet is rectangular. Looking for the strip."
@@ -4256,77 +4492,186 @@ class PacketStripingVerifier:
         if result is None:
             return
 
-        self._strip_confidence = None
+        preserve_live_overlay = self._status == "strip_detected"
+        if not preserve_live_overlay:
+            self._strip_confidence = None
         _centroid, mask = result
-        mask = self._support.mask_inside_reference(mask, self._target_bag_mask)
+        if self._status in {"strip_mode", "strip_detected"}:
+            mask = self._support.mask_inside_reference(mask, self._cover_mask)
         strip_detected = (
             self._support.get_centroid(mask) is not None
             if mask is not None
             else False
         )
-        self._current_strip_mask = mask.copy() if strip_detected else None
         if strip_detected:
-            self._strip_confidence = confidence
+            self._current_strip_mask = mask.copy()
             self._strip_present = True
+            self._strip_confidence = confidence
+        elif not preserve_live_overlay:
+            self._current_strip_mask = None
+            self._strip_present = False
 
         if self._status == "strip_mode":
-            if strip_detected:
-                self._strip_confirm_count += 1
-            else:
-                self._strip_confirm_count = 0
-            if self._strip_confirm_count >= self._support.STRIP_CONFIRM_FRAMES:
-                self._status = "strip_detected"
-                self._reason = "Remove the strip, then press Hand Clear."
-                self._updated_at = now_stamp()
-                print(
-                    "[PacketStriping] Strip confirmed inside packet mask "
-                    f"(pixels={int(np.count_nonzero(self._current_strip_mask))}); "
-                    "live preview overlay active."
-                )
-                speak("Remove the packet strip, then press Hand Clear.")
-            return
+            if not strip_detected:
+                self._strip_search_misses += 1
+                if self._strip_search_misses >= self._support.STRIP_CONFIRM_FRAMES * 4:
+                    self._cover_mask = None
+                    self._cover_confidence = None
+                    self._rectangularity = 0.0
+                    self._cover_confirm_count = 0
+                    self._strip_search_misses = 0
+                    self._status = "tracking"
+                    self._reason = "Looking again for a rectangular packet and its strip."
+                    self._updated_at = now_stamp()
+                    self._start_model("cover")
+                return
 
-        if not self._hand_clear_requested:
-            return
-        if strip_detected:
-            self._verification_strip_misses = 0
-        else:
-            self._verification_strip_misses += 1
-        if self._verification_strip_misses >= self._support.STRIP_DEBOUNCE_FRAMES:
-            self._strip_present = False
-            self._current_strip_mask = None
-            self._strip_confidence = None
-            self._status = "cover_check"
-            self._reason = "Checking that the packet remains in place."
+            self._strip_search_misses = 0
+            self._live_strip_misses = 0
+            self._status = "strip_detected"
+            self._reason = (
+                "Remove only the strip and hands. Keep the packet on the test bed, "
+                "then click Hand Check-Seal."
+            )
             self._updated_at = now_stamp()
-            self._start_model("cover_check")
+            print(
+                "[PacketStriping] Strip detected inside packet mask "
+                f"(pixels={int(np.count_nonzero(self._current_strip_mask))}); "
+                "live preview overlay active."
+            )
+            speak(
+                "Remove only the packet strip and hands. Keep the packet on the "
+                "test bed, then click Hand Check Seal."
+            )
+            return
 
-    def _process_cover_check(self, result, confidence: float | None) -> None:
+        if self._status == "strip_detected":
+            clear_after = int(self._support.STRIP_CONFIRM_FRAMES)
+            if strip_detected:
+                was_hidden = self._live_strip_misses >= clear_after
+                self._live_strip_misses = 0
+                if was_hidden:
+                    self._reason = (
+                        "Strip detected in the live view. Remove only the strip and "
+                        "hands, then click Hand Check-Seal."
+                    )
+                    self._updated_at = now_stamp()
+                return
+
+            self._live_strip_misses += 1
+            if (
+                self._live_strip_misses >= clear_after
+                and self._current_strip_mask is not None
+            ):
+                self._current_strip_mask = None
+                self._strip_confidence = None
+                self._strip_present = False
+                self._reason = (
+                    "Strip is not detected in the live view. Click Hand Check-Seal "
+                    "to verify that it was removed."
+                )
+                self._updated_at = now_stamp()
+            return
+
+        if strip_detected:
+            self._strip_confidence = confidence
+            self._verification_strip_misses = 0
+            self._verification_strip_hits += 1
+            if self._verification_strip_hits >= self._support.STRIP_CONFIRM_FRAMES:
+                self._set_terminal(
+                    False,
+                    "Hands clear, but the strip is still present in repeated checks.",
+                )
+            return
+        self._verification_strip_hits = 0
+        self._verification_strip_misses += 1
+        if self._verification_strip_misses >= self._support.STRIP_DEBOUNCE_FRAMES:
+            self._set_terminal(
+                True,
+                "Hands clear and strip absent in repeated checks.",
+            )
+
+    def _process_hand_result(self, result) -> None:
         if result is None:
             return
-        self._cover_confidence = confidence
-        _centroid, check_mask = result
-        check_mask = self._support.mask_in_target_zone(check_mask, self._target_bag_zone)
-        bag_present = self._support.mask_matches_reference(
-            self._target_bag_mask,
-            check_mask,
-            self._support.TARGET_BAG_MASK_IOU,
-            self._support.TARGET_BAG_AREA_RATIO,
-        )
-        if not bag_present:
-            self._set_terminal(False, "Packet was removed before sealing was confirmed.")
-            return
-        if not self._strip_present:
-            self._seal_gone_checks += 1
-            if self._seal_gone_checks >= self._support.SEAL_GONE_CHECKS:
-                self._set_terminal(True, "Strip removed and packet remained in place.")
-                return
+        _centroid, mask = result
+        mask = self._validated_hand_mask(mask)
+        hand_present = mask is not None
+        if hand_present:
+            self._hand_mask = mask.copy()
         else:
-            self._seal_gone_checks = 0
+            self._hand_mask = None
+        self._hand_present = hand_present
+        self._hand_check_frames += 1
+        if hand_present:
+            self._hand_detected_frames += 1
+        self._reason = (
+            f"Checking the test bed for hands "
+            f"({self._hand_check_frames} of {PACKET_HAND_CHECK_FRAMES})."
+        )
+        if self._hand_check_frames < PACKET_HAND_CHECK_FRAMES:
+            return
+        if self._hand_detected_frames >= PACKET_HAND_REQUIRED_FRAMES:
+            self._status = "strip_detected"
+            self._reason = (
+                "Hand detected. Remove all hands from the test bed, then click "
+                "Hand Check-Seal again."
+            )
+            self._updated_at = now_stamp()
+            speak(
+                "Hand detected. Remove your hands from the test bed, "
+                "then click Hand Check Seal again."
+            )
+            self._hand_mask = None
+            self._hand_present = True
+            self._live_strip_misses = 0
+            self._start_model("strip")
+            return
+        speak("Hands clear. Checking strip removal.")
+        self._begin_strip_check()
 
+    def _validated_hand_mask(self, mask: np.ndarray | None) -> np.ndarray | None:
+        """Keep only complete hand-sized components, not thin red-strip fragments."""
+        if mask is None or self._last_frame is None:
+            return None
+        roi = self._effective_roi(self._last_frame)
+        if roi is None:
+            roi_width = self._last_frame.shape[1]
+            roi_height = self._last_frame.shape[0]
+        else:
+            roi_width = roi[2] - roi[0]
+            roi_height = roi[3] - roi[1]
+        minimum_area = max(
+            1000,
+            int(roi_width * roi_height * PACKET_HAND_MIN_AREA_FRACTION),
+        )
+        minimum_height = max(
+            40,
+            int(roi_height * PACKET_HAND_MIN_HEIGHT_FRACTION),
+        )
+        accepted = np.zeros_like(mask, dtype=np.uint8)
+        contours, _hierarchy = cv2.findContours(
+            mask.astype(np.uint8),
+            cv2.RETR_EXTERNAL,
+            cv2.CHAIN_APPROX_SIMPLE,
+        )
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            x, y, width, height = cv2.boundingRect(contour)
+            if area < minimum_area or height < minimum_height:
+                continue
+            if width / max(1, height) > 3.5 and height < roi_height * 0.25:
+                continue
+            cv2.drawContours(accepted, [contour], -1, 255, cv2.FILLED)
+        return accepted if np.any(accepted) else None
+
+    def _begin_strip_check(self) -> None:
+        self._hand_mask = None
+        self._hand_present = False
         self._verification_strip_misses = 0
-        self._status = "strip_detected"
-        self._reason = "Confirming that the strip remains absent inside the packet mask."
+        self._verification_strip_hits = 0
+        self._status = "strip_check"
+        self._reason = "Hands clear. Checking that the strip is absent."
         self._updated_at = now_stamp()
         self._start_model("strip")
 
@@ -4361,7 +4706,7 @@ class PacketStripingVerifier:
             2,
             cv2.LINE_AA,
         )
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = application_now().strftime("%Y%m%d_%H%M%S")
         path = self._media_dir / f"packet_striping_{timestamp}_{'sealed' if sealed else 'not_sealed'}.png"
         try:
             save_bgr(path, vis)
@@ -4384,12 +4729,21 @@ class PacketSealingRecorder:
         self._error = ""
         self._av1: dict[str, Any] | None = None
         self._capturing = False
+        self._record_video = False
         self._compressing = False
+        self._completed = False
 
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
-            running = bool(self._capturing)
+            active = bool(self._capturing)
+            recording = bool(active and self._record_video)
             compressing = bool(self._compressing)
+            finishing = bool(
+                self._thread is not None
+                and self._thread.is_alive()
+                and not active
+                and not compressing
+            )
             video = (
                 pledge_artifact_payload(self._pledge_id, self._final_path)
                 if (
@@ -4409,15 +4763,25 @@ class PacketSealingRecorder:
                 **_default_packet_sealing_state(),
                 "status": (
                     "recording"
-                    if running
+                    if recording
+                    else "processing"
+                    if active
                     else "compressing"
                     if compressing
+                    else "finishing"
+                    if finishing
                     else "saved"
                     if video
+                    else "completed"
+                    if self._completed
                     else "idle"
                 ),
-                "recording": running,
+                "active": active,
+                "recording": recording,
+                "record_video": bool(self._record_video),
                 "compressing": compressing,
+                "finishing": finishing,
+                "completed": bool(self._completed),
                 "started_at": self._started_at,
                 "stopped_at": self._stopped_at,
                 "video": video,
@@ -4428,7 +4792,15 @@ class PacketSealingRecorder:
 
     def is_recording(self) -> bool:
         with self._lock:
+            return bool(self._capturing and self._record_video)
+
+    def is_active(self) -> bool:
+        with self._lock:
             return bool(self._capturing)
+
+    def is_busy(self) -> bool:
+        with self._lock:
+            return bool(self._thread is not None and self._thread.is_alive())
 
     def is_compressing(self) -> bool:
         with self._lock:
@@ -4445,13 +4817,15 @@ class PacketSealingRecorder:
         self,
         pledge_id: str,
         processing_roi: dict[str, int] | None = None,
+        *,
+        record_video: bool = False,
     ) -> dict[str, Any]:
         pledge_id = str(pledge_id or "").strip()
         if not pledge_id:
             raise ValueError("Pledge ID is required for packet sealing.")
         with self._lock:
             if self._thread is not None and self._thread.is_alive():
-                raise RuntimeError("Packet sealing video recording or compression is already running.")
+                raise RuntimeError("Packet sealing process or video compression is already running.")
             purity = get_purity_manager()
             if purity.worker_is_active():
                 purity.stop("Preparing packet sealing")
@@ -4462,7 +4836,7 @@ class PacketSealingRecorder:
                 )
             refresh_packet_striping_hailo_models()
             media_dir = pledge_media_dir(pledge_id)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = application_now().strftime("%Y%m%d_%H%M%S")
             safe_id = sanitize_filename(pledge_id, "pledge")
             self._pledge_id = pledge_id
             self._started_at = now_stamp()
@@ -4470,15 +4844,25 @@ class PacketSealingRecorder:
             self._error = ""
             self._av1 = None
             self._capturing = True
+            self._record_video = bool(record_video)
             self._compressing = False
-            self._raw_path = media_dir / f"packet_sealing_{safe_id}_{timestamp}.raw.mp4"
-            self._final_path = media_dir / f"packet_sealing_{safe_id}_{timestamp}.mp4"
+            self._completed = False
+            self._raw_path = (
+                media_dir / f"packet_sealing_{safe_id}_{timestamp}.raw.mp4"
+                if self._record_video
+                else None
+            )
+            self._final_path = (
+                media_dir / f"packet_sealing_{safe_id}_{timestamp}.mp4"
+                if self._record_video
+                else None
+            )
             self._striping = PacketStripingVerifier(pledge_id, processing_roi)
             self._striping.start()
             self._stop_event.clear()
             self._thread = threading.Thread(
                 target=self._record_loop,
-                name="packet-sealing-recorder",
+                name="packet-sealing-process",
                 daemon=True,
             )
             self._thread.start()
@@ -4487,21 +4871,21 @@ class PacketSealingRecorder:
     def request_striping_hand_clear(self) -> dict[str, Any]:
         with self._lock:
             if not self._capturing or self._striping is None:
-                raise RuntimeError("Start packet sealing recording before verifying strip removal.")
+                raise RuntimeError("Start packet sealing before verifying strip removal.")
             self._striping.request_hand_clear()
             return self.snapshot()
 
     def restart_striping(self) -> dict[str, Any]:
         with self._lock:
             if not self._capturing or self._striping is None:
-                raise RuntimeError("Start packet sealing recording before restarting strip verification.")
+                raise RuntimeError("Start packet sealing before restarting strip verification.")
             self._striping.restart(reload_hailo_models=True)
             return self.snapshot()
 
     def skip_striping(self) -> dict[str, Any]:
         with self._lock:
             if not self._capturing or self._striping is None:
-                raise RuntimeError("Start packet sealing recording before skipping strip verification.")
+                raise RuntimeError("Start packet sealing before skipping strip verification.")
             self._striping.skip()
             return self.snapshot()
 
@@ -4511,7 +4895,7 @@ class PacketSealingRecorder:
             if thread is None or not thread.is_alive():
                 return self.snapshot()
             self._capturing = False
-            self._compressing = True
+            self._compressing = bool(self._record_video)
             self._stopped_at = self._stopped_at or now_stamp()
             self._stop_event.set()
             return self.snapshot()
@@ -4524,10 +4908,12 @@ class PacketSealingRecorder:
         with self._lock:
             raw_path = self._raw_path
             final_path = self._final_path
+            record_video = bool(self._record_video)
         try:
-            if raw_path is None or final_path is None:
+            if record_video and (raw_path is None or final_path is None):
                 raise RuntimeError("Packet sealing output path was not prepared.")
-            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            if record_video and raw_path is not None:
+                raw_path.parent.mkdir(parents=True, exist_ok=True)
             capture_fps = _packet_capture_fps()
             output_fps = _packet_output_fps()
             frame_interval = 1.0 / capture_fps
@@ -4549,21 +4935,22 @@ class PacketSealingRecorder:
                 if striping is not None:
                     striping.process_frame(frame)
 
-                height, width = frame.shape[:2]
-                rec_w, rec_h = _packet_recording_dimensions(width, height)
-                small = cv2.resize(frame, (rec_w, rec_h), interpolation=cv2.INTER_AREA)
+                if record_video:
+                    height, width = frame.shape[:2]
+                    rec_w, rec_h = _packet_recording_dimensions(width, height)
+                    small = cv2.resize(frame, (rec_w, rec_h), interpolation=cv2.INTER_AREA)
 
-                if writer is None:
-                    writer = cv2.VideoWriter(
-                        str(raw_path),
-                        cv2.VideoWriter_fourcc(*PACKET_REC_CODEC[:4]),
-                        output_fps,
-                        (rec_w, rec_h),
-                    )
-                    if not writer.isOpened():
-                        raise RuntimeError("Could not open packet sealing video writer.")
+                    if writer is None:
+                        writer = cv2.VideoWriter(
+                            str(raw_path),
+                            cv2.VideoWriter_fourcc(*PACKET_REC_CODEC[:4]),
+                            output_fps,
+                            (rec_w, rec_h),
+                        )
+                        if not writer.isOpened():
+                            raise RuntimeError("Could not open packet sealing video writer.")
 
-                writer.write(small)
+                    writer.write(small)
         except Exception as exc:  # noqa: BLE001
             with self._lock:
                 self._error = str(exc)
@@ -4576,13 +4963,13 @@ class PacketSealingRecorder:
                 striping.finalize(last_frame)
             with self._lock:
                 self._capturing = False
-                self._compressing = True
+                self._compressing = record_video
                 self._stopped_at = self._stopped_at or now_stamp()
             av1_result: dict[str, Any] | None = None
             try:
-                if raw_path and raw_path.exists() and raw_path.stat().st_size > 0 and final_path:
+                if record_video and raw_path and raw_path.exists() and raw_path.stat().st_size > 0 and final_path:
                     av1_result = _transcode_packet_video_to_av1(raw_path, final_path)
-                elif raw_path and raw_path.exists() and final_path:
+                elif record_video and raw_path and raw_path.exists() and final_path:
                     shutil.move(str(raw_path), str(final_path))
             except Exception as exc:  # noqa: BLE001
                 with self._lock:
@@ -4591,9 +4978,10 @@ class PacketSealingRecorder:
                 if av1_result is not None:
                     self._av1 = av1_result
                 self._compressing = False
+                self._completed = True
+                self._thread = None
                 completed_packet_state = self.snapshot()
                 completed_pledge_id = str(self._pledge_id or "").strip()
-                self._thread = None
             self._persist_completed_state(completed_packet_state, completed_pledge_id)
 
     def _persist_completed_state(
@@ -4618,13 +5006,21 @@ class PacketSealingRecorder:
                     state["status"] = (
                         "Packet sealing video saved."
                         if packet_state.get("video")
-                        else packet_state.get("error") or "Packet sealing video processing failed."
+                        else packet_state.get("error")
+                        or "Packet sealing process completed without video."
                     )
                     state["updated_at"] = now_stamp()
+            schedule_pledge_artifact_compression(pledge_id, metadata)
             if packet_state.get("video") and notify_active_pledge:
                 speak("Packet sealing video saved. Final report is ready.")
+            elif (
+                packet_state.get("completed")
+                and not packet_state.get("error")
+                and notify_active_pledge
+            ):
+                speak("Packet sealing process completed. Final report is ready.")
         except Exception as exc:  # noqa: BLE001
-            print(f"Could not persist packet sealing video completion: {exc}")
+            print(f"Could not persist packet sealing completion: {exc}")
 
 
 def get_packet_recorder() -> PacketSealingRecorder:
@@ -5246,7 +5642,11 @@ def run_full_image_bead_detection(
     )
     result = {
         "beads_detected": bead_count > 0,
-        "risk": "High" if bead_count > 0 else "Low",
+        "risk": (
+            "High"
+            if bead_count > 2
+            else ("Looks Like Beads" if bead_count > 0 else "Low")
+        ),
         "bead_count": bead_count,
         "candidate_count": candidate_count,
         "false_positive_count": candidate_count - bead_count,
@@ -5502,6 +5902,12 @@ def _segmentation_bead_risk_high(segmentation: dict[str, Any] | None) -> bool:
     bead_analysis = segmentation.get("bead_analysis")
     if not isinstance(bead_analysis, dict):
         bead_analysis = (segmentation.get("debug") or {}).get("bead_analysis")
+    bead_count = (bead_analysis or {}).get("bead_count")
+    if bead_count is not None:
+        try:
+            return int(bead_count) > 2
+        except (TypeError, ValueError):
+            pass
     bead_risk = str(segmentation.get("bead_risk") or "").strip().lower()
     analysis_risk = str((bead_analysis or {}).get("risk") or "").strip().lower()
     return bead_risk == "high" or analysis_risk == "high" or bool((bead_analysis or {}).get("beads_detected"))
@@ -5536,11 +5942,7 @@ def weight_summary_for_state(state: dict[str, Any]) -> dict[str, Any]:
     stone_setting_profile = stone_area_calculator.normalize_stone_setting_profile(
         stones.get("setting_profile")
     )
-    stone_setting_profile_label = {
-        stone_area_calculator.STONE_SETTING_PROFILE_FRONT_ONLY: "Half cut / front-only stones",
-        stone_area_calculator.STONE_SETTING_PROFILE_OPEN_BACK: "Full cut / open-back stones",
-        stone_area_calculator.STONE_SETTING_PROFILE_UNKNOWN: "Unknown - visible area only",
-    }[stone_setting_profile]
+    stone_setting_profile_label = "Half cut / front-only stones"
 
     estimated_stone_weight: float | None = None
     minimum_stone_weight = 0.0
@@ -5550,7 +5952,6 @@ def weight_summary_for_state(state: dict[str, Any]) -> dict[str, Any]:
     stone_weight_range_narrowed = False
     weight_confidences: list[str] = []
     weight_methods: list[str] = []
-    v2_geometry_estimate = False
     stones_detected = False
     for stone_key in ("main", "side"):
         result = stones.get(stone_key)
@@ -5587,9 +5988,6 @@ def weight_summary_for_state(state: dict[str, Any]) -> dict[str, Any]:
             weight_confidences.append(str(estimate.get("weight_confidence") or "Low"))
             if estimate.get("weight_method"):
                 weight_methods.append(str(estimate["weight_method"]))
-            v2_geometry_estimate = (
-                v2_geometry_estimate or bool(estimate.get("v2_geometry_estimate"))
-            )
             stone_weight_calibration_applied = (
                 stone_weight_calibration_applied
                 or bool(estimate.get("calibration_applied"))
@@ -5602,13 +6000,20 @@ def weight_summary_for_state(state: dict[str, Any]) -> dict[str, Any]:
             estimated_stone_weight = float(estimated_stone_weight or 0.0)
 
     if estimated_parts and estimated_stone_weight is not None and jewel_weight is not None:
+        upper_allowance_g = stone_area_calculator.FRONT_ONLY_WEIGHT_DEVIATION_G
+        minimum_stone_weight = estimated_stone_weight
+        maximum_stone_weight = (
+            estimated_stone_weight + upper_allowance_g
+            if estimated_stone_weight > 0.0
+            else 0.0
+        )
         aggregate_estimate = stone_area_calculator.calibrate_weight_estimate_to_jewel_weight(
             {
                 "success": True,
                 "estimated_total_average_g": estimated_stone_weight,
                 "estimated_total_minimum_g": minimum_stone_weight,
                 "estimated_total_maximum_g": maximum_stone_weight,
-                "v2_geometry_estimate": v2_geometry_estimate,
+                "fixed_deviation_range": True,
                 "weight_confidence": (
                     min(
                         weight_confidences,
@@ -5697,6 +6102,14 @@ def risk_factors_for_state(
     segmentation_assessed = bool(segmentation.get("done"))
     thread_high = bool(segmentation_assessed and summary["tassel_present"])
     bead_high = bool(segmentation_assessed and _segmentation_bead_risk_high(segmentation))
+    bead_analysis = segmentation.get("bead_analysis")
+    if not isinstance(bead_analysis, dict):
+        bead_analysis = (segmentation.get("debug") or {}).get("bead_analysis")
+    bead_count = (bead_analysis or {}).get("bead_count")
+    try:
+        bead_looks_like = bool(segmentation_assessed and 1 <= int(bead_count) <= 2)
+    except (TypeError, ValueError):
+        bead_looks_like = False
     minimum_g = summary["estimated_stone_weight_minimum_g"]
     maximum_g = summary["estimated_stone_weight_maximum_g"]
     if maximum_g is None and summary["estimated_stone_weight_g"] is not None:
@@ -5732,8 +6145,21 @@ def risk_factors_for_state(
             "label": "Beads",
             "assessed": segmentation_assessed,
             "high": bead_high,
-            "status": "HIGH RISK" if bead_high else ("LOW RISK" if segmentation_assessed else "NOT ASSESSED"),
-            "result": "Detected" if bead_high else ("Not detected" if segmentation_assessed else "Analysis not run"),
+            "looks_like": bead_looks_like,
+            "status": (
+                "HIGH RISK"
+                if bead_high
+                else (
+                    "LOOKS LIKE BEADS"
+                    if bead_looks_like
+                    else ("LOW RISK" if segmentation_assessed else "NOT ASSESSED")
+                )
+            ),
+            "result": (
+                "Detected"
+                if bead_high or bead_looks_like
+                else ("Not detected" if segmentation_assessed else "Analysis not run")
+            ),
         },
         "stones": {
             "label": "Stones",
@@ -6220,14 +6646,46 @@ def _pdf_image(
     """Create a ReportLab Image fitted inside a box without changing aspect ratio."""
     try:
         with PILImage.open(str(img_path)) as pil_img:
+            pil_img.load()
             iw, ih = pil_img.size
+            source = pil_img.copy()
     except Exception:
         iw, ih = 400, 300
+        source = PILImage.new("RGB", (iw, ih), "white")
     if iw <= 0 or ih <= 0:
         iw, ih = 400, 300
 
     scale = min(max_width / iw, max_height / ih, 1.0)
-    img = ReportLabImage(str(img_path), width=iw * scale, height=ih * scale)
+    draw_width = iw * scale
+    draw_height = ih * scale
+    target_width = max(1, int(round(draw_width * PDF_IMAGE_DPI / inch)))
+    target_height = max(1, int(round(draw_height * PDF_IMAGE_DPI / inch)))
+    if source.width > target_width or source.height > target_height:
+        source.thumbnail(
+            (target_width, target_height),
+            PILImage.Resampling.LANCZOS,
+        )
+    if source.mode == "RGBA":
+        background = PILImage.new("RGB", source.size, "white")
+        background.paste(source, mask=source.getchannel("A"))
+        source = background
+    elif source.mode != "RGB":
+        source = source.convert("RGB")
+    compressed = io.BytesIO()
+    source.save(
+        compressed,
+        format="JPEG",
+        quality=PDF_IMAGE_JPEG_QUALITY,
+        subsampling=0,
+        optimize=True,
+    )
+    compressed.seek(0)
+    img = ReportLabImage(
+        compressed,
+        width=draw_width,
+        height=draw_height,
+    )
+    img._compressed_source = compressed
     img.hAlign = "CENTER"
     return img
 
@@ -6488,6 +6946,7 @@ def generate_pdf_report(
             continue
         factors = risk_factors_for_state(state)
         risk_jewel = any(bool(factor["high"]) for factor in factors.values())
+        looks_like_beads = bool(factors["beads"].get("looks_like"))
         risk_assessed = any(bool(factor["assessed"]) for factor in factors.values())
         actual_weight = (state.get("weight_details") or {}).get("jewel_weight_g")
         skipped_names = [
@@ -6502,7 +6961,15 @@ def generate_pdf_report(
                 f"{float(actual_weight):.2f} g" if actual_weight is not None else "-",
                 _acid_status_for_state(state),
                 ", ".join(skipped_names) if skipped_names else "None",
-                "RISK" if risk_jewel else ("NORMAL" if risk_assessed else "NOT ASSESSED"),
+                (
+                    "RISK"
+                    if risk_jewel
+                    else (
+                        "LOOKS LIKE BEADS"
+                        if looks_like_beads
+                        else ("NORMAL" if risk_assessed else "NOT ASSESSED")
+                    )
+                ),
             ]
         )
 
@@ -6910,6 +7377,8 @@ def generate_pdf_report(
                     f'<font color="red"><b>HIGH RISK: {_pdf_text(", ".join(high_factors))}</b></font>',
                     normal_style,
                 ))
+            elif risk_factors["beads"].get("looks_like"):
+                story.append(Paragraph("<b>OVERALL RESULT: LOOKS LIKE BEADS</b>", normal_style))
             elif any(factor["assessed"] for factor in risk_factors.values()):
                 story.append(Paragraph("<b>OVERALL RESULT: LOW RISK</b>", normal_style))
             else:
@@ -6919,7 +7388,11 @@ def generate_pdf_report(
 
     count_verification = (pledge_metadata or {}).get("jewel_count_verification")
     packet_sealing = (pledge_metadata or {}).get("packet_sealing") or {}
-    if count_verification or packet_sealing.get("video"):
+    if (
+        count_verification
+        or packet_sealing.get("completed")
+        or packet_sealing.get("video")
+    ):
         story.append(PageBreak())
         story.append(Paragraph("Pledge Closure", heading_style))
         if count_verification:
@@ -6970,27 +7443,33 @@ def generate_pdf_report(
                 f"<b>Skipped At:</b> {_pdf_text(packet_sealing.get('skipped_at', 'N/A'))}",
                 normal_style,
             ))
-        if video:
+        if packet_sealing.get("completed") or video:
             story.append(Spacer(1, 0.15 * inch))
             story.append(Paragraph("Packet Sealing", heading_style))
             story.append(Paragraph(
-                f"<b>Recording Started:</b> {_pdf_text(packet_sealing.get('started_at', 'N/A'))}",
+                f"<b>Process Started:</b> {_pdf_text(packet_sealing.get('started_at', 'N/A'))}",
                 normal_style,
             ))
             story.append(Paragraph(
-                f"<b>Recording Stopped:</b> {_pdf_text(packet_sealing.get('stopped_at', 'N/A'))}",
+                f"<b>Process Completed:</b> {_pdf_text(packet_sealing.get('stopped_at', 'N/A'))}",
                 normal_style,
             ))
             av1 = packet_sealing.get("av1") or {}
-            story.append(Paragraph(
-                f"<b>Video File:</b> {_pdf_text(video.get('name', 'packet_sealing.mp4'))}",
-                normal_style,
-            ))
-            if av1:
+            if video:
                 story.append(Paragraph(
-                    f"<b>AV1 Compression:</b> "
-                    f"{'Applied' if av1.get('applied') else 'Fallback kept'}"
-                    f"{' (' + _pdf_text(av1.get('encoder')) + ')' if av1.get('encoder') else ''}",
+                    f"<b>Video File:</b> {_pdf_text(video.get('name', 'packet_sealing.mp4'))}",
+                    normal_style,
+                ))
+                if av1:
+                    story.append(Paragraph(
+                        f"<b>AV1 Compression:</b> "
+                        f"{'Applied' if av1.get('applied') else 'Fallback kept'}"
+                        f"{' (' + _pdf_text(av1.get('encoder')) + ')' if av1.get('encoder') else ''}",
+                        normal_style,
+                    ))
+            else:
+                story.append(Paragraph(
+                    "<b>Video Recording:</b> Not requested",
                     normal_style,
                 ))
             striping = packet_sealing.get("striping") or {}
@@ -7026,7 +7505,7 @@ def snapshot_state() -> dict[str, Any]:
         recorder = PACKET_RECORDER
         if (
             recorder is not None
-            and recorder.is_recording()
+            and recorder.is_active()
             and not state.get("pledge_id")
             and getattr(recorder, "_pledge_id", None)
         ):
@@ -7776,7 +8255,7 @@ def analyze_pledge_jewel_count_capture(
         raise RuntimeError("Live camera frame is not available for count capture.")
 
     media_dir = pledge_media_dir(pledge_id)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = application_now().strftime("%Y%m%d_%H%M%S")
     original_path = save_bgr(media_dir / f"jewel_count_capture_{timestamp}.png", frame_bgr)
 
     height, width = frame_bgr.shape[:2]
@@ -8121,7 +8600,7 @@ def run_segmentation_pipeline(state: dict[str, Any]) -> dict[str, Any]:
     selected_tassel_model = tassel_model_settings()
     bead_analysis = debug.get("bead_analysis") or (summary_payload.get("debug") or {}).get("bead_analysis") or {}
     bead_risk = str(bead_analysis.get("risk", "Low")) if bead_analysis else None
-    bead_risk_high = str(bead_risk or "").strip().lower() == "high" or bool((bead_analysis or {}).get("beads_detected"))
+    bead_risk_high = int(bead_analysis.get("bead_count") or 0) > 2
 
     return {
         "done": True,
@@ -9016,6 +9495,58 @@ def api_state():
     )
 
 
+@app.route("/api/time/sync", methods=["POST"])
+def api_time_sync():
+    global APPLICATION_CLOCK_SYNC
+    try:
+        payload = parse_post_payload()
+        epoch_seconds = float(payload.get("epoch_ms")) / 1000.0
+        utc_offset_minutes = int(payload.get("utc_offset_minutes"))
+        client_time = datetime.fromtimestamp(epoch_seconds, timezone.utc)
+        if not 2020 <= client_time.year <= 2100:
+            raise ValueError("Browser time is outside the supported range.")
+        if not -840 <= utc_offset_minutes <= 840:
+            raise ValueError("Browser UTC offset is outside the supported range.")
+
+        connected = wifi_connected()
+        if connected:
+            with APPLICATION_CLOCK_LOCK:
+                APPLICATION_CLOCK_SYNC = None
+            source = "raspberry_pi_wifi_time"
+        else:
+            with APPLICATION_CLOCK_LOCK:
+                APPLICATION_CLOCK_SYNC = {
+                    "epoch_seconds": epoch_seconds,
+                    "utc_offset_minutes": utc_offset_minutes,
+                    "monotonic_seconds": time.monotonic(),
+                    "client_ip": request.remote_addr,
+                }
+            source = "ethernet_browser_time"
+        return jsonify(
+            {
+                "ok": True,
+                "source": source,
+                "wifi_connected": connected,
+                "current_time": now_stamp(),
+            }
+        )
+    except (TypeError, ValueError, OSError, OverflowError) as exc:
+        return fail(str(exc), 400)
+
+
+@app.route("/api/camera/autofocus", methods=["POST"])
+def api_camera_autofocus():
+    try:
+        payload = parse_post_payload()
+        enabled = payload.get("enabled")
+        if not isinstance(enabled, bool):
+            raise ValueError("Autofocus enabled must be true or false.")
+        camera_focus = get_camera_backend().set_autofocus_enabled(enabled)
+        return jsonify({"ok": True, "camera_focus": camera_focus})
+    except Exception as exc:  # noqa: BLE001
+        return fail(str(exc))
+
+
 @app.route("/api/purity/audio-devices")
 def api_purity_audio_devices():
     manager = get_purity_manager()
@@ -9267,6 +9798,7 @@ def api_stage_skip():
                     }
                 save_pledge_metadata(metadata)
                 apply_pledge_metadata_to_state(state, metadata)
+                schedule_pledge_artifact_compression(pledge_id, metadata)
 
             skipped = mark_stage_skipped(state, stage_key)
             state["status"] = f"{skipped['display_name']} skipped."
@@ -9284,7 +9816,7 @@ def api_stage_skip():
 
 def _preview_jpeg_bytes() -> bytes | None:
     recorder = PACKET_RECORDER
-    if recorder is not None and recorder.is_recording():
+    if recorder is not None and recorder.is_active():
         packet_frame = get_camera_backend().get_frame_copy()
         if packet_frame is not None:
             packet_frame = recorder.annotate_preview(packet_frame)
@@ -9388,8 +9920,8 @@ def api_video_feed():
 def api_reset():
     global CURRENT_STATE
     recorder = PACKET_RECORDER
-    if recorder is not None and recorder.is_recording():
-        return fail("Stop packet sealing recording before resetting the workflow.")
+    if recorder is not None and recorder.is_active():
+        return fail("Finish packet sealing before resetting the workflow.")
     with STATE_LOCK:
         invalidate_stone_job(ensure_state())
         CURRENT_STATE = build_empty_state()
@@ -9781,6 +10313,8 @@ def api_pledge_jewel_count_capture():
 def api_packet_sealing_start():
     global PACKET_RECORDER
     try:
+        payload = request.get_json(silent=True) or {}
+        record_video = bool(payload.get("record_video", False))
         with STATE_LOCK:
             state = ensure_state()
             pledge_id = str(state.get("pledge_id") or "").strip()
@@ -9800,10 +10334,14 @@ def api_packet_sealing_start():
 
         recorder = get_packet_recorder()
         previous_pledge_id = str(getattr(recorder, "_pledge_id", "") or "").strip()
-        if recorder.is_compressing() and previous_pledge_id != pledge_id:
+        if recorder.is_busy() and previous_pledge_id != pledge_id:
             PACKET_RECORDER = PacketSealingRecorder()
             recorder = PACKET_RECORDER
-        packet_state = recorder.start(pledge_id, processing_roi)
+        packet_state = recorder.start(
+            pledge_id,
+            processing_roi,
+            record_video=record_video,
+        )
         with STATE_LOCK:
             metadata = get_or_create_pledge_metadata(pledge_id)
             metadata["packet_sealing"] = packet_state
@@ -9811,10 +10349,18 @@ def api_packet_sealing_start():
             state = ensure_state()
             apply_pledge_metadata_to_state(state, metadata)
             clear_stage_skip(state, "packet_sealing")
-            state["status"] = "Packet sealing recording started."
+            state["status"] = (
+                "Packet sealing recording started."
+                if record_video
+                else "Packet sealing process started without recording."
+            )
             state["updated_at"] = now_stamp()
 
-        speak("Packet sealing recording started. Put all jewels into the packet and seal it.")
+        speak(
+            "Packet sealing recording started. Put all jewels into the packet and seal it."
+            if record_video
+            else "Packet sealing process started. Put all jewels into the packet and seal it."
+        )
         return jsonify({"ok": True, "state": snapshot_state()})
     except Exception as exc:  # noqa: BLE001
         return fail(str(exc))
@@ -9885,6 +10431,8 @@ def api_packet_sealing_stop():
             state["status"] = (
                 "Packet sealing video saved."
                 if packet_state.get("video")
+                else "Packet sealing process completed without video."
+                if packet_state.get("completed")
                 else packet_state.get("error") or "Packet sealing stopped."
             )
             state["updated_at"] = now_stamp()
@@ -9959,7 +10507,9 @@ def api_source():
             focus_state = get_camera_backend().focus_snapshot()
             if focus_roi is None:
                 raise RuntimeError("Draw the Processing ROI before capturing the jewel image.")
-            if focus_state.get("roi") != focus_roi or not focus_state.get("ready"):
+            if focus_state.get("enabled", True) and (
+                focus_state.get("roi") != focus_roi or not focus_state.get("ready")
+            ):
                 raise RuntimeError(
                     str(focus_state.get("status") or "Wait for camera focus to stabilize before capture.")
                 )
@@ -10783,8 +11333,13 @@ def api_segmentation_run():
                 state["segmentation"]["runtime_seconds"],
             )
             clear_stage_skip(state, "jewellery_analysis")
-            if state["segmentation"].get("bead_risk_high"):
+            bead_count = int(
+                (state["segmentation"].get("bead_analysis") or {}).get("bead_count") or 0
+            )
+            if bead_count > 2:
                 state["status"] = "Jewellery analysis completed. RISK JEWEL: Round beads detected in chain."
+            elif bead_count > 0:
+                state["status"] = "Jewellery analysis completed. Looks like beads in the chain."
             else:
                 state["status"] = "Jewellery analysis completed."
             state["updated_at"] = now_stamp()
@@ -11055,7 +11610,11 @@ def _pledge_closure_complete(metadata: dict[str, Any] | None) -> bool:
     count_verification = metadata.get("jewel_count_verification") or {}
     packet = metadata.get("packet_sealing") or {}
     count_done = bool(count_verification)
-    packet_done = bool(packet.get("skipped") or _packet_video_path_from_metadata(metadata))
+    packet_done = bool(
+        packet.get("completed")
+        or packet.get("skipped")
+        or _packet_video_path_from_metadata(metadata)
+    )
     return bool(count_done and packet_done)
 
 
@@ -11185,7 +11744,7 @@ def api_generate_pdf():
                 return fail("Pledge report is not ready. Complete or skip final count capture and packet sealing video first.", 400)
             
             try:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                timestamp = application_now().strftime("%Y%m%d_%H%M%S")
                 metadata["result_generated_at"] = now_stamp()
                 save_pledge_metadata(metadata)
                 pdf_buffer = generate_pdf_report(states, metadata)
@@ -11238,7 +11797,7 @@ def api_generate_pdf():
 
             try:
                 session_id = state.get("session_id", "unknown")
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                timestamp = application_now().strftime("%Y%m%d_%H%M%S")
                 if metadata is not None:
                     metadata["result_generated_at"] = now_stamp()
                     save_pledge_metadata(metadata)

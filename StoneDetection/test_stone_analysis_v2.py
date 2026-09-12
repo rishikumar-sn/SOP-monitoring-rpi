@@ -180,6 +180,94 @@ class StoneAnalysisV2Tests(unittest.TestCase):
                 result = v2.classify_stone_instance_color(image, self.seed)
                 self.assertEqual(result["color"], expected)
 
+    def test_neighboring_red_shades_are_not_multicolor(self):
+        hsv = np.full((*self.shape, 3), (4, 210, 150), dtype=np.uint8)
+        hsv[:, 60:] = (12, 210, 150)
+        image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        result = v2.classify_stone_instance_color(image, self.jewel)
+        self.assertEqual(result["color"], "Red")
+
+    def test_red_hue_wrap_is_not_multicolor(self):
+        hsv = np.full((*self.shape, 3), (175, 180, 120), dtype=np.uint8)
+        hsv[:, 60:] = (4, 180, 120)
+        image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        result = v2.classify_stone_instance_color(image, self.jewel)
+        self.assertEqual(result["color"], "Red")
+
+    def test_separated_shades_use_one_region_average(self):
+        hsv = np.full((*self.shape, 3), (4, 210, 150), dtype=np.uint8)
+        hsv[:, 60:] = (52, 210, 150)
+        image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        result = v2.classify_stone_instance_color(image, self.jewel)
+        self.assertEqual(result["color"], "Yellow/Gold")
+        self.assertNotEqual(result["color"], "Multicolor/Color-changing")
+        self.assertEqual(result["secondary_colors"], [])
+
+    def test_dark_chromatic_region_with_reflection_is_not_black(self):
+        hsv = np.full((*self.shape, 3), (4, 210, 55), dtype=np.uint8)
+        hsv[52:68, 52:68] = (0, 5, 245)
+        image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        result = v2.classify_stone_instance_color(image, self.jewel)
+        self.assertEqual(result["color"], "Red")
+        self.assertIn("hsv_average", result)
+
+    def test_yellow_region_overlapping_gold_is_flagged_as_metal(self):
+        hsv = np.full((*self.shape, 3), (25, 100, 190), dtype=np.uint8)
+        image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        gold = np.zeros(self.shape, dtype=np.uint8)
+        gold[self.seed > 0] = 255
+        result = v2.classify_stone_instance_color(image, self.seed, gold)
+        self.assertEqual(result["color"], "Yellow/Gold")
+        self.assertTrue(result["likely_gold_metal"])
+
+    def test_dark_region_surrounded_by_gold_is_flagged_as_metal_shadow(self):
+        hsv = np.full((*self.shape, 3), (25, 220, 20), dtype=np.uint8)
+        image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        gold = cv2.dilate(self.seed, np.ones((7, 7), dtype=np.uint8))
+        gold[self.seed > 0] = 0
+        result = v2.classify_stone_instance_color(image, self.seed, gold)
+        self.assertTrue(result["likely_gold_metal"])
+
+    def test_non_gold_hsv_residual_keeps_colored_stone_faces(self):
+        image = np.full((*self.shape, 3), (20, 170, 215), dtype=np.uint8)
+        gold = self.jewel.copy()
+        expected_centers = [(40, 60), (60, 60), (80, 60)]
+        for center, color in zip(
+            expected_centers,
+            ((180, 55, 25), (30, 105, 25), (135, 35, 120)),
+        ):
+            cv2.circle(image, center, 8, color, cv2.FILLED)
+            cv2.circle(gold, center, 9, 0, cv2.FILLED)
+        candidates = v2.generate_stone_candidates(image, self.jewel, [], gold)
+        residual_candidates = [
+            candidate
+            for candidate in candidates
+            if "non_gold_hsv_residual" in candidate["source_methods"]
+        ]
+        self.assertGreaterEqual(len(residual_candidates), 3)
+        for center in expected_centers:
+            self.assertTrue(
+                any(
+                    candidate["seed_mask"][center[1], center[0]]
+                    for candidate in residual_candidates
+                )
+            )
+
+    def test_non_gold_neutral_residual_keeps_complete_white_face(self):
+        image = np.full((*self.shape, 3), (20, 170, 215), dtype=np.uint8)
+        gold = self.jewel.copy()
+        cv2.circle(image, (60, 60), 15, (185, 190, 195), cv2.FILLED)
+        cv2.circle(image, (60, 60), 15, (70, 75, 80), 2)
+        cv2.circle(gold, (60, 60), 16, 0, cv2.FILLED)
+        candidates = v2.generate_stone_candidates(image, self.jewel, [], gold)
+        neutral = [
+            candidate
+            for candidate in candidates
+            if "non_gold_neutral_residual" in candidate["source_methods"]
+        ]
+        self.assertTrue(neutral)
+        self.assertTrue(any(candidate["seed_mask"][60, 60] for candidate in neutral))
+
     def test_surface_risk_boundaries(self):
         self.assertEqual(v2.calculate_stone_surface_risk(0, 0)["level"], "NONE")
         self.assertEqual(v2.calculate_stone_surface_risk(4, 1)["level"], "LOW")
@@ -225,6 +313,36 @@ class StoneAnalysisV2Tests(unittest.TestCase):
         self.assertEqual(estimate["raw_estimated_total_maximum_g"], 16.0)
         self.assertTrue(estimate["sanity_constraint_applied"])
         self.assertTrue(estimate["weight_warnings"])
+
+    def test_half_cut_uses_visible_area_with_one_sided_one_gram_allowance(self):
+        estimate = calculator.apply_stone_setting_weight_model(
+            {
+                "success": True,
+                "instances": [{"shape": "round"}],
+            },
+            calculator.STONE_SETTING_PROFILE_OPEN_BACK,
+            visible_stone_area_mm2=586.8189,
+            jewel_weight_g=28.49,
+        )
+        self.assertEqual(
+            estimate["stone_setting_profile"],
+            calculator.STONE_SETTING_PROFILE_FRONT_ONLY,
+        )
+        self.assertEqual(estimate["weight_model"], "front_only_areal_calibration")
+        self.assertAlmostEqual(estimate["estimated_total_average_g"], 0.9947, places=4)
+        self.assertAlmostEqual(estimate["estimated_total_minimum_g"], 0.9947, places=4)
+        self.assertAlmostEqual(estimate["estimated_total_maximum_g"], 1.9947, places=4)
+        self.assertEqual(estimate["range_deviation_g"], 1.0)
+
+        capped = calculator.apply_stone_setting_weight_model(
+            {"success": True},
+            calculator.STONE_SETTING_PROFILE_FRONT_ONLY,
+            visible_stone_area_mm2=0.9 / calculator.FRONT_ONLY_AREAL_MASS_G_PER_MM2,
+            jewel_weight_g=1.2,
+        )
+        self.assertEqual(capped["estimated_total_minimum_g"], 0.9)
+        self.assertEqual(capped["estimated_total_average_g"], 0.9)
+        self.assertEqual(capped["estimated_total_maximum_g"], 1.2)
 
     def test_giant_merged_region_lowers_weight_confidence(self):
         estimate = calculator.estimate_stone_weight_range(

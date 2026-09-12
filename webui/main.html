@@ -820,6 +820,9 @@
           <button type="button" class="moreBtn" data-stage="classification" aria-label="More actions">&#8943;</button>
         </div>
         <p class="stepInstruction">Place the jewel clearly inside the marked area, then check the jewel type.</p>
+        <div class="toolRow">
+          <button id="btnToggleAutofocus" class="btn secondary smallBtn" type="button">Auto Focus: On</button>
+        </div>
         <div id="classificationFocusStatus" class="focusStatus">Ready to capture.</div>
         <div class="twoCol">
           <button id="btnCaptureMainImage" class="btn primary">Capture Image</button>
@@ -1093,9 +1096,10 @@
 
           <div id="packetSealingControls" class="sealControls hidden">
             <h4>2 &middot; Packet Sealing</h4>
-            <p class="tiny">Place the jewels in the packet and seal it.</p>
+            <p class="tiny">Place the jewels in the packet and seal it. Video recording is optional.</p>
             <div class="twoCol">
               <button id="btnStartPacketSealing" class="btn primary">Start Packet Sealing</button>
+              <button id="btnStartPacketSealingRecording" class="btn secondary">Start With Recording</button>
               <button id="btnStopPacketSealing" class="btn secondary">Finish Packet Sealing</button>
               <button id="btnSkipPacketSealing" class="btn secondary hidden">Skip Sealing Video</button>
             </div>
@@ -1109,7 +1113,7 @@
             <div id="stripingControls" class="stripingControls hidden">
               <p class="tiny">Strip check: did the tamper strip stay intact and is the packet sealed?</p>
               <div class="twoCol">
-                <button id="btnStripingHandClear" class="btn success">Strip Hand-Clear</button>
+                <button id="btnStripingHandClear" class="btn success">Hand Check-Seal</button>
                 <button id="btnRestartStriping" class="btn secondary">Restart Strip Check</button>
                 <button id="btnSkipStriping" class="btn secondary">Skip Strip Check</button>
               </div>
@@ -1482,6 +1486,7 @@
       fileSideImage: document.getElementById("fileSideImage"),
       btnCaptureFrame: document.getElementById("btnCaptureFrame"),
       btnCaptureMainImage: document.getElementById("btnCaptureMainImage"),
+      btnToggleAutofocus: document.getElementById("btnToggleAutofocus"),
       classificationFocusStatus: document.getElementById("classificationFocusStatus"),
       btnUseLiveNow: document.getElementById("btnUseLiveNow"),
       btnResetUi: document.getElementById("btnResetUi"),
@@ -1670,6 +1675,7 @@
       countCaptureArtifacts: document.getElementById("countCaptureArtifacts"),
       packetSealingControls: document.getElementById("packetSealingControls"),
       btnStartPacketSealing: document.getElementById("btnStartPacketSealing"),
+      btnStartPacketSealingRecording: document.getElementById("btnStartPacketSealingRecording"),
       btnStopPacketSealing: document.getElementById("btnStopPacketSealing"),
       btnSkipPacketSealing: document.getElementById("btnSkipPacketSealing"),
       packetSealingValue: document.getElementById("packetSealingValue"),
@@ -1723,6 +1729,7 @@
 
     let backendState = null;
     let cameraFocusState = {
+      enabled: true,
       ready: false,
       status: "Draw the Processing ROI before capture.",
     };
@@ -1731,6 +1738,7 @@
     let liveFrameInterval = 0;
     let statePollInterval = 0;
     let audioDevicePollInterval = 0;
+    let clockSyncInterval = 0;
     let stateMutationVersion = 0;
     let stateMutationsInFlight = 0;
     let initialFlowRestored = false;
@@ -2082,7 +2090,7 @@
       const packet = backendState && backendState.packet_sealing;
       const striping = packet && packet.striping;
       const overlay = striping && striping.overlay;
-      if (!packet || !packet.recording || !overlay) return;
+      if (!packet || !(packet.active || packet.recording) || !overlay) return;
 
       const bag = overlay.bag;
       if (bag) {
@@ -2101,6 +2109,12 @@
           ? ""
           : ` C ${Number(overlay.strip_confidence).toFixed(3)}`;
         drawRectOverlay(strip.rect, "#ff8c00", `Packet Strip${stripConfidence}`);
+      }
+
+      const hand = overlay.hand;
+      if (hand) {
+        drawPolygonOverlay(hand.contour, "rgba(220, 70, 220, 0.22)", "#dc46dc");
+        drawRectOverlay(hand.rect, "#dc46dc", "Hand - wait clear");
       }
     }
 
@@ -2253,7 +2267,11 @@
     function updateCapturedSetupControls() {
       const captured = Boolean(previewState.main.dataUrl);
       const uploaded = captured && previewState.main.kind === "upload";
-      const focusReady = Boolean(cameraFocusState && cameraFocusState.ready);
+      const autofocusEnabled = !cameraFocusState || cameraFocusState.enabled !== false;
+      const focusReady = Boolean(
+        previewState.rois.processing &&
+        (!autofocusEnabled || (cameraFocusState && cameraFocusState.ready))
+      );
       const pendingCameraSource = captured && !uploaded && previewState.main.dirty;
       const uploadedRoisReady = !uploaded || Boolean(
         previewState.rois.processing && previewState.rois.aruco
@@ -2265,6 +2283,8 @@
       refs.btnLearnStoneColor.disabled = !captured;
       refs.btnCaptureMainImage.disabled = !pledgeCountSaved() || !focusReady;
       refs.btnCaptureMainImage.textContent = uploaded ? "Use Camera Image Instead" : "Capture Image";
+      refs.btnToggleAutofocus.textContent = `Auto Focus: ${autofocusEnabled ? "On" : "Off"}`;
+      refs.btnToggleAutofocus.setAttribute("aria-pressed", autofocusEnabled ? "true" : "false");
       refs.btnRunClassification.disabled = (
         (!captured && !(backendState && backendState.source && backendState.source.working_image)) ||
         !uploadedRoisReady ||
@@ -2272,7 +2292,9 @@
       );
       refs.classificationFocusStatus.textContent = uploaded
         ? "Image ready."
-        : (focusReady ? "Camera ready." : "Preparing camera...");
+        : (!autofocusEnabled && previewState.rois.processing
+          ? "Auto focus is off. Capture is available immediately."
+          : ((cameraFocusState && cameraFocusState.status) || (focusReady ? "Camera ready." : "Preparing camera...")));
     }
 
     function stonePreviewFilter() {
@@ -2820,6 +2842,23 @@
       } catch (error) {
         console.error("Failed to poll backend state:", error);
       }
+    }
+
+    async function syncApplicationClock() {
+      const now = new Date();
+      try {
+        await postJson("/api/time/sync", {
+          epoch_ms: now.getTime(),
+          utc_offset_minutes: -now.getTimezoneOffset(),
+        });
+      } catch (error) {
+        console.error("Failed to synchronize application time:", error);
+      }
+    }
+
+    function startClockSync() {
+      if (clockSyncInterval) clearInterval(clockSyncInterval);
+      clockSyncInterval = setInterval(syncApplicationClock, 60000);
     }
 
     function startStatePolling() {
@@ -3403,15 +3442,18 @@
       }
     }
 
-    async function startPacketSealing() {
+    async function startPacketSealing(recordVideo = false) {
       try {
         previewState.context = "source";
         startLiveStream();
-        setStatus("Starting packet sealing recording...");
-        const data = await postJson("/api/packet-sealing/start", {});
+        setStatus(recordVideo ? "Starting packet sealing recording..." : "Starting packet sealing...");
+        const data = await postJson("/api/packet-sealing/start", { record_video: recordVideo });
         backendState = data.state;
  
-        setStatusWithIndicator("Packet sealing recording started", "success");
+        setStatusWithIndicator(
+          recordVideo ? "Packet sealing recording started" : "Packet sealing started without recording",
+          "success"
+        );
         renderServerState();
       } catch (error) {
         hideLoading();
@@ -3421,7 +3463,7 @@
 
     async function stopPacketSealing() {
       try {
-        setStatus("Stopping packet sealing recording...");
+        setStatus("Finishing packet sealing...");
         const data = await postJson("/api/packet-sealing/stop", {});
         backendState = data.state;
         const packet = backendState && backendState.packet_sealing;
@@ -3430,8 +3472,12 @@
             ? "Packet sealing video saved"
             : packet && packet.compressing
               ? "Video compression is running in the background"
+              : packet && packet.finishing
+                ? "Saving the live packet sealing result"
+              : packet && packet.completed
+                ? "Packet sealing completed without recording"
               : (packet && packet.error) || "Packet sealing stopped",
-          packet && (packet.video || packet.compressing) ? "success" : "warning"
+          packet && (packet.video || packet.compressing || packet.finishing || packet.completed) ? "success" : "warning"
         );
         renderServerState();
       } catch (error) {
@@ -3917,7 +3963,7 @@
       return Boolean(
         backendState &&
         backendState.packet_sealing &&
-        (backendState.packet_sealing.video || backendState.packet_sealing.skipped)
+        (backendState.packet_sealing.completed || backendState.packet_sealing.video || backendState.packet_sealing.skipped)
       );
     }
 
@@ -3929,14 +3975,15 @@
       const pledgeComplete = Boolean(backendState && backendState.pledge_complete);
       const verification = backendState && backendState.jewel_count_verification;
       const packet = (backendState && backendState.packet_sealing) || {};
-      const showClosure = pledgeComplete || Boolean(verification) || Boolean(packet.video) || Boolean(packet.recording) || Boolean(packet.compressing);
+      const packetActive = Boolean(packet.active || packet.recording);
+      const showClosure = pledgeComplete || Boolean(verification) || Boolean(packet.completed) || Boolean(packet.video) || packetActive || Boolean(packet.compressing) || Boolean(packet.finishing);
       const closureComplete = countVerificationDone() && packetSealingDone();
       const countResolved = countVerificationDone();
 
       refs.pledgeClosurePanel.classList.toggle("hidden", !showClosure);
       refs.finalCountActions.classList.toggle("hidden", countResolved);
-      refs.btnCaptureFinalJewelCount.disabled = !pledgeComplete || Boolean(packet.recording);
-      refs.btnSkipFinalCount.disabled = !pledgeComplete || countResolved || Boolean(packet.recording);
+      refs.btnCaptureFinalJewelCount.disabled = !pledgeComplete || packetActive;
+      refs.btnSkipFinalCount.disabled = !pledgeComplete || countResolved || packetActive;
       refs.finalTitle.textContent = closureComplete ? "OVERALL RESULT" : "PLEDGE CLOSURE";
       refs.finalHeadline.classList.toggle("hidden", !closureComplete);
       refs.finalLines.classList.toggle("hidden", !closureComplete);
@@ -3973,12 +4020,13 @@
         refs.countCaptureArtifacts.innerHTML = "";
       }
 
-      refs.packetSealingControls.classList.toggle("hidden", !countResolved && !packet.recording && !packet.compressing);
-      refs.btnStartPacketSealing.disabled = !countResolved || Boolean(packet.recording) || Boolean(packet.compressing);
-      refs.btnStopPacketSealing.disabled = !packet.recording;
-      refs.btnSkipPacketSealing.disabled = !countResolved || packetSealingDone() || Boolean(packet.recording) || Boolean(packet.compressing);
-      refs.btnResetUi.disabled = Boolean(packet.recording);
-      if (packet.recording) {
+      refs.packetSealingControls.classList.toggle("hidden", !countResolved && !packetActive && !packet.compressing && !packet.finishing);
+      refs.btnStartPacketSealing.disabled = !countResolved || packetActive || Boolean(packet.compressing) || Boolean(packet.finishing);
+      refs.btnStartPacketSealingRecording.disabled = !countResolved || packetActive || Boolean(packet.compressing) || Boolean(packet.finishing);
+      refs.btnStopPacketSealing.disabled = !packetActive;
+      refs.btnSkipPacketSealing.disabled = !countResolved || packetSealingDone() || packetActive || Boolean(packet.compressing) || Boolean(packet.finishing);
+      refs.btnResetUi.disabled = packetActive;
+      if (packetActive) {
         refs.btnStartPacketSealing.classList.remove("primary");
         refs.btnStartPacketSealing.classList.add("secondary");
         refs.btnStopPacketSealing.classList.remove("secondary");
@@ -3991,19 +4039,22 @@
       }
       const striping = packet.striping || {};
       const stripingStatus = String(striping.status || "idle");
-      refs.stripingControls.classList.toggle("hidden", !packet.recording);
-      refs.btnStripingHandClear.disabled = !packet.recording || !Boolean(striping.hand_clear_enabled);
-      refs.btnRestartStriping.disabled = !packet.recording || stripingStatus === "unavailable";
-      refs.btnSkipStriping.disabled = !packet.recording || ["sealed", "not_sealed", "skipped"].includes(stripingStatus);
+      refs.stripingControls.classList.toggle("hidden", !packetActive);
+      refs.btnStripingHandClear.disabled = !packetActive || !Boolean(striping.hand_clear_enabled);
+      refs.btnRestartStriping.disabled = !packetActive || stripingStatus === "unavailable";
+      refs.btnSkipStriping.disabled = !packetActive || ["sealed", "not_sealed", "skipped"].includes(stripingStatus);
 
-      if (packet.recording) {
-        refs.packetSealingValue.textContent = "Recording";
+      if (packetActive) {
+        refs.packetSealingValue.textContent = packet.recording ? "Recording" : "Live packet sealing";
         refs.packetSealingSub.textContent = packet.started_at
-          ? `Started at ${packet.started_at}. Stop after the packet is sealed.`
-          : "Recording packet sealing. Stop after the packet is sealed.";
+          ? `Started at ${packet.started_at}${packet.recording ? " with video recording" : " without video recording"}. Finish after the packet is sealed.`
+          : `Packet sealing is running ${packet.recording ? "with" : "without"} video recording.`;
       } else if (packet.compressing) {
         refs.packetSealingValue.textContent = "Compressing in background";
         refs.packetSealingSub.textContent = "You can continue using the application. The report and video download will appear when compression finishes.";
+      } else if (packet.finishing) {
+        refs.packetSealingValue.textContent = "Finishing packet sealing";
+        refs.packetSealingSub.textContent = "Saving the live sealing result without video compression.";
       } else if (packet.skipped) {
         refs.packetSealingValue.textContent = "Skipped";
         refs.packetSealingSub.textContent = `Packet sealing video skipped${packet.skipped_at ? ` at ${packet.skipped_at}` : ""}.`;
@@ -4013,6 +4064,9 @@
         refs.packetSealingSub.textContent = av1.applied
           ? `AV1 compressed with ${av1.encoder || "encoder"}; ready for final report.`
           : (packet.error || "Video saved; AV1 fallback kept the MP4.");
+      } else if (packet.completed) {
+        refs.packetSealingValue.textContent = "Completed";
+        refs.packetSealingSub.textContent = "Packet sealing completed without video recording.";
       } else {
         refs.packetSealingValue.textContent = "--";
         refs.packetSealingSub.textContent = countVerificationDone()
@@ -4024,8 +4078,9 @@
         idle: "Waiting",
         tracking: "Waiting for rectangular packet",
         strip_mode: "Looking for strip",
-        strip_detected: "Remove strip",
-        cover_check: "Checking packet",
+        strip_detected: "Ready for hand check",
+        hand_check: "Checking hands",
+        strip_check: "Checking strip removal",
         sealed: "Sealed",
         not_sealed: "Not sealed",
         skipped: "Not sealed (strip check skipped)",
@@ -4033,7 +4088,7 @@
       };
       refs.stripingValue.textContent = stripingLabels[stripingStatus] || "Waiting";
       refs.stripingSub.textContent = striping.reason || (
-        packet.recording
+        packetActive
           ? "Strip check starts after the packet is rectangular."
           : "Strip result is saved with the packet sealing report."
       );
@@ -4268,14 +4323,22 @@
         if (segmentation.done) {
           const parts = segmentation.part_summary || {};
           const tassel = parts.tassel ? parts.tassel.area : 0;
-          const beadRiskHigh = segmentation.bead_risk_high || segmentation.bead_risk === "High" ||
-            (segmentation.bead_analysis && segmentation.bead_analysis.beads_detected);
+          const beadAnalysis = segmentation.bead_analysis || {};
+          const hasBeadCount = beadAnalysis.bead_count !== null && beadAnalysis.bead_count !== undefined;
+          const beadCount = hasBeadCount ? Number(beadAnalysis.bead_count) : 0;
+          const beadRiskHigh = hasBeadCount
+            ? beadCount > 2
+            : segmentation.bead_risk_high || segmentation.bead_risk === "High" || beadAnalysis.beads_detected;
+          const beadLooksLike = hasBeadCount && beadCount > 0 && beadCount <= 2;
           const tasselPresent = Boolean(segmentation.tassel_detected || tassel > 0) && !segmentation.no_tassel;
           const threadRiskHigh = tasselPresent;
-          const jewelleryRiskStatus = threadRiskHigh || beadRiskHigh ? "HIGH RISK" : "LOW RISK";
+          const jewelleryRiskStatus = threadRiskHigh || beadRiskHigh
+            ? "HIGH RISK"
+            : beadLooksLike ? "LOOKS LIKE BEADS" : "LOW RISK";
           refs.segmentationValue.textContent = jewelleryRiskStatus;
           setRiskResultStyle(refs.segmentationValue, jewelleryRiskStatus);
-          refs.segmentationSub.textContent = `Thread: ${threadRiskHigh ? "High" : "Low"} risk · Beads: ${beadRiskHigh ? "High" : "Low"} risk`;
+          const beadStatus = beadRiskHigh ? "High risk" : beadLooksLike ? "Looks like beads" : "Low risk";
+          refs.segmentationSub.textContent = `Thread: ${threadRiskHigh ? "High" : "Low"} risk · Beads: ${beadStatus}`;
         renderArtifactStrip(refs.segmentationArtifacts, [
           segmentation.composite_layout,
           segmentation.bead_analysis_image,
@@ -4525,7 +4588,7 @@
       else if (flow.currentStage === "weight" && (backendState.weight_extraction || {}).captured_at && !(backendState.weight_extraction || {}).success) nextId = "btnRetakeWeight";
       else if (flow.currentStage === "weight" && !(backendState.weight_extraction || {}).success) nextId = "btnCaptureWeight";
       else if (flow.currentStage === "weight") nextId = "btnWeightNext";
-      else if (flow.currentStage === "final" && backendState && backendState.packet_sealing && backendState.packet_sealing.recording) {
+      else if (flow.currentStage === "final" && backendState && backendState.packet_sealing && (backendState.packet_sealing.active || backendState.packet_sealing.recording)) {
         const striping = backendState.packet_sealing.striping || {};
         if (striping.hand_clear_enabled) nextId = "btnStripingHandClear";
         else nextId = "btnStopPacketSealing";
@@ -4539,7 +4602,7 @@
         "btnRunSegmentation", "btnSegmentationNext", "btnRunMainStoneDetection",
         "btnShowFinalFromMain", "btnStartPurityTest", "btnStopPurityTest",
         "btnNextJewelFromPurity", "btnShowFinalFromPurity",
-        "btnStartPacketSealing", "btnStopPacketSealing", "btnStripingHandClear", "btnGeneratePdf", "btnNextJewelFromFinal"
+        "btnStartPacketSealing", "btnStartPacketSealingRecording", "btnStopPacketSealing", "btnStripingHandClear", "btnGeneratePdf", "btnNextJewelFromFinal"
       ];
       const usable = (element) => element && !element.disabled && element.offsetParent !== null;
       let nextElement = document.getElementById(nextId);
@@ -5073,6 +5136,23 @@
       }
     }));
 
+    refs.btnToggleAutofocus.addEventListener("click", withButtonGuard(refs.btnToggleAutofocus, async () => {
+      try {
+        const enable = Boolean(cameraFocusState && cameraFocusState.enabled === false);
+        const data = await postJson("/api/camera/autofocus", { enabled: enable });
+        cameraFocusState = data.camera_focus || cameraFocusState;
+        updateCapturedSetupControls();
+        setStatusWithIndicator(
+          enable
+            ? "Auto focus is on. Wait until the camera focus is ready before capture."
+            : "Auto focus is off. Capture is available without waiting for focus.",
+          "success"
+        );
+      } catch (error) {
+        setStatusWithIndicator(error.message, "error");
+      }
+    }));
+
     refs.btnUseLiveNow.addEventListener("click", async () => {
       try {
         try {
@@ -5273,7 +5353,7 @@
     async function stopActiveRecorders() {
       const packet = (backendState && backendState.packet_sealing) || {};
       const purity = (backendState && backendState.purity_test) || {};
-      if (packet.recording) {
+      if (packet.active || packet.recording) {
         try {
           await postJson("/api/packet-sealing/stop", {});
         } catch (error) { /* recorder already stopped */ }
@@ -5725,13 +5805,18 @@
         renderPledgeClosure();
       }
     }));
-    refs.btnStartPacketSealing.addEventListener("click", withButtonGuard(refs.btnStartPacketSealing, startPacketSealing));
+    refs.btnStartPacketSealing.addEventListener("click", withButtonGuard(refs.btnStartPacketSealing, async () => {
+      await startPacketSealing(false);
+    }));
+    refs.btnStartPacketSealingRecording.addEventListener("click", withButtonGuard(refs.btnStartPacketSealingRecording, async () => {
+      await startPacketSealing(true);
+    }));
     refs.btnStopPacketSealing.addEventListener("click", withButtonGuard(refs.btnStopPacketSealing, stopPacketSealing));
     refs.btnSkipPacketSealing.addEventListener("click", withButtonGuard(refs.btnSkipPacketSealing, async () => {
       await skipOptionalStage("packet_sealing", "Packet sealing video");
     }));
     refs.btnStripingHandClear.addEventListener("click", withButtonGuard(refs.btnStripingHandClear, async () => {
-      await runStripingAction("/api/packet-sealing/striping/hand-clear", "Checking strip removal. Keep hands clear of the packet.");
+      await runStripingAction("/api/packet-sealing/striping/hand-clear", "Checking hands before the seal check.");
     }));
     refs.btnRestartStriping.addEventListener("click", withButtonGuard(refs.btnRestartStriping, async () => {
       await runStripingAction("/api/packet-sealing/striping/restart", "Strip check restarted");
@@ -5756,6 +5841,7 @@
 
     async function initialize() {
       updateCalibrationFields();
+      await syncApplicationClock();
       await loadConfig();
       await pollBackendState();
       try {
@@ -5770,6 +5856,7 @@
       startLiveStream();
       startStatePolling();
       startAudioDevicePolling();
+      startClockSync();
     }
 
     initialize().catch((error) => {

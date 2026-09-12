@@ -28,55 +28,55 @@
   "seed": 42,
   "split_counts": {
     "train": {
-      "false_positive": 107,
+      "false_positive": 123,
       "true_detection": 73
     },
     "validation": {
-      "false_positive": 23,
+      "false_positive": 27,
       "true_detection": 16
     },
     "test": {
-      "false_positive": 23,
+      "false_positive": 27,
       "true_detection": 16
     }
   },
   "validation_metrics": {
-    "loss": 0.01825651364066662,
-    "accuracy": 1.0,
-    "true_detection_precision": 1.0,
-    "true_detection_recall": 1.0,
-    "true_detection_f1": 1.0,
-    "true_detection_f0_5": 1.0,
-    "false_positive_acceptance_rate": 0.0,
-    "true_detection_rejection_rate": 0.0,
+    "loss": 0.2304689889925337,
+    "accuracy": 0.9534883720930233,
+    "true_detection_precision": 0.9375,
+    "true_detection_recall": 0.9375,
+    "true_detection_f1": 0.9375,
+    "true_detection_f0_5": 0.9375,
+    "false_positive_acceptance_rate": 0.037037037037037035,
+    "true_detection_rejection_rate": 0.0625,
     "confusion_matrix": [
       [
-        23,
-        0
+        26,
+        1
       ],
       [
-        0,
-        16
+        1,
+        15
       ]
     ]
   },
   "test_metrics": {
-    "loss": 0.12148566111826743,
-    "accuracy": 0.9230769230769231,
-    "true_detection_precision": 0.9333333333333333,
-    "true_detection_recall": 0.875,
-    "true_detection_f1": 0.9032258064516129,
-    "true_detection_f0_5": 0.9210526315789475,
-    "false_positive_acceptance_rate": 0.043478260869565216,
-    "true_detection_rejection_rate": 0.125,
+    "loss": 0.1471975965555324,
+    "accuracy": 0.9767441860465116,
+    "true_detection_precision": 0.9411764705882353,
+    "true_detection_recall": 1.0,
+    "true_detection_f1": 0.9696969696969697,
+    "true_detection_f0_5": 0.9523809523809523,
+    "false_positive_acceptance_rate": 0.037037037037037035,
+    "true_detection_rejection_rate": 0.0,
     "confusion_matrix": [
       [
-        22,
+        26,
         1
       ],
       [
-        2,
-        14
+        0,
+        16
       ]
     ]
   },
@@ -87,22 +87,22 @@
   },
   "baseline_locked_metrics": null,
   "candidate_locked_metrics": {
-    "loss": 0.024204532225285808,
-    "accuracy": 1.0,
+    "loss": 0.0736873572872531,
+    "accuracy": 0.967741935483871,
     "true_detection_precision": 1.0,
-    "true_detection_recall": 1.0,
-    "true_detection_f1": 1.0,
-    "true_detection_f0_5": 1.0,
+    "true_detection_recall": 0.9285714285714286,
+    "true_detection_f1": 0.962962962962963,
+    "true_detection_f0_5": 0.9848484848484849,
     "false_positive_acceptance_rate": 0.0,
-    "true_detection_rejection_rate": 0.0,
+    "true_detection_rejection_rate": 0.07142857142857142,
     "confusion_matrix": [
       [
         17,
         0
       ],
       [
-        0,
-        14
+        1,
+        13
       ]
     ]
   },

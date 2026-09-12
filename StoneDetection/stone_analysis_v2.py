@@ -31,8 +31,6 @@ STONE_FASTSAM_MIN_SEED_OVERLAP = 0.45
 STONE_FASTSAM_MAX_GROWTH = 18.0
 STONE_FASTSAM_MAX_GOLD_OVERLAP = 0.38
 STONE_METAL_RING_WIDTH = 4
-STONE_BLACK_MAX_LIGHTNESS = 28.0
-STONE_BLACK_MAX_CHROMA = 12.0
 STONE_LOW_RISK_THRESHOLD = 5.0
 STONE_MODERATE_RISK_THRESHOLD = 20.0
 HIGH_RISK_STONE_THRESHOLD = 40.0
@@ -236,6 +234,148 @@ def _structural_components(
     return components
 
 
+def _non_gold_color_components(
+    image_bgr: np.ndarray,
+    jewel_mask: np.ndarray,
+    gold_mask: np.ndarray,
+) -> list[dict[str, Any]]:
+    """Find saturated stone faces left after HSV gold subtraction."""
+    jewel = _binary(jewel_mask, image_bgr.shape[:2])
+    jewel_area = max(1, int(cv2.countNonZero(jewel)))
+    hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
+    saturation = hsv[:, :, 1]
+    value = hsv[:, :, 2]
+    colored = np.where((saturation >= 48) & (value >= 24), 255, 0).astype(np.uint8)
+    residual = cv2.bitwise_and(colored, jewel)
+    residual = cv2.bitwise_and(
+        residual,
+        cv2.bitwise_not(_binary(gold_mask, jewel.shape)),
+    )
+    residual = cv2.morphologyEx(
+        residual,
+        cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
+        iterations=1,
+    )
+    residual = cv2.bitwise_and(residual, jewel)
+
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(residual, 8)
+    components: list[dict[str, Any]] = []
+    maximum_area = max(40, int(jewel_area * 0.16))
+    for label in range(1, count):
+        area = int(stats[label, cv2.CC_STAT_AREA])
+        if area < STONE_CANDIDATE_MIN_AREA or area > maximum_area:
+            continue
+        mask = np.where(labels == label, 255, 0).astype(np.uint8)
+        shape = _shape_metrics(mask)
+        if shape["aspect_ratio"] > 5.0 or shape["solidity"] < 0.35:
+            continue
+        median_saturation = float(np.median(saturation[mask > 0]))
+        median_value = float(np.median(value[mask > 0]))
+        confidence = min(
+            0.92,
+            0.68
+            + min(0.14, median_saturation / 255.0 * 0.14)
+            + min(0.08, shape["compactness"] * 0.08),
+        )
+        components.append(
+            {
+                "mask": mask,
+                "confidence": round(float(confidence), 3),
+                "median_saturation": round(median_saturation, 1),
+                "median_value": round(median_value, 1),
+            }
+        )
+    components.sort(
+        key=lambda item: (-float(item["confidence"]), -cv2.countNonZero(item["mask"]))
+    )
+    return components
+
+
+def _non_gold_neutral_components(
+    image_bgr: np.ndarray,
+    jewel_mask: np.ndarray,
+    gold_mask: np.ndarray,
+) -> list[dict[str, Any]]:
+    """Find complete low-saturation stone faces after removing gold metal."""
+    jewel = _binary(jewel_mask, image_bgr.shape[:2])
+    jewel_area = max(1, int(cv2.countNonZero(jewel)))
+    hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
+    gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+    saturation = hsv[:, :, 1]
+    value = hsv[:, :, 2]
+    expanded_gold = cv2.dilate(
+        _binary(gold_mask, jewel.shape),
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
+        iterations=1,
+    )
+    neutral = np.where((saturation <= 82) & (value >= 48), 255, 0).astype(np.uint8)
+    residual = cv2.bitwise_and(neutral, jewel)
+    residual = cv2.bitwise_and(residual, cv2.bitwise_not(expanded_gold))
+    residual = cv2.morphologyEx(
+        residual,
+        cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)),
+        iterations=1,
+    )
+    residual = cv2.bitwise_and(residual, jewel)
+    canny = cv2.bitwise_and(cv2.Canny(gray, 40, 125), jewel)
+    jewel_boundary = cv2.bitwise_and(
+        jewel,
+        cv2.bitwise_not(cv2.erode(jewel, np.ones((3, 3), np.uint8))),
+    )
+
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(residual, 8)
+    components: list[dict[str, Any]] = []
+    maximum_area = max(80, int(jewel_area * 0.12))
+    for label in range(1, count):
+        area = int(stats[label, cv2.CC_STAT_AREA])
+        width = int(stats[label, cv2.CC_STAT_WIDTH])
+        height = int(stats[label, cv2.CC_STAT_HEIGHT])
+        if not 12 <= area <= maximum_area or min(width, height) < 4:
+            continue
+        mask = np.where(labels == label, 255, 0).astype(np.uint8)
+        shape = _shape_metrics(mask)
+        if shape["aspect_ratio"] > 3.8 or shape["solidity"] < 0.42:
+            continue
+        outline = cv2.morphologyEx(
+            mask,
+            cv2.MORPH_GRADIENT,
+            np.ones((3, 3), np.uint8),
+        )
+        outline_px = max(1, int(cv2.countNonZero(outline)))
+        edge_enclosure = cv2.countNonZero(
+            cv2.bitwise_and(outline, canny)
+        ) / float(outline_px)
+        boundary_share = cv2.countNonZero(
+            cv2.bitwise_and(mask, jewel_boundary)
+        ) / float(area)
+        metal_surround = _metal_surround_ratio(mask, gold_mask)
+        if boundary_share > 0.32:
+            continue
+        if edge_enclosure < 0.10 and metal_surround < 0.16:
+            continue
+        confidence = min(
+            0.76,
+            0.62
+            + min(0.10, edge_enclosure * 0.25)
+            + min(0.09, metal_surround * 0.15)
+            + min(0.05, shape["compactness"] * 0.06),
+        )
+        components.append(
+            {
+                "mask": mask,
+                "confidence": round(float(confidence), 3),
+                "edge_enclosure": round(float(edge_enclosure), 3),
+                "metal_surround_ratio": round(float(metal_surround), 3),
+            }
+        )
+    components.sort(
+        key=lambda item: (-float(item["confidence"]), -cv2.countNonZero(item["mask"]))
+    )
+    return components
+
+
 def generate_stone_candidates(
     image_bgr: np.ndarray,
     jewel_mask: np.ndarray,
@@ -280,6 +420,100 @@ def generate_stone_candidates(
                 "seed_area_px": int(cv2.countNonZero(seed)),
                 "confidence": round(min(0.95, confidence), 3),
                 "source_region": region,
+            }
+        )
+
+    # Use the non-gold remainder as complete stone-face proposals, then pass
+    # every proposal through the existing refinement and acceptance stages.
+    for residual in _non_gold_color_components(image_bgr, jewel, gold_mask):
+        mask = residual["mask"]
+        area = max(1, int(cv2.countNonZero(mask)))
+        duplicate: dict[str, Any] | None = None
+        for candidate in candidates:
+            overlap = cv2.countNonZero(
+                cv2.bitwise_and(mask, candidate["seed_mask"])
+            )
+            if overlap / float(min(area, max(1, candidate["seed_area_px"]))) >= 0.25:
+                duplicate = candidate
+                break
+        if duplicate is not None:
+            merged_seed = cv2.bitwise_or(duplicate["seed_mask"], mask)
+            duplicate["seed_mask"] = merged_seed
+            duplicate["proposal_mask"] = cv2.bitwise_or(
+                duplicate["proposal_mask"],
+                mask,
+            )
+            duplicate["bbox"] = _bbox(merged_seed)
+            duplicate["centroid"] = _centroid(merged_seed)
+            duplicate["seed_area_px"] = int(cv2.countNonZero(merged_seed))
+            duplicate["source_methods"] = sorted(
+                set(duplicate["source_methods"] + ["non_gold_hsv_residual"])
+            )
+            duplicate["confidence"] = max(
+                float(duplicate["confidence"]),
+                float(residual["confidence"]),
+            )
+            continue
+        candidates.append(
+            {
+                "candidate_id": len(candidates) + 1,
+                "seed_mask": mask,
+                "proposal_mask": mask.copy(),
+                "bbox": _bbox(mask),
+                "centroid": _centroid(mask),
+                "source_methods": ["non_gold_hsv_residual"],
+                "initial_color_votes": {},
+                "seed_area_px": area,
+                "confidence": residual["confidence"],
+                "residual_median_saturation": residual["median_saturation"],
+                "residual_median_value": residual["median_value"],
+                "source_region": {},
+            }
+        )
+
+    for neutral in _non_gold_neutral_components(image_bgr, jewel, gold_mask)[:12]:
+        mask = neutral["mask"]
+        area = max(1, int(cv2.countNonZero(mask)))
+        duplicate: dict[str, Any] | None = None
+        for candidate in candidates:
+            overlap = cv2.countNonZero(
+                cv2.bitwise_and(mask, candidate["seed_mask"])
+            )
+            if overlap / float(min(area, max(1, candidate["seed_area_px"]))) >= 0.30:
+                duplicate = candidate
+                break
+        if duplicate is not None:
+            merged_seed = cv2.bitwise_or(duplicate["seed_mask"], mask)
+            duplicate["seed_mask"] = merged_seed
+            duplicate["proposal_mask"] = cv2.bitwise_or(
+                duplicate["proposal_mask"],
+                mask,
+            )
+            duplicate["bbox"] = _bbox(merged_seed)
+            duplicate["centroid"] = _centroid(merged_seed)
+            duplicate["seed_area_px"] = int(cv2.countNonZero(merged_seed))
+            duplicate["source_methods"] = sorted(
+                set(duplicate["source_methods"] + ["non_gold_neutral_residual"])
+            )
+            duplicate["confidence"] = max(
+                float(duplicate["confidence"]),
+                float(neutral["confidence"]),
+            )
+            continue
+        candidates.append(
+            {
+                "candidate_id": len(candidates) + 1,
+                "seed_mask": mask,
+                "proposal_mask": mask.copy(),
+                "bbox": _bbox(mask),
+                "centroid": _centroid(mask),
+                "source_methods": ["non_gold_neutral_residual"],
+                "initial_color_votes": {"White/Colorless": 100.0},
+                "seed_area_px": area,
+                "confidence": neutral["confidence"],
+                "neutral_edge_enclosure": neutral["edge_enclosure"],
+                "neutral_metal_surround_ratio": neutral["metal_surround_ratio"],
+                "source_region": {},
             }
         )
 
@@ -847,31 +1081,24 @@ def build_final_stone_instances(
     }
 
 
-def _basic_lab_color(l_star: float, a_star: float, b_star: float) -> str:
-    chroma = math.hypot(a_star, b_star)
-    if l_star <= STONE_BLACK_MAX_LIGHTNESS and chroma <= STONE_BLACK_MAX_CHROMA:
-        return "Black"
-    # Chromatic evidence takes precedence over darkness.  This is the critical
-    # dark-green-versus-black rule.
-    if a_star <= -7.0 and chroma >= 10.0:
-        return "Green"
-    if b_star <= -25.0 and a_star < 45.0:
-        return "Blue"
-    if a_star >= 14.0 and b_star >= -15.0 and b_star < 14.0 and l_star >= 38.0:
-        return "Pink"
-    if a_star >= 22.0 and b_star <= -15.0:
-        return "Purple/Violet"
-    if a_star >= 12.0 and b_star >= 20.0 and b_star > a_star * 1.15:
-        return "Orange"
-    if b_star >= 15.0 and -9.0 <= a_star <= 18.0:
-        return "Yellow/Gold"
-    if a_star >= 20.0 and b_star >= 8.0:
+def _color_from_average_hsv(mean_h: float, mean_s: float, mean_v: float) -> str:
+    if mean_s < 30.0:
+        return "Black" if mean_v < 50.0 else "White/Colorless"
+    if mean_h < 16.0 or mean_h >= 170.0:
+        if mean_v >= 145.0 and mean_s < 190.0:
+            return "Pink"
         return "Red"
-    if chroma <= 12.0 and l_star >= 45.0:
-        return "White/Colorless"
-    if l_star <= 34.0 and chroma <= 18.0:
-        return "Black"
-    return "White/Colorless" if chroma < 15.0 else "Multicolor/Color-changing"
+    if mean_h < 23.0:
+        return "Orange"
+    if mean_h < 40.0:
+        return "Yellow/Gold"
+    if mean_h < 85.0:
+        return "Green"
+    if mean_h < 136.0:
+        return "Blue"
+    if mean_h < 160.0:
+        return "Purple/Violet"
+    return "Pink"
 
 
 def classify_stone_instance_color(
@@ -881,13 +1108,8 @@ def classify_stone_instance_color(
     lab_image: np.ndarray | None = None,
     hsv_image: np.ndarray | None = None,
 ) -> dict[str, Any]:
-    """Classify one final instance from robust interior LAB statistics."""
+    """Classify one complete final instance from its aggregate HSV color."""
     mask = _binary(instance_mask, color_image_bgr.shape[:2])
-    area = int(cv2.countNonZero(mask))
-    if area >= 30:
-        eroded = cv2.erode(mask, np.ones((3, 3), np.uint8))
-        if cv2.countNonZero(eroded) >= max(8, int(area * 0.35)):
-            mask = eroded
     lab = (
         lab_image.astype(np.float32, copy=False)
         if lab_image is not None
@@ -901,85 +1123,59 @@ def classify_stone_instance_color(
     l_star = lab[:, :, 0] * (100.0 / 255.0)
     a_star = lab[:, :, 1] - 128.0
     b_star = lab[:, :, 2] - 128.0
-    chroma = np.hypot(a_star, b_star)
-    valid = (mask > 0) & (l_star > 8.0) & (l_star < 96.0)
-    if np.count_nonzero(valid) < 6:
-        valid = mask > 0
+    valid = mask > 0
     if not np.any(valid):
         return {
             "color": "White/Colorless",
             "display_color": "White/Colorless",
             "color_confidence": 0.0,
-            "lab_median": [0.0, 0.0, 0.0],
+            "lab_average": [0.0, 0.0, 0.0],
+            "hsv_average": [0.0, 0.0, 0.0],
             "secondary_colors": [],
         }
-    median_l = float(np.median(l_star[valid]))
-    median_a = float(np.median(a_star[valid]))
-    median_b = float(np.median(b_star[valid]))
-    median_chroma = float(math.hypot(median_a, median_b))
-    color = _basic_lab_color(median_l, median_a, median_b)
-
-    ys, xs = np.where(valid)
-    labels = [
-        _basic_lab_color(float(l_star[y, x]), float(a_star[y, x]), float(b_star[y, x]))
-        for y, x in zip(ys, xs)
-    ]
-    counts = Counter(labels)
-    label_array = np.asarray(labels, dtype=object)
-    min_y = int(ys.min())
-    min_x = int(xs.min())
-    local_ys = ys - min_y
-    local_xs = xs - min_x
-    local_shape = (
-        int(ys.max()) - min_y + 1,
-        int(xs.max()) - min_x + 1,
-    )
-    meaningful: list[tuple[str, int]] = []
-    valid_count = max(1, len(labels))
-    for label, count in counts.most_common():
-        if label == "Multicolor/Color-changing" or count / float(valid_count) < 0.18:
-            continue
-        cluster_mask = np.zeros(local_shape, dtype=np.uint8)
-        label_points = label_array == label
-        cluster_mask[local_ys[label_points], local_xs[label_points]] = 255
-        component_count, _, stats, _ = cv2.connectedComponentsWithStats(cluster_mask, 8)
-        largest = max(
-            (int(stats[index, cv2.CC_STAT_AREA]) for index in range(1, component_count)),
-            default=0,
-        )
-        if largest >= max(5, int(valid_count * 0.06)):
-            meaningful.append((label, count))
-    secondary_colors = [label for label, _ in meaningful if label != color]
-    if len(meaningful) >= 2 and meaningful[1][1] / float(valid_count) >= 0.18:
-        color = "Multicolor/Color-changing"
-        secondary_colors = [label for label, _ in meaningful[:3]]
-
-    dominant_share = counts.most_common(1)[0][1] / float(valid_count)
-    confidence = min(0.98, 0.48 + 0.50 * dominant_share)
-    display_color = (
-        "Multicolor / Mixed Appearance"
-        if color == "Multicolor/Color-changing"
-        else color
-    )
+    mean_l = float(np.mean(l_star[valid]))
+    mean_a = float(np.mean(a_star[valid]))
+    mean_b = float(np.mean(b_star[valid]))
+    mean_chroma = float(math.hypot(mean_a, mean_b))
+    mean_s = float(np.mean(hsv[:, :, 1][valid]))
+    mean_v = float(np.mean(hsv[:, :, 2][valid]))
+    hue_angles = hsv[:, :, 0][valid] * (2.0 * math.pi / 180.0)
+    hue_weights = hsv[:, :, 1][valid] / 255.0
+    if float(np.sum(hue_weights)) > 1e-6:
+        mean_sin = float(np.average(np.sin(hue_angles), weights=hue_weights))
+        mean_cos = float(np.average(np.cos(hue_angles), weights=hue_weights))
+    else:
+        mean_sin = float(np.mean(np.sin(hue_angles)))
+        mean_cos = float(np.mean(np.cos(hue_angles)))
+    mean_h = (math.atan2(mean_sin, mean_cos) * 180.0 / (2.0 * math.pi)) % 180.0
+    hue_concentration = min(1.0, math.hypot(mean_sin, mean_cos))
+    color = _color_from_average_hsv(mean_h, mean_s, mean_v)
+    confidence = min(0.95, 0.55 + 0.35 * hue_concentration)
+    if color in {"Black", "White/Colorless"}:
+        confidence = 0.85
     diagnostics: dict[str, Any] = {}
-    if color == "Yellow/Gold" and gold_mask is not None:
+    if gold_mask is not None:
+        area = max(1, int(cv2.countNonZero(mask)))
+        gold_overlap = cv2.countNonZero(
+            cv2.bitwise_and(mask, _binary(gold_mask, mask.shape))
+        ) / float(area)
         metal_surround = _metal_surround_ratio(instance_mask, gold_mask)
+        diagnostics["gold_overlap_ratio"] = round(gold_overlap, 3)
         diagnostics["metal_surround_ratio"] = round(metal_surround, 3)
-        if metal_surround < 0.18:
-            diagnostics["classification_warning"] = "possible_yellow_gold_stone_low_enclosure"
-            confidence = min(confidence, 0.55)
+        diagnostics["likely_gold_metal"] = bool(
+            (gold_overlap >= 0.65 and 16.0 <= mean_h < 40.0)
+            or (mean_v < 35.0 and metal_surround >= 0.75)
+        )
     return {
         "color": color,
-        "display_color": display_color,
+        "display_color": color,
         "color_confidence": round(float(confidence), 3),
-        "lab_median": [round(median_l, 2), round(median_a, 2), round(median_b, 2)],
-        "lab_chroma": round(median_chroma, 2),
-        "hsv_median": [
-            round(float(np.median(hsv[:, :, channel][valid])), 2)
-            for channel in range(3)
-        ],
-        "secondary_colors": secondary_colors,
-        "valid_color_pixel_count": int(valid_count),
+        "lab_average": [round(mean_l, 2), round(mean_a, 2), round(mean_b, 2)],
+        "lab_chroma": round(mean_chroma, 2),
+        "hsv_average": [round(mean_h, 2), round(mean_s, 2), round(mean_v, 2)],
+        "hsv_hue_concentration": round(hue_concentration, 3),
+        "secondary_colors": [],
+        "valid_color_pixel_count": int(np.count_nonzero(valid)),
         **diagnostics,
     }
 

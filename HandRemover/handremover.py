@@ -326,7 +326,10 @@ def _decode_hailo_yolov8_seg(
     return masks
 
 
-def _infer_hand_probability(bgr: np.ndarray) -> np.ndarray:
+def _infer_hand_probability(
+    bgr: np.ndarray,
+    confidence: float | None = None,
+) -> np.ndarray:
     model = get_hand_model()
     input_h = int(model.input_h)
     input_w = int(model.input_w)
@@ -348,7 +351,7 @@ def _infer_hand_probability(bgr: np.ndarray) -> np.ndarray:
         raw_outputs,
         input_h,
         input_w,
-        HAND_CONFIDENCE,
+        HAND_CONFIDENCE if confidence is None else float(confidence),
         HAND_NMS_IOU,
     )
     if not network_masks:
@@ -363,6 +366,18 @@ def _infer_hand_probability(bgr: np.ndarray) -> np.ndarray:
         (bgr.shape[1], bgr.shape[0]),
         interpolation=cv2.INTER_LINEAR,
     )
+
+
+def infer_hand_mask(
+    bgr: np.ndarray,
+    *,
+    confidence: float | None = None,
+    mask_threshold: float | None = None,
+) -> np.ndarray:
+    """Return the HEF hand segmentation as a full-resolution binary mask."""
+    probability = _infer_hand_probability(bgr, confidence)
+    threshold = HAND_MASK_THRESHOLD if mask_threshold is None else float(mask_threshold)
+    return (probability >= threshold).astype(np.uint8) * 255
 
 
 def _otsu_mask(channel: np.ndarray) -> tuple[np.ndarray, float]:

@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from collections import Counter
 from functools import lru_cache
 from pathlib import Path
 
@@ -4977,6 +4978,8 @@ def analyze_jewel_candidate(
                     inference_lock=fastsam_lock,
                 )
             )
+            accepted_v2_regions = []
+            rejected_gold_metal_regions = 0
             for region in v2_regions:
                 mask = region["mask"]
                 classification = _stone_v2.classify_stone_instance_color(
@@ -4987,6 +4990,9 @@ def analyze_jewel_candidate(
                     hsv_image=color_measurement_hsv,
                 )
                 color = str(classification["color"])
+                if classification.get("likely_gold_metal"):
+                    rejected_gold_metal_regions += 1
+                    continue
                 contours, _ = cv2.findContours(
                     mask,
                     cv2.RETR_EXTERNAL,
@@ -5042,8 +5048,21 @@ def analyze_jewel_candidate(
                         "circularity": round(contour_circularity(contour), 3),
                     }
                 )
-            regions = v2_regions
+                accepted_v2_regions.append(region)
+            for region_id, region in enumerate(accepted_v2_regions, start=1):
+                region["region_id"] = region_id
+            regions = accepted_v2_regions
             _stone_v2_diagnostics["enabled"] = True
+            _stone_v2_diagnostics["stone_instance_count"] = len(regions)
+            _stone_v2_diagnostics["rejected_gold_metal_regions"] = (
+                rejected_gold_metal_regions
+            )
+            _stone_v2_diagnostics["segmentation_method_counts"] = dict(
+                Counter(
+                    str(region.get("segmentation_method") or "unknown")
+                    for region in regions
+                )
+            )
             _stone_v2_diagnostics["color_measurement_image"] = (
                 "captured_original_with_conservative_white_reference"
             )

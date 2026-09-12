@@ -3,7 +3,7 @@ Standalone testbed striping process for Hailo HEF models.
 
 Runs the cover/bag detector inside the configured ROI first. Only after the
 cover is fully laid flat in the testbed, measured by rectangularity, does it
-start the strip/seal detector using strip-m.hef. The main jewel tracker is
+start the strip/seal detector using packetstrip.hef. The main jewel tracker is
 left untouched.
 """
 
@@ -36,7 +36,7 @@ from PyQt6.QtWidgets import (
 )
 
 
-DEFAULT_HEF = "strip-m.hef"
+DEFAULT_HEF = "../models/packetstrip.hef"
 DEFAULT_COVER_HEF = "bag.hef"
 DEFAULT_ROI_CONFIG = "roi_config.json"
 DEFAULT_STRIP_FP_MODEL = "hsv_fp_filter_strip.pt"
@@ -173,7 +173,7 @@ class PreviewWindow(QMainWindow):
         self._last_frame_size = (CAMERA_WIDTH, CAMERA_HEIGHT)
         self._source_image = None
 
-        self.setWindowTitle("Striping Process - strip-m.hef")
+        self.setWindowTitle("Striping Process - packetstrip.hef")
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         root = QWidget()
@@ -821,11 +821,9 @@ class HailoSegModel:
 
 
 class SegWorker(threading.Thread):
-    def __init__(self, model: HailoSegModel,
-                 strip_fp_filter: HSVFPFilter | None = None):
+    def __init__(self, model: HailoSegModel):
         super().__init__(daemon=True)
         self.model = model
-        self.strip_fp_filter = strip_fp_filter
         self._in = queue.Queue(maxsize=1)
         self._out = queue.Queue(maxsize=1)
         self.last_confidence: float | None = None
@@ -864,30 +862,6 @@ class SegWorker(threading.Thread):
                 self.error = str(exc)
                 print(f"[{self.model.label}] inference stopped: {self.error}")
                 return
-            if mask is not None and self.strip_fp_filter is not None:
-                contour = get_largest_contour(mask)
-                if contour is None:
-                    print("[strip-fp] empty contour accepted=False")
-                    mask = None
-                else:
-                    x, y, width, height = cv2.boundingRect(contour)
-                    frame_h, frame_w = frame.shape[:2]
-                    x1 = max(0, min(x, frame_w))
-                    y1 = max(0, min(y, frame_h))
-                    x2 = max(0, min(x + width, frame_w))
-                    y2 = max(0, min(y + height, frame_h))
-                    crop = frame[y1:y2, x1:x2]
-                    if x2 <= x1 or y2 <= y1 or crop.size == 0:
-                        print("[strip-fp] empty bounding-box crop accepted=False")
-                        mask = None
-                    else:
-                        accepted, probability = self.strip_fp_filter.predict(crop)
-                        print(
-                            f"[strip-fp] TP probability={probability:.2f} "
-                            f"accepted={accepted}"
-                        )
-                        if not accepted:
-                            mask = None
             result = (get_centroid(mask), mask) if mask is not None else (None, None)
             try:
                 self._out.get_nowait()
@@ -930,7 +904,7 @@ def draw_status(vis: np.ndarray, state: str, strip_present: bool, miss_count: in
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Testbed striping process using strip-m.hef")
+    parser = argparse.ArgumentParser(description="Testbed striping process using packetstrip.hef")
     parser.add_argument("--hef", default=DEFAULT_HEF, help="Path to strip HEF model")
     parser.add_argument("--cover-hef", default=DEFAULT_COVER_HEF, help="Path to cover/bag HEF model")
     parser.add_argument("--roi-config", default=DEFAULT_ROI_CONFIG, help="Path to roi_config.json")
@@ -948,34 +922,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--height", type=int, default=CAMERA_HEIGHT, help="Requested camera height")
     parser.add_argument("--dump-outputs", action="store_true", help="Print HEF output tensor shapes once")
     parser.add_argument("--bgr-input", action="store_true", help="Send BGR input instead of RGB")
-    parser.add_argument(
-        "--strip-fp-model",
-        default=DEFAULT_STRIP_FP_MODEL,
-        help="Path to HSV strip false-positive checkpoint",
-    )
-    parser.add_argument(
-        "--strip-fp-conf",
-        type=float,
-        default=DEFAULT_STRIP_FP_CONFIDENCE,
-        help="Minimum class-1 probability for a genuine strip",
-    )
-    parser.add_argument(
-        "--disable-strip-fp",
-        action="store_true",
-        help="Disable the secondary HSV strip false-positive filter",
-    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    strip_fp_filter = None
-    if args.disable_strip_fp:
-        print("[strip-fp] secondary filter disabled by command line")
-    else:
-        candidate = HSVFPFilter(args.strip_fp_model, args.strip_fp_conf)
-        if candidate.enabled:
-            strip_fp_filter = candidate
     backend = cv2.CAP_V4L2 if platform.system() == "Linux" else cv2.CAP_DSHOW
     app = QApplication.instance() or QApplication(sys.argv)
     preview = PreviewWindow(args.roi_config)
@@ -1008,13 +959,10 @@ def main() -> int:
             hef_path,
             conf=COVER_CONF_THRESHOLD if is_cover else args.conf,
             dump_outputs=dump_outputs,
-            rgb_input=not args.bgr_input if is_cover else False,
+            rgb_input=not args.bgr_input,
             label=label,
         )
-        active_worker = SegWorker(
-            active_model,
-            strip_fp_filter if label == "strip" else None,
-        )
+        active_worker = SegWorker(active_model)
         active_worker.start()
         active_kind = label
 

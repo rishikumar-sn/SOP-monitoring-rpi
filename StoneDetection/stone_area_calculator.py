@@ -41,14 +41,15 @@ logger = logging.getLogger(__name__)
 # is treated as false-positive noise and removed before area calculation.
 # Raise this value to be more aggressive about noise removal.
 MIN_STONE_COMPONENT_AREA_PX: int = 5
-MAX_REPORTED_STONE_WEIGHT_RANGE_G: float = 3.0
+MAX_REPORTED_STONE_WEIGHT_RANGE_G: float = 1.0
 MAX_REPORTED_STONE_WEIGHT_RANGE_RATIO: float = 0.30
 STONE_SETTING_PROFILE_FRONT_ONLY = "front_only_shallow"
 STONE_SETTING_PROFILE_OPEN_BACK = "open_back_faceted"
 STONE_SETTING_PROFILE_UNKNOWN = "unknown"
 DEFAULT_STONE_SETTING_PROFILE = STONE_SETTING_PROFILE_FRONT_ONLY
 FRONT_ONLY_AREAL_MASS_G_PER_MM2: float = 0.001695
-FRONT_ONLY_WEIGHT_UNCERTAINTY_RATIO: float = 0.15
+# Kept under its existing name for compatibility; this is an upper allowance only.
+FRONT_ONLY_WEIGHT_DEVIATION_G: float = 1.0
 FRONT_ONLY_CALIBRATION_SAMPLE_COUNT: int = 1
 STONE_WEIGHT_MAX_JEWEL_SHARE: float = 1.0
 STONE_MATERIAL_PROFILES: dict[str, dict[str, float]] = {
@@ -626,18 +627,34 @@ def calibrate_weight_estimate_to_jewel_weight(
             ),
         )
 
-    raw_maximum = raw_values["maximum"]
     physical_upper_bound = entered_weight * STONE_WEIGHT_MAX_JEWEL_SHARE
-    calibration_factor = (
-        min(1.0, physical_upper_bound / raw_maximum)
-        if raw_maximum > 0
-        else 1.0
-    )
-    calibration_applied = calibration_factor < 1.0
-    bounded_values = {
-        name: raw_value_g * calibration_factor
-        for name, raw_value_g in raw_values.items()
-    }
+    raw_maximum = raw_values["maximum"]
+    if calibrated.get("fixed_deviation_range"):
+        raw_average = raw_values["average"]
+        calibration_factor = (
+            min(1.0, physical_upper_bound / raw_average)
+            if raw_average > 0
+            else 1.0
+        )
+        bounded_values = {
+            name: min(physical_upper_bound, raw_value_g * calibration_factor)
+            for name, raw_value_g in raw_values.items()
+        }
+        calibration_applied = any(
+            bounded_values[name] < raw_values[name]
+            for name in raw_values
+        )
+    else:
+        calibration_factor = (
+            min(1.0, physical_upper_bound / raw_maximum)
+            if raw_maximum > 0
+            else 1.0
+        )
+        calibration_applied = calibration_factor < 1.0
+        bounded_values = {
+            name: raw_value_g * calibration_factor
+            for name, raw_value_g in raw_values.items()
+        }
     original_span_g = max(
         0.0,
         bounded_values["maximum"] - bounded_values["minimum"],
@@ -645,6 +662,7 @@ def calibrate_weight_estimate_to_jewel_weight(
     target_span_g = (
         original_span_g
         if calibrated.get("v2_geometry_estimate")
+        or calibrated.get("fixed_deviation_range")
         else min(
             original_span_g,
             MAX_REPORTED_STONE_WEIGHT_RANGE_G,
@@ -716,7 +734,10 @@ def calibrate_weight_estimate_to_jewel_weight(
     calibrated["stone_weight_max_jewel_share"] = STONE_WEIGHT_MAX_JEWEL_SHARE
     reference_notes = [
         (
-            "The captured OCR jewel weight is a hard upper bound. The raw stone-weight "
+            "The captured OCR jewel weight is a hard upper bound. Only the reported "
+            "upper end was capped because it exceeded that bound."
+            if calibration_applied and calibrated.get("fixed_deviation_range")
+            else "The captured OCR jewel weight is a hard upper bound. The raw stone-weight "
             "range was proportionally scaled because its maximum exceeded that bound."
             if calibration_applied
             else "The captured OCR jewel weight was used as a hard upper-bound check."
@@ -725,21 +746,16 @@ def calibrate_weight_estimate_to_jewel_weight(
     if range_narrowing_applied:
         reference_notes.append(
             "The reported range was narrowed around the average estimate to a maximum "
-            "of 3.00 g or 30% of the average estimate, whichever is smaller."
+            f"of {MAX_REPORTED_STONE_WEIGHT_RANGE_G:.2f} g or 30% of the average "
+            "estimate, whichever is smaller."
         )
     calibrated["reference_note"] = " ".join(reference_notes)
     return calibrated
 
 
 def normalize_stone_setting_profile(value: Any) -> str:
-    profile = str(value or "").strip().lower()
-    if profile in {
-        STONE_SETTING_PROFILE_FRONT_ONLY,
-        STONE_SETTING_PROFILE_OPEN_BACK,
-        STONE_SETTING_PROFILE_UNKNOWN,
-    }:
-        return profile
-    return DEFAULT_STONE_SETTING_PROFILE
+    """Return the sole production stone-setting profile: Half Cut."""
+    return STONE_SETTING_PROFILE_FRONT_ONLY
 
 
 def apply_stone_setting_weight_model(
@@ -748,7 +764,7 @@ def apply_stone_setting_weight_model(
     visible_stone_area_mm2: float | None,
     jewel_weight_g: float | None,
 ) -> dict[str, Any]:
-    """Choose the weight model appropriate for the observed stone setting."""
+    """Estimate Half Cut stone weight from calibrated visible area only."""
     profile = normalize_stone_setting_profile(setting_profile)
     visible_area = (
         max(0.0, float(visible_stone_area_mm2))
@@ -756,60 +772,16 @@ def apply_stone_setting_weight_model(
         else None
     )
 
-    if profile == STONE_SETTING_PROFILE_UNKNOWN:
-        return {
-            "success": False,
-            "weight_estimate_suppressed": True,
-            "stone_setting_profile": profile,
-            "weight_model": "visible_area_only",
-            "visible_stone_area_mm2": (
-                round(visible_area, 4) if visible_area is not None else None
-            ),
-            "entered_jewel_weight_g": jewel_weight_g,
-            "error": (
-                "Stone weight is not estimated until the setting type is known."
-            ),
-        }
-
-    if face_up_estimate.get("success") and face_up_estimate.get("instances"):
-        estimated = estimate_stone_weight_range(
-            face_up_estimate,
-            profile,
-            jewel_weight_g,
-        )
-        estimated["visible_stone_area_mm2"] = (
-            round(visible_area, 4) if visible_area is not None else None
-        )
-        return estimated
-
-    if profile == STONE_SETTING_PROFILE_OPEN_BACK:
-        estimated = calibrate_weight_estimate_to_jewel_weight(
-            face_up_estimate,
-            jewel_weight_g,
-        )
-        estimated["stone_setting_profile"] = profile
-        estimated["weight_model"] = "face_up_size_table_fallback"
-        estimated["weight_method"] = "legacy face-up size-table fallback"
-        estimated["weight_confidence"] = "Low"
-        estimated["weight_confidence_score"] = 0.30
-        estimated["weight_warnings"] = [
-            "Per-instance geometry was unavailable; legacy face-up tables were used."
-        ]
-        estimated["visible_stone_area_mm2"] = (
-            round(visible_area, 4) if visible_area is not None else None
-        )
-        return estimated
-
     if visible_area is None:
         return {
             "success": False,
             "stone_setting_profile": profile,
             "weight_model": "front_only_areal_calibration",
-            "weight_method": "front-only visible-area calibration fallback",
+            "weight_method": "Half Cut visible-area calibration",
             "weight_confidence": "Low",
             "weight_confidence_score": 0.30,
             "weight_warnings": [
-                "Per-instance geometry was unavailable; provisional visible-area calibration was used."
+                "Metric visible area is required for Half Cut stone weight."
             ],
             "visible_stone_area_mm2": None,
             "entered_jewel_weight_g": jewel_weight_g,
@@ -817,10 +789,15 @@ def apply_stone_setting_weight_model(
         }
 
     average_g = visible_area * FRONT_ONLY_AREAL_MASS_G_PER_MM2
-    minimum_g = average_g * (1.0 - FRONT_ONLY_WEIGHT_UNCERTAINTY_RATIO)
-    maximum_g = average_g * (1.0 + FRONT_ONLY_WEIGHT_UNCERTAINTY_RATIO)
+    minimum_g = average_g
+    maximum_g = (
+        average_g + FRONT_ONLY_WEIGHT_DEVIATION_G
+        if average_g > 0.0
+        else 0.0
+    )
     estimated = calibrate_weight_estimate_to_jewel_weight(
         {
+            **face_up_estimate,
             "success": True,
             "estimated_total_average_g": round(average_g, 4),
             "estimated_total_minimum_g": round(minimum_g, 4),
@@ -828,12 +805,13 @@ def apply_stone_setting_weight_model(
             "estimated_total_average_ct": round(average_g * 5.0, 4),
             "estimated_total_minimum_ct": round(minimum_g * 5.0, 4),
             "estimated_total_maximum_ct": round(maximum_g * 5.0, 4),
-            "weight_method": "front-only visible-area calibration fallback",
-            "weight_confidence": "Low",
-            "weight_confidence_score": 0.30,
+            "weight_method": "Half Cut visible-area calibration",
+            "weight_confidence": "Medium",
+            "weight_confidence_score": 0.60,
             "weight_warnings": [
-                "Per-instance geometry was unavailable; provisional visible-area calibration was used."
+                "The hidden stone depth is represented by the Half Cut calibration."
             ],
+            "fixed_deviation_range": True,
         },
         jewel_weight_g,
     )
@@ -845,13 +823,10 @@ def apply_stone_setting_weight_model(
             "calibration_g_per_mm2": FRONT_ONLY_AREAL_MASS_G_PER_MM2,
             "calibration_sample_count": FRONT_ONLY_CALIBRATION_SAMPLE_COUNT,
             "provisional_calibration": True,
-            "uncertainty_percent": round(
-                FRONT_ONLY_WEIGHT_UNCERTAINTY_RATIO * 100.0,
-                1,
-            ),
+            "range_deviation_g": FRONT_ONLY_WEIGHT_DEVIATION_G,
             "note": (
-                "Front-only shallow-stone estimate from visible area using one "
-                "physical peeled-stone calibration sample."
+                "Half Cut estimate from visible area using one physical peeled-stone "
+                "calibration sample, reported with a one-sided +1.00 g allowance."
             ),
         }
     )
@@ -1364,7 +1339,7 @@ def _run_tests() -> None:
         str(r10),
     )
 
-    # Test 11: V2 uses per-instance geometry with explicit uncertainty.
+    # Test 11: Half Cut uses visible area with a one-sided +1 g range.
     r11 = apply_stone_setting_weight_model(
         r10,
         STONE_SETTING_PROFILE_FRONT_ONLY,
@@ -1372,7 +1347,7 @@ def _run_tests() -> None:
         jewel_weight_g=18.44,
     )
     check(
-        "T11 geometry range ordered",
+        "T11 Half Cut range ordered",
         r11["estimated_total_minimum_g"]
         <= r11["estimated_total_typical_g"]
         <= r11["estimated_total_maximum_g"],
@@ -1384,12 +1359,15 @@ def _run_tests() -> None:
         str(r11),
     )
     check(
-        "T11 depth and density warnings exposed",
-        len(r11.get("weight_warnings") or []) >= 2,
+        "T11 one-sided one-gram allowance",
+        r11.get("range_deviation_g") == 1.0
+        and r11["estimated_total_minimum_g"] == 1.7995
+        and r11["estimated_total_average_g"] == 1.7995
+        and r11["estimated_total_maximum_g"] == 2.7995,
         str(r11),
     )
 
-    # Test 12: unknown setting exposes area but deliberately suppresses grams.
+    # Test 12: legacy setting values normalize to the sole Half Cut profile.
     r12 = apply_stone_setting_weight_model(
         r10,
         STONE_SETTING_PROFILE_UNKNOWN,
@@ -1397,8 +1375,9 @@ def _run_tests() -> None:
         jewel_weight_g=18.44,
     )
     check(
-        "T12 unknown setting suppresses weight",
-        r12["success"] is False and r12["weight_estimate_suppressed"] is True,
+        "T12 legacy setting normalizes to Half Cut",
+        r12["success"] is True
+        and r12["stone_setting_profile"] == STONE_SETTING_PROFILE_FRONT_ONLY,
         str(r12),
     )
 
