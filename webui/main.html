@@ -1025,9 +1025,14 @@
           <span class="stepNum" data-step-label="purity"></span>
           <button type="button" class="moreBtn" data-stage="purity" aria-label="More actions">&#8943;</button>
         </div>
-        <p class="stepInstruction">Rub the jewel on the test stone and listen for the result.</p>
+        <p class="stepInstruction">Complete rubbing, then start the timed acid observation when prompted.</p>
         <span id="purityTag" class="hidden"></span>
         <div id="stoneJobBanner" class="stoneJobBanner hidden"></div>
+        <label class="toggleRow">
+          <input id="acidResultToggle" type="checkbox" checked />
+          <span>Enable 22K acid result</span>
+        </label>
+        <div id="acidResultStatus" class="tiny">Checking temporal result model...</div>
         <div id="purityAudioStatus" class="micStatus">Waiting for microphone selection.</div>
         <div id="purityAudioLive" class="purityAudioLive hidden">
           <div class="purityAudioHead">
@@ -1038,7 +1043,8 @@
           <div id="purityAudioProbabilities" class="purityAudioProbabilities"></div>
         </div>
         <div class="twoCol">
-          <button id="btnStartPurityTest" class="btn primary">Start Acid Test</button>
+          <button id="btnStartPurityTest" class="btn primary">Start Rubbing Test</button>
+          <button id="btnStartAcidResult" class="btn gold" disabled>Start Acid Test</button>
           <button id="btnStopPurityTest" class="btn secondary">Stop Test</button>
         </div>
         <div class="resultBox">
@@ -1642,7 +1648,10 @@
       purityMicWarning: document.getElementById("purityMicWarning"),
       purityAudioLive: document.getElementById("purityAudioLive"),
       btnRefreshPurityAudio: document.getElementById("btnRefreshPurityAudio"),
+      acidResultToggle: document.getElementById("acidResultToggle"),
+      acidResultStatus: document.getElementById("acidResultStatus"),
       btnStartPurityTest: document.getElementById("btnStartPurityTest"),
+      btnStartAcidResult: document.getElementById("btnStartAcidResult"),
       btnStopPurityTest: document.getElementById("btnStopPurityTest"),
       btnSkipPurityTest: document.getElementById("btnSkipPurityTest"),
       btnPurityPrev: document.getElementById("btnPurityPrev"),
@@ -1723,6 +1732,9 @@
       },
       audio_settings: {
         ok_confidence_threshold: 0.90,
+      },
+      acid_result_settings: {
+        enabled: true,
       },
       tassel_model: null,
     };
@@ -2095,11 +2107,10 @@
       const bag = overlay.bag;
       if (bag) {
         drawPolygonOverlay(bag.contour, "rgba(50, 220, 50, 0.20)", "#32dc32");
-        const rectangularity = Number(overlay.rectangularity || 0).toFixed(2);
         const bagConfidence = overlay.bag_confidence == null
           ? ""
           : ` C ${Number(overlay.bag_confidence).toFixed(3)}`;
-        drawRectOverlay(bag.rect, "#32dc32", `Packet${bagConfidence} R ${rectangularity}`);
+        drawRectOverlay(bag.rect, "#32dc32", `Packet${bagConfidence}`);
       }
 
       const strip = overlay.strip;
@@ -2690,6 +2701,10 @@
       applyAudioSettings(data.audio_settings || (data.persistent_rois && data.persistent_rois.audio_settings) || {
         ok_confidence_threshold: 0.90,
       });
+      config.acid_result_settings = data.acid_result_settings ||
+        (data.persistent_rois && data.persistent_rois.acid_result_settings) ||
+        { enabled: true };
+      refs.acidResultToggle.checked = Boolean(config.acid_result_settings.enabled);
 
       refs.overrideClassSelect.innerHTML = "";
       config.class_labels.forEach((label) => {
@@ -3409,6 +3424,18 @@
       }
     }
 
+    async function startAcidResult() {
+      try {
+        setStatus("Capturing clean acid baseline...");
+        const data = await postJson("/api/purity/acid-result/start", {});
+        backendState = data.state;
+        setStatusWithIndicator("Clean baseline started — do not apply acid yet", "success");
+        renderServerState();
+      } catch (error) {
+        setStatusWithIndicator(error.message, "error");
+      }
+    }
+
     async function stopPurityTest() {
       try {
         showLoading("Stopping acid test...");
@@ -4076,11 +4103,13 @@
 
       const stripingLabels = {
         idle: "Waiting",
-        tracking: "Waiting for rectangular packet",
+        tracking: "Waiting for packet",
         strip_mode: "Looking for strip",
         strip_detected: "Ready for hand check",
         hand_check: "Checking hands",
+        bag_check: "Checking packet",
         strip_check: "Checking strip removal",
+        bag_final_check: "Confirming packet",
         sealed: "Sealed",
         not_sealed: "Not sealed",
         skipped: "Not sealed (strip check skipped)",
@@ -4089,7 +4118,7 @@
       refs.stripingValue.textContent = stripingLabels[stripingStatus] || "Waiting";
       refs.stripingSub.textContent = striping.reason || (
         packetActive
-          ? "Strip check starts after the packet is rectangular."
+          ? "Strip check starts after the packet and strip are detected."
           : "Strip result is saved with the packet sealing report."
       );
       renderArtifactStrip(refs.stripingArtifacts, [striping.evidence_image]);
@@ -4163,7 +4192,7 @@
         refs.packetSealingSub.textContent = "Record the appraiser placing all jewels into the packet and sealing it.";
         refs.stripingControls.classList.add("hidden");
         refs.stripingValue.textContent = "--";
-        refs.stripingSub.textContent = "Strip check starts after the packet is rectangular.";
+        refs.stripingSub.textContent = "Strip check starts after the packet and strip are detected.";
         refs.stripingArtifacts.innerHTML = "";
         refs.packetVideoLink.classList.add("hidden");
 
@@ -4488,12 +4517,20 @@
 
       refs.purityValue.textContent = purity.skipped
         ? "Skipped"
-        : purity.acid_ok
-          ? "Acid OK"
-          : purity.running
-            ? purity.stage || "Running"
-            : purity.result || "--";
+        : purity.acid_result
+          ? purity.acid_result
+          : purity.acid_ok
+            ? "Acid OK"
+            : purity.running
+              ? purity.stage || "Running"
+              : purity.result || "--";
       refs.puritySub.textContent = purity.status || "Start or skip the acid test.";
+      refs.acidResultToggle.checked = Boolean(purity.acid_result_enabled);
+      refs.acidResultStatus.textContent = !purity.acid_result_enabled
+        ? "Temporal result is off. Detector-only acid flow is active."
+        : purity.acid_result_available
+          ? "22K / Non-gold temporal result is ready."
+          : `Temporal result unavailable: ${purity.acid_result_error || "model could not be loaded"}`;
       refs.purityAudioStatus.textContent = purity.audio_device_name || purity.audio_selected_device || "Waiting for microphone selection.";
       refs.purityAudioLive.classList.toggle("hidden", !purity.running);
       renderPurityAudio(purity);
@@ -4600,7 +4637,7 @@
         "btnClassificationNext", "btnCaptureWeight", "btnRetakeWeight", "btnSkipWeight", "btnWeightNext", "btnRunDimension", "btnDimensionNext",
         "btnCaptureSideLive", "btnRunSidePipeline", "btnShowFinalFromSide",
         "btnRunSegmentation", "btnSegmentationNext", "btnRunMainStoneDetection",
-        "btnShowFinalFromMain", "btnStartPurityTest", "btnStopPurityTest",
+        "btnShowFinalFromMain", "btnStartPurityTest", "btnStartAcidResult", "btnStopPurityTest",
         "btnNextJewelFromPurity", "btnShowFinalFromPurity",
         "btnStartPacketSealing", "btnStartPacketSealingRecording", "btnStopPacketSealing", "btnStripingHandClear", "btnGeneratePdf", "btnNextJewelFromFinal"
       ];
@@ -4662,6 +4699,14 @@
       refs.btnShowFinalFromMain.disabled = !(backendState && backendState.stone_detection && backendState.stone_detection.main) && !stageSkipped("stone_detection");
       refs.btnShowFinalFromSide.disabled = !(backendState && backendState.stone_detection && backendState.stone_detection.side) && !stageSkipped("side_stone");
       refs.btnStartPurityTest.disabled = !(purityAvailable && purityStartReady) || Boolean(purityRunning) || Boolean(puritySkipped);
+      refs.acidResultToggle.disabled = Boolean(purityRunning);
+      refs.btnStartAcidResult.classList.toggle("hidden", !Boolean(state.purity_test && state.purity_test.acid_result_enabled));
+      refs.btnStartAcidResult.disabled = !Boolean(
+        state.purity_test &&
+        state.purity_test.running &&
+        state.purity_test.acid_result_ready &&
+        state.purity_test.acid_result_available
+      );
       refs.btnSkipPurityTest.disabled = !purityStartReady || Boolean(purityRunning) || Boolean(finalReady);
       refs.btnStopPurityTest.disabled = !purityRunning;
       refs.btnShowFinalFromPurity.disabled = !finalReady || nextJewelAvailable;
@@ -4910,7 +4955,7 @@
 
       if (!source) {
         previewState.displayRect = null;
-        drawRoundedPlaceholder("Loading Raspberry Pi camera...");
+        drawRoundedPlaceholder("Loading camera...");
         animationHandle = requestAnimationFrame(renderPreview);
         return;
       }
@@ -5780,7 +5825,29 @@
         setStatusWithIndicator(error.message, "error");
       }
     }));
+    refs.acidResultToggle.addEventListener("change", async () => {
+      const requested = Boolean(refs.acidResultToggle.checked);
+      refs.acidResultToggle.disabled = true;
+      try {
+        const data = await postJson("/api/purity/acid-result-settings", {
+          enabled: requested,
+        });
+        backendState = data.state;
+        setStatusWithIndicator(
+          requested ? "22K acid result enabled" : "Detector-only acid flow enabled",
+          requested ? "success" : "warning"
+        );
+        renderServerState();
+      } catch (error) {
+        refs.acidResultToggle.checked = Boolean(
+          backendState && backendState.purity_test && backendState.purity_test.acid_result_enabled
+        );
+        refs.acidResultToggle.disabled = false;
+        setStatusWithIndicator(error.message, "error");
+      }
+    });
     refs.btnStartPurityTest.addEventListener("click", withButtonGuard(refs.btnStartPurityTest, startPurityTest));
+    refs.btnStartAcidResult.addEventListener("click", withButtonGuard(refs.btnStartAcidResult, startAcidResult));
     refs.btnSkipPurityTest.addEventListener("click", withButtonGuard(refs.btnSkipPurityTest, skipPurityTest));
     refs.btnStopPurityTest.addEventListener("click", withButtonGuard(refs.btnStopPurityTest, stopPurityTest));
     refs.btnPurityPrev.addEventListener("click", () => {

@@ -37,7 +37,7 @@ from PyQt6.QtWidgets import (
 
 
 DEFAULT_HEF = "../models/packetstrip.hef"
-DEFAULT_COVER_HEF = "bag.hef"
+DEFAULT_COVER_HEF = "../models/bagnewmodel.hef"
 DEFAULT_ROI_CONFIG = "roi_config.json"
 DEFAULT_STRIP_FP_MODEL = "hsv_fp_filter_strip.pt"
 DEFAULT_STRIP_FP_CONFIDENCE = 0.60
@@ -47,7 +47,6 @@ DEFAULT_FPS = 30.0
 COVER_CONF_THRESHOLD = 0.50
 STRIP_CONF_THRESHOLD = 0.80
 CONF_THRESHOLD = STRIP_CONF_THRESHOLD
-DEFAULT_RECT_THRESHOLD = 0.92
 STRIP_DEBOUNCE_FRAMES = 4
 STRIP_CONFIRM_FRAMES = 3
 SEAL_CHECK_INTERVAL_SEC = 1.0
@@ -871,7 +870,7 @@ class SegWorker(threading.Thread):
 
 
 def draw_status(vis: np.ndarray, state: str, strip_present: bool, miss_count: int,
-                rect_score: float, rect_threshold: float,
+                cover_confirm_count: int,
                 bag_present: bool | None, seal_gone_checks: int) -> None:
     colors = {
         "TRACKING": (50, 220, 50),
@@ -884,7 +883,7 @@ def draw_status(vis: np.ndarray, state: str, strip_present: bool, miss_count: in
     cv2.rectangle(vis, (0, 0), (vis.shape[1], 42), (20, 20, 20), cv2.FILLED)
     details = []
     if state == "TRACKING":
-        details.append(f"rect={rect_score:.2f}/{rect_threshold:.2f}")
+        details.append(f"packet={cover_confirm_count}/{STRIP_CONFIRM_FRAMES}")
     if state == "STRIP_DETECTED":
         details.append(f"strip={'YES' if strip_present else 'NO'}")
         details.append(f"miss={miss_count}")
@@ -908,8 +907,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hef", default=DEFAULT_HEF, help="Path to strip HEF model")
     parser.add_argument("--cover-hef", default=DEFAULT_COVER_HEF, help="Path to cover/bag HEF model")
     parser.add_argument("--roi-config", default=DEFAULT_ROI_CONFIG, help="Path to roi_config.json")
-    parser.add_argument("--rect-threshold", type=float, default=DEFAULT_RECT_THRESHOLD,
-                        help="Cover rectangularity needed before strip detection starts")
     parser.add_argument("--camera", type=int, default=0, help="OpenCV camera index")
     parser.add_argument(
         "--conf",
@@ -998,7 +995,7 @@ def main() -> int:
     strip_present = False
     strip_mask = None
     strip_miss = 0
-    rect_score = 0.0
+    cover_confirm_count = 0
     state = "TRACKING"
     bag_present_last = None
     seal_gone_checks = 0
@@ -1037,7 +1034,7 @@ def main() -> int:
 
     def restart_cycle() -> None:
         nonlocal bag_present_last, check_remaining, cover_mask
-        nonlocal rect_score, seal_gone_checks, state, strip_mask, strip_miss, strip_present
+        nonlocal cover_confirm_count, seal_gone_checks, state, strip_mask, strip_miss, strip_present
         nonlocal strip_confirm_count, target_bag_mask, target_bag_zone
         nonlocal target_strip_mask, target_strip_zone, removal_verification_started
         nonlocal previous_strip_gray, strip_stable_since, verification_strip_misses
@@ -1046,7 +1043,7 @@ def main() -> int:
         strip_present = False
         strip_mask = None
         strip_miss = 0
-        rect_score = 0.0
+        cover_confirm_count = 0
         bag_present_last = None
         seal_gone_checks = 0
         strip_confirm_count = 0
@@ -1083,14 +1080,22 @@ def main() -> int:
             if state == "TRACKING":
                 result = active_worker.get_result() if active_kind == "cover" else None
                 if result is not None:
-                    centroid, cover_mask = offset_result(result, roi, frame.shape[:2])
-                    rect_score = measure_rectangularity(cover_mask) if cover_mask is not None else 0.0
-                    if centroid is not None and rect_score >= args.rect_threshold:
+                    centroid, detected_mask = offset_result(result, roi, frame.shape[:2])
+                    if centroid is None or detected_mask is None:
+                        cover_confirm_count = 0
+                        cover_mask = None
+                    else:
+                        stable = mask_matches_reference(
+                            cover_mask, detected_mask,
+                            TARGET_BAG_MASK_IOU, TARGET_BAG_AREA_RATIO)
+                        cover_confirm_count = cover_confirm_count + 1 if stable else 1
+                        cover_mask = detected_mask
+                    if cover_confirm_count >= STRIP_CONFIRM_FRAMES:
                         target_bag_mask = cover_mask.copy()
                         target_bag_zone = make_target_zone(cover_mask, frame.shape[:2])
                         if target_bag_zone is not None:
                             state = "STRIP_MODE"
-                            print(f"[state] cover laid in ROI, rect={rect_score:.2f}; starting strip detection")
+                            print("[state] packet confirmed; starting strip detection")
                             start_model(args.hef, "strip")
             elif active_kind == "cover-check":
                 result = active_worker.get_result()
@@ -1128,6 +1133,8 @@ def main() -> int:
                 target_detected = False
                 if result is not None:
                     centroid, mask = offset_result(result, roi, frame.shape[:2])
+                    mask = mask_inside_reference(mask, target_bag_mask)
+                    centroid = get_centroid(mask) if mask is not None else None
                     if target_strip_zone is None:
                         target_strip_zone = make_target_zone(mask, frame.shape[:2])
                         if target_strip_zone is not None:
@@ -1225,8 +1232,8 @@ def main() -> int:
             elif state == "BAG_REMOVED":
                 draw_seal_message(vis, "BAG REMOVED - NOT SEALED", (0, 0, 255))
 
-            draw_status(vis, state, strip_present, strip_miss, rect_score,
-                        args.rect_threshold, bag_present_last, seal_gone_checks)
+            draw_status(vis, state, strip_present, strip_miss, cover_confirm_count,
+                        bag_present_last, seal_gone_checks)
             preview.show_frame(vis)
             app.processEvents()
             if preview.closed:

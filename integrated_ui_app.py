@@ -480,7 +480,15 @@ TTS_WORKFLOW_PHRASES = {
     "Now Rubbing stone is detected, use the jewelry to run on it",
     "Jewelry is now inside the stone region, now start rubbing for acid test",
     "Visual and audio synchronization is okay. Now, apply the acid to complete the purity test.",
+    "Visual and audio synchronization is okay. Now, apply the acid.",
     "Acid detected. Purity test completed. Click Stop to continue.",
+    "Place the touchstone securely and keep it still.",
+    "Do not apply acid yet.",
+    "Apply acid now.",
+    "Acid detected. Remove your hand and keep the stone still.",
+    "Acid test completed. 22K gold.",
+    "Acid test completed. Non-gold.",
+    "Acid test inconclusive. Please repeat.",
 }
 
 
@@ -1047,7 +1055,7 @@ PACKET_TARGET_SIZE_MARGIN = float(os.environ.get("PACKET_TARGET_SIZE_MARGIN", "0
 PACKET_TARGET_MIN_VIDEO_KBPS = int(os.environ.get("PACKET_TARGET_MIN_VIDEO_KBPS", "160"))
 PACKET_TARGET_MAX_VIDEO_KBPS = int(os.environ.get("PACKET_TARGET_MAX_VIDEO_KBPS", "1800"))
 STRIPING_PROCESS_DIR = BASE_DIR / "jewel_tracka_rpi"
-STRIPING_BAG_HEF_PATH = STRIPING_PROCESS_DIR / "bag.hef"
+STRIPING_BAG_HEF_PATH = BASE_DIR / "models" / "bagnewmodel.hef"
 STRIPING_HEF_PATH = BASE_DIR / "models" / "packetstrip.hef"
 
 PROMPT_CONFIG = json.loads(CLASS_PROMPT_PATH.read_text(encoding="utf-8"))
@@ -1127,6 +1135,10 @@ DEFAULT_PURITY_AUDIO_SETTINGS = {
     "ok_confidence_threshold": 0.70,
 }
 
+DEFAULT_PURITY_ACID_RESULT_SETTINGS = {
+    "enabled": True,
+}
+
 PERSISTENT_ROIS = {
     "processing_roi": None,
     "aruco_roi": None,
@@ -1137,6 +1149,7 @@ PERSISTENT_ROIS = {
     "learned_stone_profiles": [],
     "stone_super_resolution": dict(DEFAULT_STONE_SUPER_RESOLUTION),
     "audio_settings": dict(DEFAULT_PURITY_AUDIO_SETTINGS),
+    "acid_result_settings": dict(DEFAULT_PURITY_ACID_RESULT_SETTINGS),
     "tassel_classifier_source": "production",
     "calibration_config": {
         "aruco_dict": "AprilTag_36h11",
@@ -1247,6 +1260,15 @@ def normalize_purity_audio_settings(settings: dict | None) -> dict[str, Any]:
         threshold = DEFAULT_PURITY_AUDIO_SETTINGS["ok_confidence_threshold"]
     return {
         "ok_confidence_threshold": max(0.50, min(0.99, threshold)),
+    }
+
+
+def normalize_purity_acid_result_settings(settings: dict | None) -> dict[str, bool]:
+    raw = settings or {}
+    return {
+        "enabled": bool(
+            raw.get("enabled", DEFAULT_PURITY_ACID_RESULT_SETTINGS["enabled"])
+        ),
     }
 
 
@@ -1471,6 +1493,11 @@ def load_persistent_rois() -> None:
                 PERSISTENT_ROIS["audio_settings"] = normalize_purity_audio_settings(
                     data.get("audio_settings")
                 )
+                PERSISTENT_ROIS["acid_result_settings"] = (
+                    normalize_purity_acid_result_settings(
+                        data.get("acid_result_settings")
+                    )
+                )
                 PERSISTENT_ROIS["tassel_classifier_source"] = (
                     normalize_tassel_model_source(
                         data.get("tassel_classifier_source")
@@ -1581,6 +1608,12 @@ def stone_settings_for_state(state: dict[str, Any] | None = None) -> dict[str, A
 
 def purity_audio_settings() -> dict[str, Any]:
     return normalize_purity_audio_settings(PERSISTENT_ROIS.get("audio_settings"))
+
+
+def purity_acid_result_settings() -> dict[str, bool]:
+    return normalize_purity_acid_result_settings(
+        PERSISTENT_ROIS.get("acid_result_settings")
+    )
 
 
 def calibrate_background_sample(
@@ -2933,6 +2966,9 @@ def get_purity_manager() -> PurityTestManager:
                 PURITY_MANAGER.set_audio_ok_confidence_threshold(
                     purity_audio_settings()["ok_confidence_threshold"]
                 )
+                PURITY_MANAGER.set_acid_result_enabled(
+                    purity_acid_result_settings()["enabled"]
+                )
         PURITY_MANAGER.set_audio_ok_confidence_threshold(
             purity_audio_settings()["ok_confidence_threshold"]
         )
@@ -4015,6 +4051,7 @@ PACKET_HAND_CHECK_FRAMES = 5
 PACKET_HAND_REQUIRED_FRAMES = 2
 PACKET_HAND_MIN_AREA_FRACTION = 0.02
 PACKET_HAND_MIN_HEIGHT_FRACTION = 0.20
+PACKET_BAG_RECHECK_MAX_FRAMES = 24
 
 
 class PacketHandWorker(threading.Thread):
@@ -4117,6 +4154,8 @@ class PacketStripingVerifier:
         self._cover_confidence: float | None = None
         self._rectangularity = 0.0
         self._cover_confirm_count = 0
+        self._bag_check_frames = 0
+        self._bag_check_reference = None
         self._current_strip_mask = None
         self._strip_appearance_change = 0.0
         self._strip_confidence: float | None = None
@@ -4181,7 +4220,6 @@ class PacketStripingVerifier:
             bag_label = "PACKET"
             if self._cover_confidence is not None:
                 bag_label += f" C {self._cover_confidence:.3f}"
-            bag_label += f" R {self._rectangularity:.2f}"
             strip_label = "PACKET STRIP"
             if self._strip_confidence is not None:
                 strip_label += f" C {self._strip_confidence:.3f}"
@@ -4273,7 +4311,7 @@ class PacketStripingVerifier:
                 self._bag_hailo_model = models["bag"]
                 self._strip_hailo_model = models["strip"]
             self._status = "tracking"
-            self._reason = "Waiting for the packet to lie rectangular."
+            self._reason = "Waiting for the packet and its strip."
             self._updated_at = now_stamp()
             self._start_model("cover")
 
@@ -4299,7 +4337,9 @@ class PacketStripingVerifier:
                 "strip_mode",
                 "strip_detected",
                 "hand_check",
+                "bag_check",
                 "strip_check",
+                "bag_final_check",
             }:
                 return
             if self._active_worker is None or self._support is None:
@@ -4376,6 +4416,8 @@ class PacketStripingVerifier:
         self._cover_confidence = None
         self._rectangularity = 0.0
         self._cover_confirm_count = 0
+        self._bag_check_frames = 0
+        self._bag_check_reference = None
         self._current_strip_mask = None
         self._strip_appearance_change = 0.0
         self._strip_confidence = None
@@ -4460,29 +4502,120 @@ class PacketStripingVerifier:
     ) -> None:
         if result is None:
             return
+        _centroid, mask = result
+        if self._status in {"bag_check", "bag_final_check"}:
+            self._process_bag_recheck(mask, confidence)
+            return
+        if self._status == "strip_detected":
+            return
+        if mask is None:
+            self._cover_mask = None
+            self._cover_confidence = None
+            self._rectangularity = 0.0
+            self._cover_confirm_count = 0
+            return
+        stable = self._support.mask_matches_reference(
+            self._cover_mask,
+            mask,
+            self._support.TARGET_BAG_MASK_IOU,
+            self._support.TARGET_BAG_AREA_RATIO,
+        )
+        self._cover_mask = mask
         self._cover_confidence = confidence
-        _centroid, self._cover_mask = result
         self._rectangularity = (
             self._support.measure_rectangularity(self._cover_mask)
             if self._cover_mask is not None
             else 0.0
         )
-
-        if self._cover_mask is None or self._rectangularity < self._support.DEFAULT_RECT_THRESHOLD:
-            self._cover_confirm_count = 0
-            return
-        self._cover_confirm_count += 1
-        self._reason = "Confirming the rectangular packet before looking for the strip."
+        self._cover_confirm_count = self._cover_confirm_count + 1 if stable else 1
+        self._reason = "Confirming the packet before looking for the strip."
         if self._cover_confirm_count < self._support.STRIP_CONFIRM_FRAMES:
             return
         self._status = "strip_mode"
-        self._reason = "Packet is rectangular. Looking for the strip."
+        self._reason = "Packet detected. Looking for the strip."
         self._updated_at = now_stamp()
         print(
-            f"[PacketStriping] Rectangular packet detected "
-            f"(score={self._rectangularity:.3f}); starting strip HEF."
+            f"[PacketStriping] Packet confirmed across "
+            f"{self._cover_confirm_count} frames; starting strip HEF."
         )
         self._start_model("strip")
+
+    def _begin_bag_recheck(self, *, final: bool = False) -> None:
+        self._bag_check_reference = (
+            self._cover_mask if self._cover_mask is not None else self._bag_check_reference
+        )
+        self._cover_mask = None
+        self._cover_confidence = None
+        self._current_strip_mask = None
+        self._strip_confidence = None
+        self._cover_confirm_count = 0
+        self._bag_check_frames = 0
+        self._status = "bag_final_check" if final else "bag_check"
+        self._reason = "Confirming that the packet remains on the test bed."
+        self._updated_at = now_stamp()
+        self._start_model("cover")
+
+    def _process_bag_recheck(
+        self, mask: np.ndarray | None, confidence: float | None
+    ) -> None:
+        self._bag_check_frames += 1
+        reference = self._bag_check_reference
+        if mask is not None and reference is not None:
+            reference_contour = self._support.get_largest_contour(reference)
+            candidate_contour = self._support.get_largest_contour(mask)
+            if reference_contour is None or candidate_contour is None:
+                mask = None
+            else:
+                x, y, width, height = cv2.boundingRect(reference_contour)
+                moments = cv2.moments(candidate_contour)
+                area_ratio = cv2.contourArea(candidate_contour) / max(
+                    cv2.contourArea(reference_contour), 1.0
+                )
+                cx = moments["m10"] / moments["m00"] if moments["m00"] else -1
+                cy = moments["m01"] / moments["m00"] if moments["m00"] else -1
+                if not (
+                    x - width * 0.5 <= cx <= x + width * 1.5
+                    and y - height * 0.5 <= cy <= y + height * 1.5
+                    and 0.5 <= area_ratio <= 1.5
+                ):
+                    mask = None
+        if mask is None:
+            self._cover_confirm_count = 0
+            self._cover_mask = None
+            self._cover_confidence = None
+        else:
+            stable = self._support.mask_matches_reference(
+                self._cover_mask,
+                mask,
+                self._support.TARGET_BAG_MASK_IOU,
+                self._support.TARGET_BAG_AREA_RATIO,
+            )
+            self._cover_mask = mask
+            self._cover_confidence = confidence
+            self._cover_confirm_count = self._cover_confirm_count + 1 if stable else 1
+            if self._cover_confirm_count >= self._support.STRIP_CONFIRM_FRAMES:
+                self._bag_check_reference = None
+                if self._status == "bag_final_check":
+                    self._set_terminal(
+                        True,
+                        "Hands clear, strip absent, and packet remains on the test bed.",
+                    )
+                else:
+                    self._begin_strip_check()
+                return
+        if self._bag_check_frames >= PACKET_BAG_RECHECK_MAX_FRAMES:
+            self._status = "strip_detected"
+            self._reason = (
+                "Could not verify the packet on the test bed. Keep it visible "
+                "and click Hand Check-Seal again, or restart strip checking "
+                "if the packet moved."
+            )
+            self._updated_at = now_stamp()
+            self._cover_mask = None
+            self._cover_confidence = None
+            self._current_strip_mask = None
+            self._strip_confidence = None
+            self._start_model("cover")
 
     def _process_strip_result(
         self,
@@ -4496,7 +4629,7 @@ class PacketStripingVerifier:
         if not preserve_live_overlay:
             self._strip_confidence = None
         _centroid, mask = result
-        if self._status in {"strip_mode", "strip_detected"}:
+        if self._status in {"strip_mode", "strip_detected", "strip_check"}:
             mask = self._support.mask_inside_reference(mask, self._cover_mask)
         strip_detected = (
             self._support.get_centroid(mask) is not None
@@ -4521,7 +4654,7 @@ class PacketStripingVerifier:
                     self._cover_confirm_count = 0
                     self._strip_search_misses = 0
                     self._status = "tracking"
-                    self._reason = "Looking again for a rectangular packet and its strip."
+                    self._reason = "Looking again for the packet and its strip."
                     self._updated_at = now_stamp()
                     self._start_model("cover")
                 return
@@ -4586,10 +4719,7 @@ class PacketStripingVerifier:
         self._verification_strip_hits = 0
         self._verification_strip_misses += 1
         if self._verification_strip_misses >= self._support.STRIP_DEBOUNCE_FRAMES:
-            self._set_terminal(
-                True,
-                "Hands clear and strip absent in repeated checks.",
-            )
+            self._begin_bag_recheck(final=True)
 
     def _process_hand_result(self, result) -> None:
         if result is None:
@@ -4627,8 +4757,8 @@ class PacketStripingVerifier:
             self._live_strip_misses = 0
             self._start_model("strip")
             return
-        speak("Hands clear. Checking strip removal.")
-        self._begin_strip_check()
+        speak("Hands clear. Checking that the packet remains on the test bed.")
+        self._begin_bag_recheck()
 
     def _validated_hand_mask(self, mask: np.ndarray | None) -> np.ndarray | None:
         """Keep only complete hand-sized components, not thin red-strip fragments."""
@@ -6311,7 +6441,8 @@ def build_final_summary(state: dict[str, Any]) -> None:
     if purity.get("running"):
         lines.append(f"Acid Test: {purity.get('status') or 'Running'}")
     elif purity.get("acid_ok"):
-        lines.append("Acid Test: Conducted | Acid OK")
+        acid_result = str(purity.get("acid_result") or purity.get("result") or "Completed")
+        lines.append(f"Acid Test: {acid_result}")
         for key in ("rubbing_image", "acid_success_image", "acid_zoom_image"):
             artifact = purity.get(key)
             if artifact:
@@ -6707,6 +6838,8 @@ def _acid_status_for_state(state: dict[str, Any]) -> str:
     purity = state.get("purity_test") or {}
     if purity.get("skipped"):
         return "Skipped"
+    if purity.get("acid_ok") and purity.get("acid_result"):
+        return str(purity["acid_result"])
     if purity.get("started_at") or purity.get("stopped_at") or purity.get("acid_ok"):
         return "Conducted"
     return "Not conducted"
@@ -7333,6 +7466,8 @@ def generate_pdf_report(
                 story.append(Paragraph(f"<b>Status:</b> {_pdf_text(purity.get('status', 'N/A'))}", normal_style))
                 story.append(Paragraph(f"<b>Stage:</b> {_pdf_text(purity.get('stage', 'N/A'))}", normal_style))
                 story.append(Paragraph(f"<b>Result:</b> {_pdf_text(purity.get('result', 'N/A'))}", normal_style))
+                if purity.get("acid_result"):
+                    story.append(Paragraph(f"<b>Acid Result:</b> {_pdf_text(purity['acid_result'])}", normal_style))
                 story.append(Paragraph(f"<b>Started:</b> {_pdf_text(purity.get('started_at', 'N/A'))}", normal_style))
                 story.append(Paragraph(f"<b>Stopped:</b> {_pdf_text(purity.get('stopped_at', 'N/A'))}", normal_style))
                 story.append(Paragraph(f"<b>Completed:</b> {_pdf_text(purity.get('completed_at', 'N/A'))}", normal_style))
@@ -9469,6 +9604,7 @@ def api_config():
             "persistent_rois": PERSISTENT_ROIS,
             "stone_settings": stone_settings_for_state(),
             "audio_settings": purity_audio_settings(),
+            "acid_result_settings": purity_acid_result_settings(),
             "tassel_model": tassel_model_settings(),
             "camera": {
                 "transport": "server-frame",
@@ -9599,6 +9735,29 @@ def api_purity_audio_settings():
         return fail(str(exc))
 
 
+@app.route("/api/purity/acid-result-settings", methods=["POST"])
+def api_purity_acid_result_settings():
+    try:
+        payload = parse_post_payload()
+        enabled = payload.get("enabled")
+        if not isinstance(enabled, bool):
+            raise ValueError("Acid result enabled must be true or false.")
+        manager = get_purity_manager()
+        applied = manager.set_acid_result_enabled(enabled)
+        settings = {"enabled": applied}
+        PERSISTENT_ROIS["acid_result_settings"] = settings
+        save_persistent_rois()
+        return jsonify(
+            {
+                "ok": True,
+                "acid_result_settings": settings,
+                "state": snapshot_state(),
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        return fail(str(exc))
+
+
 @app.route("/api/tassel-model", methods=["POST"])
 def api_tassel_model():
     try:
@@ -9638,11 +9797,36 @@ def api_purity_start():
                     or readiness.get("error")
                     or "Purity HEFs did not pass startup loading. Restart the application."
                 )
+            if (
+                readiness.get("acid_result_enabled")
+                and not readiness.get("acid_result_available")
+            ):
+                raise RuntimeError(
+                    readiness.get("acid_result_error")
+                    or "The acid result model is unavailable. Disable Acid Result to use detector-only mode."
+                )
             print("[DEBUG] Purity start uses startup-loaded HEFs; no model load performed")
             manager.start(session_dir_for(state) / "purity_test", audio_device=audio_device)
             clear_stage_skip(state, "acid_test")
             refresh_purity_state(state)
             state["status"] = state["purity_test"].get("status") or "Acid test running"
+            state["updated_at"] = now_stamp()
+            build_final_summary(state)
+        except Exception as exc:  # noqa: BLE001
+            return fail(str(exc))
+
+    return jsonify({"ok": True, "state": snapshot_state()})
+
+
+@app.route("/api/purity/acid-result/start", methods=["POST"])
+def api_purity_acid_result_start():
+    with STATE_LOCK:
+        state = ensure_state()
+        try:
+            manager = get_purity_manager()
+            manager.start_acid_observation()
+            refresh_purity_state(state)
+            state["status"] = state["purity_test"].get("status") or "Acid baseline started"
             state["updated_at"] = now_stamp()
             build_final_summary(state)
         except Exception as exc:  # noqa: BLE001
@@ -9665,7 +9849,7 @@ def api_purity_stop():
             state["updated_at"] = now_stamp()
             build_final_summary(state)
 
-            if not stop_state.get("running"):
+            if not stop_state.get("running") and state.get("final", {}).get("ready"):
                 speak(post_jewel_voice_prompt(state, "acid test completed"))
         except Exception as exc:  # noqa: BLE001
             print(f"Could not stop purity test: {exc}")

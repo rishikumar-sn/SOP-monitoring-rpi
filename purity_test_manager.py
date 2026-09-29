@@ -5,6 +5,7 @@ import logging
 import os
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -25,6 +26,19 @@ FrameGetter = Callable[[], np.ndarray | None]
 StatusSetter = Callable[[str], None]
 SessionCallback = Callable[[], None]
 MAX_CONSECUTIVE_HAILO_ERRORS = 2
+ACID_BASELINE_SECONDS = 2.0
+ACID_OBSERVATION_SECONDS = 5.0
+ACID_WAIT_TIMEOUT_SECONDS = 30.0
+ACID_CAPTURE_FPS = 5.0
+ACID_TRANSITION_CAPTURE_FPS = 15.0
+ACID_TRANSITION_BUFFER_SECONDS = 15.0
+ACID_TRANSITION_JPEG_QUALITY = 85
+ACID_REACTION_PADDING = 0.45
+ACID_DETECTION_IOU = 0.45
+ACID_MISSING_FRAME_TIMEOUT_SECONDS = 2.0
+ACID_BASELINE_MIN_FRAMES = 5
+ACID_TRANSITION_MIN_FRAMES = 3
+ACID_OBSERVATION_MIN_FRAMES = 10
 try:
     PURITY_HAILO_INFERENCE_TIMEOUT_MS = max(
         10000,
@@ -75,6 +89,12 @@ class PuritySessionSummary:
     last_inference_at: str = ""
     rubbing_ok: bool = False
     acid_ok: bool = False
+    acid_result_enabled: bool = True
+    acid_result_available: bool = False
+    acid_result_ready: bool = False
+    acid_result: str = ""
+    acid_result_model: str = ""
+    acid_result_error: str = ""
     video_path: str = ""
     rubbing_image_path: str = ""
     rubbing_zoom_image_path: str = ""
@@ -117,6 +137,12 @@ class PuritySessionSummary:
             "last_inference_at": self.last_inference_at,
             "rubbing_ok": bool(self.rubbing_ok),
             "acid_ok": bool(self.acid_ok),
+            "acid_result_enabled": bool(self.acid_result_enabled),
+            "acid_result_available": bool(self.acid_result_available),
+            "acid_result_ready": bool(self.acid_result_ready),
+            "acid_result": self.acid_result,
+            "acid_result_model": self.acid_result_model,
+            "acid_result_error": self.acid_result_error,
             "video_path": self.video_path,
             "rubbing_image_path": self.rubbing_image_path,
             "rubbing_zoom_image_path": self.rubbing_zoom_image_path,
@@ -387,8 +413,30 @@ class PurityTestManager:
         self._consecutive_hailo_errors = 0
         self._session = PuritySessionSummary()
 
+        self._acid_result_enabled = True
+        self._temporal_model: Any = None
+        self._temporal_model_error = ""
+        self._baseline_full_frames: list[np.ndarray] = []
+        self._baseline_crops: list[np.ndarray] = []
+        self._transition_buffer: deque[bytes] = deque(
+            maxlen=max(
+                1,
+                round(ACID_TRANSITION_CAPTURE_FPS * ACID_TRANSITION_BUFFER_SECONDS),
+            )
+        )
+        self._transition_crops: list[np.ndarray] = []
+        self._observation_crops: list[np.ndarray] = []
+        self._reaction_bbox: tuple[int, int, int, int] | None = None
+        self._previous_acid_bbox: tuple[int, int, int, int] | None = None
+        self._temporal_stage_started_at = 0.0
+        self._last_baseline_sample_at = 0.0
+        self._last_transition_sample_at = 0.0
+        self._last_observation_sample_at = 0.0
+        self._last_frame_received_at = 0.0
+
         self.model_dir = self.base_dir / "models"
         self.stone_model_path = self.model_dir / "yolov8s_seg.hef"
+        self.temporal_model_path = self.model_dir / "acid_temporal_mobilenet_v3.onnx"
         self.run_local_path = self.base_dir / "run-local4.py"
         self._available = self.run_local_path.exists()
         self._last_stone_announced = False
@@ -402,6 +450,231 @@ class PurityTestManager:
             self.speak_fn(text)
         except Exception:
             pass
+
+    def set_acid_result_enabled(self, enabled: bool) -> bool:
+        with self._state_lock:
+            if self._session.running:
+                raise RuntimeError("Stop the running acid test before changing the result model.")
+            self._acid_result_enabled = bool(enabled)
+            self._session.acid_result_enabled = self._acid_result_enabled
+        return self._acid_result_enabled
+
+    def acid_result_enabled(self) -> bool:
+        return bool(self._acid_result_enabled)
+
+    def _load_temporal_model(self) -> None:
+        if self._temporal_model is not None:
+            return
+        try:
+            from acid_temporal_inference import TemporalAcidClassifier
+
+            self._temporal_model = TemporalAcidClassifier(self.temporal_model_path)
+            self._temporal_model_error = ""
+            logger.info(
+                "Temporal acid result model loaded: %s sha256=%s",
+                self.temporal_model_path.name,
+                self._temporal_model.sha256,
+            )
+        except Exception as exc:
+            self._temporal_model = None
+            self._temporal_model_error = str(exc)
+            logger.exception("Temporal acid result model is unavailable")
+
+    def _clear_temporal_capture(self) -> None:
+        self._baseline_full_frames.clear()
+        self._baseline_crops.clear()
+        self._transition_buffer.clear()
+        self._transition_crops.clear()
+        self._observation_crops.clear()
+        self._reaction_bbox = None
+        self._previous_acid_bbox = None
+        self._temporal_stage_started_at = 0.0
+        self._last_baseline_sample_at = 0.0
+        self._last_transition_sample_at = 0.0
+        self._last_observation_sample_at = 0.0
+
+    @staticmethod
+    def _bbox_iou(
+        first: tuple[int, int, int, int],
+        second: tuple[int, int, int, int],
+    ) -> float:
+        ax1, ay1, ax2, ay2 = first
+        bx1, by1, bx2, by2 = second
+        intersection = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(
+            0, min(ay2, by2) - max(ay1, by1)
+        )
+        first_area = max(0, ax2 - ax1) * max(0, ay2 - ay1)
+        second_area = max(0, bx2 - bx1) * max(0, by2 - by1)
+        return intersection / max(1, first_area + second_area - intersection)
+
+    @staticmethod
+    def _pad_bbox(
+        bbox: tuple[int, int, int, int],
+        frame_width: int,
+        frame_height: int,
+    ) -> tuple[int, int, int, int]:
+        x1, y1, x2, y2 = bbox
+        pad_x = (x2 - x1) * ACID_REACTION_PADDING
+        pad_y = (y2 - y1) * ACID_REACTION_PADDING
+        return (
+            max(0, min(frame_width, round(x1 - pad_x))),
+            max(0, min(frame_height, round(y1 - pad_y))),
+            max(0, min(frame_width, round(x2 + pad_x))),
+            max(0, min(frame_height, round(y2 + pad_y))),
+        )
+
+    def _crop_temporal_frames(
+        self,
+        frames: list[np.ndarray],
+        bbox: tuple[int, int, int, int],
+    ) -> list[np.ndarray]:
+        x1, y1, x2, y2 = bbox
+        return [
+            crop
+            for frame in frames
+            if frame is not None and frame.size
+            for crop in [frame[y1:y2, x1:x2].copy()]
+            if crop.size
+        ]
+
+    def _decode_transition_crops(
+        self,
+        bbox: tuple[int, int, int, int],
+    ) -> list[np.ndarray]:
+        decoded_frames = []
+        for encoded in self._transition_buffer:
+            frame = cv2.imdecode(np.frombuffer(encoded, dtype=np.uint8), cv2.IMREAD_COLOR)
+            if frame is not None and frame.size:
+                decoded_frames.append(frame)
+        return self._crop_temporal_frames(decoded_frames, bbox)
+
+    def _set_temporal_retry(self, message: str) -> None:
+        module = self._module
+        if module is not None:
+            module.STATE["stage"] = "RETRY"
+            module.STATE["acid_positive_streak"] = 0
+        self._clear_temporal_capture()
+        with self._state_lock:
+            self._session.stage = "RETRY"
+            self._session.result = "INCONCLUSIVE"
+            self._session.status = message
+            self._session.acid_ok = False
+            self._session.acid_result_ready = True
+            self._session.acid_result = "Inconclusive"
+        self._set_status(message)
+        self.speak("Acid test inconclusive. Please repeat.")
+
+    def start_acid_observation(self) -> dict[str, Any]:
+        module = self._ensure_module()
+        with self._state_lock:
+            if not self._session.running:
+                raise RuntimeError("Start the purity test before starting the acid result.")
+            stage = str(self._session.stage or module.STATE.get("stage", "")).upper()
+            if stage not in {"READY_FOR_ACID", "RETRY"}:
+                raise RuntimeError("The acid result can start only after rubbing is confirmed.")
+            if not self._acid_result_enabled:
+                raise RuntimeError("The acid result model is disabled.")
+            if self._temporal_model is None:
+                raise RuntimeError(
+                    self._temporal_model_error
+                    or "The temporal acid result model is unavailable."
+                )
+        self._clear_temporal_capture()
+        self._acid_detected_announced = False
+        now = time.monotonic()
+        self._temporal_stage_started_at = now
+        self._last_frame_received_at = now
+        module.STATE["stage"] = "BASELINE_2S"
+        module.STATE["acid_positive_streak"] = 0
+        with self._state_lock:
+            self._session.stage = "BASELINE_2S"
+            self._session.result = "RUNNING"
+            self._session.status = "Do not apply acid yet. Capturing a clean baseline."
+            self._session.acid_result_ready = False
+            self._session.acid_result = ""
+            self._session.inference_status = "Baseline capture"
+        self._set_status("Do not apply acid yet. Capturing a clean baseline.")
+        self.speak("Do not apply acid yet.")
+        return self.snapshot()
+
+    def _finish_temporal_observation(self, frame: np.ndarray) -> bool:
+        module = self._ensure_module()
+        if (
+            self._temporal_model is None
+            or len(self._baseline_crops) < ACID_BASELINE_MIN_FRAMES
+            or len(self._transition_crops) < ACID_TRANSITION_MIN_FRAMES
+            or len(self._observation_crops) < ACID_OBSERVATION_MIN_FRAMES
+        ):
+            self._set_temporal_retry("Acid test inconclusive. Required frames were missing; please repeat.")
+            return False
+
+        module.STATE["stage"] = "CLASSIFY"
+        with self._state_lock:
+            self._session.stage = "CLASSIFY"
+            self._session.status = "Classifying the five-second acid reaction."
+            self._session.inference_status = "Temporal MobileNet inference running"
+        result_bbox = self._previous_acid_bbox or self._reaction_bbox
+        try:
+            prediction = self._temporal_model.predict(
+                self._baseline_crops,
+                self._transition_crops,
+                self._observation_crops,
+            )
+        except Exception as exc:
+            logger.exception("Temporal acid result inference failed")
+            self._set_temporal_retry("Acid test inconclusive. Result inference failed; please repeat.")
+            return False
+        finally:
+            self._clear_temporal_capture()
+
+        label = str(prediction.get("prediction") or "invalid")
+        logger.info(
+            "Temporal acid result: prediction=%s confidence=%.4f probabilities=%s latency_ms=%.1f",
+            label,
+            float(prediction.get("confidence", 0.0) or 0.0),
+            prediction.get("probabilities") or {},
+            float(prediction.get("latency_ms", 0.0) or 0.0),
+        )
+        if label == "invalid":
+            self._set_temporal_retry("Acid test inconclusive. Please repeat.")
+            return False
+
+        result_text = "22K gold" if label == "gold_22k" else "Non-gold"
+        module.STATE["stage"] = "COMPLETED"
+        with self._state_lock:
+            self._session.stage = "COMPLETED"
+            self._session.acid_ok = True
+            self._session.completed_at = self._session.completed_at or self._stamp()
+            self._session.result = result_text
+            self._session.status = f"Acid test completed. {result_text}."
+            self._session.acid_result = result_text
+            self._session.acid_result_ready = False
+            self._session.inference_status = "Completed"
+        result_frame = frame.copy()
+        if result_bbox is not None:
+            x1, y1, x2, y2 = [int(value) for value in result_bbox]
+            cv2.rectangle(result_frame, (x1, y1), (x2, y2), (0, 220, 0), 3)
+        cv2.putText(
+            result_frame,
+            f"Acid Result: {result_text}",
+            (20, 42),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.9,
+            (0, 220, 0),
+            2,
+            cv2.LINE_AA,
+        )
+        self._capture_session_image("acid_success_image_path", "acid_ok", result_frame)
+        self._save_zoom_region_image(
+            "acid_zoom_image_path",
+            "acid_zoom",
+            frame,
+            result_bbox,
+        )
+        self._capture_session_image("final_image_path", "final_frame", frame)
+        self._set_status(f"Acid test completed. {result_text}.")
+        self.speak(f"Acid test completed. {result_text}.")
+        return True
 
     def _module_path(self) -> Path:
         return self.run_local_path
@@ -627,6 +900,7 @@ class PurityTestManager:
                 module.init_acid_fp_filter()
                 self._models_loaded = True
                 created_models = []
+            self._load_temporal_model()
             if self._audio_bundle is None and bool(getattr(module, "AUDIO_AVAILABLE", False)):
                 self._set_status("Loading purity audio model...")
                 self._audio_bundle = module.load_audio_model()
@@ -634,6 +908,12 @@ class PurityTestManager:
             with self._state_lock:
                 self._session.available = True
                 self._session.models_loaded = bool(self._models_loaded)
+                self._session.acid_result_enabled = bool(self._acid_result_enabled)
+                self._session.acid_result_available = self._temporal_model is not None
+                self._session.acid_result_model = (
+                    self.temporal_model_path.name if self._temporal_model is not None else ""
+                )
+                self._session.acid_result_error = self._temporal_model_error
                 if self._audio_bundle is None and bool(getattr(module, "AUDIO_AVAILABLE", False)):
                     self._session.status = "Purity audio model unavailable. Visual-only fallback will be used."
         except Exception as exc:  # noqa: BLE001
@@ -698,6 +978,10 @@ class PurityTestManager:
             module.MODEL_GOLD = None
             module.MODEL_ACID = None
             module.ACID_FP_FILTER = None
+
+        self._temporal_model = None
+        self._temporal_model_error = ""
+        self._clear_temporal_capture()
 
         closed_model_ids: set[int] = set()
         for adapter in adapters:
@@ -963,7 +1247,7 @@ class PurityTestManager:
                     self._session.video_path = str(output_path)
 
     def _write_video_frame(self, frame: np.ndarray | None) -> None:
-        if frame is None:
+        if frame is None or self._acid_result_enabled:
             return
         now = time.monotonic()
         min_interval = 1.0 / PURITY_VIDEO_WRITE_FPS
@@ -1001,7 +1285,15 @@ class PurityTestManager:
         return ""
 
     def _capture_session_image(self, field_name: str, prefix: str, frame: np.ndarray | None) -> str:
-        if self._session_root is None:
+        report_evidence_fields = {
+            "rubbing_image_path",
+            "rubbing_zoom_image_path",
+            "acid_success_image_path",
+            "acid_zoom_image_path",
+        }
+        if self._session_root is None or (
+            self._acid_result_enabled and field_name not in report_evidence_fields
+        ):
             return ""
         filename = f"{prefix}_{self.now_fn().strftime('%Y%m%d_%H%M%S')}.jpg"
         saved_path = self._save_frame(self._session_root / filename, frame)
@@ -1169,7 +1461,35 @@ class PurityTestManager:
         acid_streak = int(module_state.get("acid_positive_streak", 0) or 0)
         acid_done = bool(session.get("acid_ok") or stage == "COMPLETED" or result == "SUCCESS")
         if acid_done:
-            acid_item = item("acid", "Acid", 1.0, "Acid OK", "done", done=True)
+            acid_status = str(session.get("acid_result") or "Acid OK")
+            acid_item = item("acid", "Acid result", 1.0, acid_status, "done", done=True)
+        elif stage == "READY_FOR_ACID":
+            acid_item = item("acid", "Acid result", 0.1, "Ready to start", "warn")
+        elif stage == "BASELINE_2S":
+            elapsed = max(0.0, time.monotonic() - self._temporal_stage_started_at)
+            acid_item = item(
+                "acid",
+                "Acid result",
+                min(0.25, 0.1 + 0.15 * elapsed / ACID_BASELINE_SECONDS),
+                "Clean baseline",
+                "warn",
+            )
+        elif stage == "WAIT_FOR_ACID":
+            acid_level = max(0.3, min(0.5, 0.3 + 0.2 * acid_streak / float(max(1, acid_confirm_frames))))
+            acid_item = item("acid", "Acid result", acid_level, "Waiting for acid", "warn")
+        elif stage == "OBSERVE_5S":
+            elapsed = max(0.0, time.monotonic() - self._temporal_stage_started_at)
+            acid_item = item(
+                "acid",
+                "Acid result",
+                min(0.95, 0.5 + 0.45 * elapsed / ACID_OBSERVATION_SECONDS),
+                "Observing reaction",
+                "success",
+            )
+        elif stage == "CLASSIFY":
+            acid_item = item("acid", "Acid result", 0.97, "Classifying", "success")
+        elif stage == "RETRY":
+            acid_item = item("acid", "Acid result", 0.0, "Inconclusive — repeat", "danger")
         elif stage == "ACID":
             acid_level = max(0.28, min(1.0, acid_streak / float(max(1, acid_confirm_frames))))
             acid_item = item("acid", "Acid", acid_level, "Acid test running", "success" if acid_level >= 1.0 else "warn")
@@ -1219,6 +1539,7 @@ class PurityTestManager:
             )
 
             module.reset_state()
+            self._clear_temporal_capture()
             self._stop_event.clear()
             self._last_error = ""
             self._consecutive_hailo_errors = 0
@@ -1249,6 +1570,14 @@ class PurityTestManager:
                     sound_status="Waiting...",
                     audio_ok_threshold=self._audio_ok_confidence_threshold,
                     inference_status="RUBBING inference starting",
+                    acid_result_enabled=bool(self._acid_result_enabled),
+                    acid_result_available=self._temporal_model is not None,
+                    acid_result_model=(
+                        self.temporal_model_path.name
+                        if self._temporal_model is not None
+                        else ""
+                    ),
+                    acid_result_error=self._temporal_model_error,
                 )
             session_initialized = True
 
@@ -1317,11 +1646,22 @@ class PurityTestManager:
             while not self._stop_event.is_set():
                 raw_frame = self.frame_getter()
                 if raw_frame is None:
+                    current_stage = str(module.STATE.get("stage", "") or "").upper()
+                    if (
+                        current_stage in {"BASELINE_2S", "WAIT_FOR_ACID", "OBSERVE_5S"}
+                        and self._last_frame_received_at > 0.0
+                        and time.monotonic() - self._last_frame_received_at
+                        >= ACID_MISSING_FRAME_TIMEOUT_SECONDS
+                    ):
+                        self._set_temporal_retry(
+                            "Acid test inconclusive. Camera frames were missing; please repeat."
+                        )
                     time.sleep(0.03)
                     continue
                 if self._stop_event.is_set():
                     break
                 now_monotonic = time.monotonic()
+                self._last_frame_received_at = now_monotonic
                 if now_monotonic - self._last_loop_heartbeat_at >= 5.0:
                     logger.info(
                         "[PurityLoop] alive stage=%s frame=%sx%s infer_skip=%s",
@@ -1333,67 +1673,139 @@ class PurityTestManager:
                     self._last_loop_heartbeat_at = now_monotonic
                 frame = raw_frame.copy()
                 frame_count += 1
-                if frame_count % max(1, int(getattr(module, "INFER_SKIP", 1) or 1)) == 0:
-                    previous_stage = str(module.STATE.get("stage", "RUBBING") or "RUBBING")
-                    if not bool(module.STATE.get("rubbing_done", False)):
-                        self._mark_inference_started("RUBBING", raw_frame)
-                        cycle_started_at = time.perf_counter()
-                        annotated, info = module.process_rubbing_frame(frame)
-                        rubbing_cycle_ms = (
-                            time.perf_counter() - cycle_started_at
-                        ) * 1000.0
-                        if self._stop_event.is_set():
-                            break
-                        if info.get("error"):
-                            inference_error = str(info["error"])
-                            if self._handle_inference_error(inference_error):
-                                module.STATE["rubbing_sync_hits"] = 0
-                                last_annotated = frame.copy()
-                                time.sleep(0.1)
-                                continue
-                            raise RuntimeError(inference_error)
-                        self._mark_inference_success("RUBBING", rubbing_cycle_ms)
-
-                        # Voice Command 6: Now Rubbing stone is detected...
-                        if not self._last_stone_announced and module.STATE.get("stone_visible_now"):
-                            self.speak("Now Rubbing stone is detected, use the jewelry to run on it")
-                            self._last_stone_announced = True
-
-                        # Voice Command 7: Jewelry is now inside the stone region...
-                        if not self._rubbing_started_announced and module.STATE.get("gold_visible_now"):
-                            self.speak("Jewelry is now inside the stone region, now start rubbing for acid test")
-                            self._rubbing_started_announced = True
-
-                        annotated, is_rubbing = module.compute_rubbing(annotated, info)
-
-                        if self._audio_worker is not None:
-                            combined_sync_ok, _visual_recent, _audio_recent = module.rubbing_sync_ready(is_rubbing, info)
-                        else:
-                            module.update_visual_rubbing_grace(is_rubbing, info)
-                            combined_sync_ok = bool(is_rubbing)
-                        if combined_sync_ok:
-                            module.STATE["rubbing_sync_hits"] += 1
-                        else:
+                infer_this_frame = (
+                    frame_count
+                    % max(1, int(getattr(module, "INFER_SKIP", 1) or 1))
+                    == 0
+                )
+                stage = str(module.STATE.get("stage", "RUBBING") or "RUBBING").upper()
+                if stage == "RUBBING" and infer_this_frame:
+                    self._mark_inference_started("RUBBING", raw_frame)
+                    cycle_started_at = time.perf_counter()
+                    annotated, info = module.process_rubbing_frame(frame)
+                    rubbing_cycle_ms = (
+                        time.perf_counter() - cycle_started_at
+                    ) * 1000.0
+                    if self._stop_event.is_set():
+                        break
+                    if info.get("error"):
+                        inference_error = str(info["error"])
+                        if self._handle_inference_error(inference_error):
                             module.STATE["rubbing_sync_hits"] = 0
-                        if module.STATE["rubbing_sync_hits"] >= int(module.RUBBING_SYNC_CONFIRM_FRAMES):
-                            module.STATE["rubbing_done"] = True
-                            module.STATE["stage"] = "ACID"
-                            module.STATE["acid_positive_streak"] = 0
-                            module.STATE["rubbing_sync_hits"] = 0
-                            annotated_display = annotated.copy()
-                            self._capture_session_image("rubbing_image_path", "rubbing_ok", annotated_display)
-                            self._save_zoom_region_image(
-                                "rubbing_zoom_image_path",
-                                "rubbing_zoom",
-                                frame,
-                                module.STATE.get("last_rubbing_bbox"),
-                                mask=module.STATE.get("last_rubbing_mask"),
-                            )
-                            self._capture_session_image("acid_stage_image_path", "acid_stage", annotated_display)
-                            self._set_status("Purity rubbing confirmed. Acid test running.")
-                            self.speak("Visual and audio synchronization is okay. Now, apply the acid to complete the purity test.")
-                        last_annotated = annotated.copy()
+                            last_annotated = frame.copy()
+                            time.sleep(0.1)
+                            continue
+                        raise RuntimeError(inference_error)
+                    self._mark_inference_success("RUBBING", rubbing_cycle_ms)
+
+                    # Voice Command 6: Now Rubbing stone is detected...
+                    if not self._last_stone_announced and module.STATE.get("stone_visible_now"):
+                        self.speak("Now Rubbing stone is detected, use the jewelry to run on it")
+                        self._last_stone_announced = True
+
+                    # Voice Command 7: Jewelry is now inside the stone region...
+                    if not self._rubbing_started_announced and module.STATE.get("gold_visible_now"):
+                        self.speak("Jewelry is now inside the stone region, now start rubbing for acid test")
+                        self._rubbing_started_announced = True
+
+                    annotated, is_rubbing = module.compute_rubbing(annotated, info)
+
+                    if self._audio_worker is not None:
+                        combined_sync_ok, _visual_recent, _audio_recent = module.rubbing_sync_ready(is_rubbing, info)
                     else:
+                        module.update_visual_rubbing_grace(is_rubbing, info)
+                        combined_sync_ok = bool(is_rubbing)
+                    if combined_sync_ok:
+                        module.STATE["rubbing_sync_hits"] += 1
+                    else:
+                        module.STATE["rubbing_sync_hits"] = 0
+                    if module.STATE["rubbing_sync_hits"] >= int(module.RUBBING_SYNC_CONFIRM_FRAMES):
+                        module.STATE["rubbing_done"] = True
+                        module.STATE["stage"] = (
+                            "READY_FOR_ACID"
+                            if self._acid_result_enabled
+                            else "ACID"
+                        )
+                        module.STATE["acid_positive_streak"] = 0
+                        module.STATE["rubbing_sync_hits"] = 0
+                        annotated_display = annotated.copy()
+                        self._capture_session_image("rubbing_image_path", "rubbing_ok", annotated_display)
+                        self._save_zoom_region_image(
+                            "rubbing_zoom_image_path",
+                            "rubbing_zoom",
+                            frame,
+                            module.STATE.get("last_rubbing_bbox"),
+                            mask=module.STATE.get("last_rubbing_mask"),
+                        )
+                        self._capture_session_image("acid_stage_image_path", "acid_stage", annotated_display)
+                        with self._state_lock:
+                            self._session.rubbing_ok = True
+                            self._session.stage = str(module.STATE["stage"])
+                            self._session.acid_result_ready = bool(
+                                self._acid_result_enabled
+                            )
+                            self._session.status = (
+                                "Place the touchstone securely and keep it still."
+                                if self._acid_result_enabled
+                                else "Rubbing confirmed. Apply acid now."
+                            )
+                        if self._acid_result_enabled:
+                            self._set_status("Place the touchstone securely and keep it still.")
+                            self.speak("Place the touchstone securely and keep it still.")
+                        else:
+                            self._set_status("Purity rubbing confirmed. Apply acid now.")
+                            self.speak("Visual and audio synchronization is okay. Now, apply the acid.")
+                    last_annotated = annotated.copy()
+                elif stage == "BASELINE_2S":
+                    if (
+                        now_monotonic - self._last_baseline_sample_at
+                        >= 1.0 / ACID_CAPTURE_FPS
+                    ):
+                        self._baseline_full_frames.append(frame.copy())
+                        self._last_baseline_sample_at = now_monotonic
+                    elapsed = now_monotonic - self._temporal_stage_started_at
+                    remaining = max(0.0, ACID_BASELINE_SECONDS - elapsed)
+                    with self._state_lock:
+                        self._session.status = (
+                            f"Do not apply acid yet. Baseline: {remaining:.1f} seconds remaining."
+                        )
+                    if elapsed >= ACID_BASELINE_SECONDS:
+                        if not self._baseline_full_frames:
+                            self._set_temporal_retry(
+                                "Acid test inconclusive. No baseline frames were captured; please repeat."
+                            )
+                        else:
+                            module.STATE["stage"] = "WAIT_FOR_ACID"
+                            self._temporal_stage_started_at = now_monotonic
+                            with self._state_lock:
+                                self._session.stage = "WAIT_FOR_ACID"
+                                self._session.status = "Apply acid now."
+                                self._session.inference_status = "Waiting for acid detection"
+                            self._set_status("Apply acid now.")
+                            self.speak("Apply acid now.")
+                    last_annotated = frame.copy()
+                elif stage == "WAIT_FOR_ACID":
+                    if (
+                        now_monotonic - self._last_transition_sample_at
+                        >= 1.0 / ACID_TRANSITION_CAPTURE_FPS
+                    ):
+                        encoded_ok, encoded = cv2.imencode(
+                            ".jpg",
+                            frame,
+                            [cv2.IMWRITE_JPEG_QUALITY, ACID_TRANSITION_JPEG_QUALITY],
+                        )
+                        if encoded_ok:
+                            self._transition_buffer.append(encoded.tobytes())
+                        self._last_transition_sample_at = now_monotonic
+                    if (
+                        now_monotonic - self._temporal_stage_started_at
+                        >= ACID_WAIT_TIMEOUT_SECONDS
+                    ):
+                        self._set_temporal_retry(
+                            "Acid was not detected in time. Please repeat the acid test."
+                        )
+                        last_annotated = frame.copy()
+                    elif infer_this_frame:
                         self._mark_inference_started("ACID", raw_frame)
                         cycle_started_at = time.perf_counter()
                         annotated, acid_detected, acid_info = module.process_acid_frame(frame)
@@ -1414,36 +1826,128 @@ class PurityTestManager:
                             "ACID",
                             acid_cycle_ms,
                         )
-                        if acid_detected:
-                            module.STATE["acid_positive_streak"] += 1
+                        acid_bbox = acid_info.get("acid_bbox")
+                        if acid_detected and acid_bbox is not None:
+                            normalized_bbox = tuple(int(value) for value in acid_bbox)
+                            if (
+                                self._previous_acid_bbox is not None
+                                and self._bbox_iou(
+                                    self._previous_acid_bbox,
+                                    normalized_bbox,
+                                ) >= ACID_DETECTION_IOU
+                            ):
+                                module.STATE["acid_positive_streak"] += 1
+                            else:
+                                module.STATE["acid_positive_streak"] = 1
+                            self._previous_acid_bbox = normalized_bbox
                         else:
                             module.STATE["acid_positive_streak"] = 0
+                            self._previous_acid_bbox = None
                         if module.STATE["acid_positive_streak"] >= int(module.ACID_CONFIRM_FRAMES):
-                            module.STATE["stage"] = "COMPLETED"
-                            annotated_display = annotated.copy()
-                            self._capture_session_image("acid_success_image_path", "acid_ok", annotated_display)
-                            self._save_zoom_region_image(
-                                "acid_zoom_image_path",
-                                "acid_zoom",
-                                frame,
-                                acid_info.get("acid_bbox") or module.STATE.get("last_acid_bbox"),
+                            self._reaction_bbox = self._pad_bbox(
+                                self._previous_acid_bbox,
+                                frame.shape[1],
+                                frame.shape[0],
                             )
-                            self._capture_session_image("final_image_path", "final_frame", annotated_display)
-                            self._set_status("Purity acid test completed successfully. Press Stop to continue.")
+                            self._baseline_crops = self._crop_temporal_frames(
+                                self._baseline_full_frames,
+                                self._reaction_bbox,
+                            )
+                            self._transition_crops = self._decode_transition_crops(
+                                self._reaction_bbox,
+                            )
+                            self._baseline_full_frames.clear()
+                            self._transition_buffer.clear()
+                            if not self._baseline_crops or not self._transition_crops:
+                                self._set_temporal_retry(
+                                    "Acid test inconclusive. The reaction ROI could not be captured; please repeat."
+                                )
+                                last_annotated = annotated.copy()
+                                continue
+                            module.STATE["stage"] = "OBSERVE_5S"
+                            self._temporal_stage_started_at = now_monotonic
+                            self._last_observation_sample_at = 0.0
+                            with self._state_lock:
+                                self._session.stage = "OBSERVE_5S"
+                                self._session.status = (
+                                    "Acid detected. Remove your hand and keep the stone still."
+                                )
+                                self._session.inference_status = "Five-second reaction observation"
                             if not self._acid_detected_announced:
-                                self.speak("Acid detected. Purity test completed. Click Stop to continue.")
+                                self.speak("Acid detected. Remove your hand and keep the stone still.")
                                 self._acid_detected_announced = True
                         last_annotated = annotated.copy()
-
-                    current_stage = str(module.STATE.get("stage", previous_stage) or previous_stage)
-                    if previous_stage != current_stage and current_stage == "ACID":
+                elif stage == "OBSERVE_5S":
+                    if self._reaction_bbox is None:
+                        self._set_temporal_retry(
+                            "Acid test inconclusive. The reaction ROI was lost; please repeat."
+                        )
+                    else:
+                        if (
+                            now_monotonic - self._last_observation_sample_at
+                            >= 1.0 / ACID_CAPTURE_FPS
+                        ):
+                            x1, y1, x2, y2 = self._reaction_bbox
+                            crop = frame[y1:y2, x1:x2].copy()
+                            if crop.size:
+                                self._observation_crops.append(crop)
+                            self._last_observation_sample_at = now_monotonic
+                        elapsed = now_monotonic - self._temporal_stage_started_at
+                        remaining = max(0.0, ACID_OBSERVATION_SECONDS - elapsed)
                         with self._state_lock:
-                            self._session.rubbing_ok = True
-                    if current_stage == "COMPLETED":
+                            self._session.status = (
+                                "Keep the stone still. "
+                                f"Observing reaction: {remaining:.1f} seconds remaining."
+                            )
+                        if elapsed >= ACID_OBSERVATION_SECONDS:
+                            if self._finish_temporal_observation(frame):
+                                last_annotated = frame.copy()
+                                break
+                    last_annotated = frame.copy()
+                elif stage == "ACID" and infer_this_frame:
+                    self._mark_inference_started("ACID", raw_frame)
+                    cycle_started_at = time.perf_counter()
+                    annotated, acid_detected, acid_info = module.process_acid_frame(frame)
+                    acid_cycle_ms = (time.perf_counter() - cycle_started_at) * 1000.0
+                    if self._stop_event.is_set():
+                        break
+                    if acid_info.get("error"):
+                        inference_error = str(acid_info["error"])
+                        if self._handle_inference_error(inference_error):
+                            module.STATE["acid_positive_streak"] = 0
+                            last_annotated = frame.copy()
+                            time.sleep(0.1)
+                            continue
+                        raise RuntimeError(inference_error)
+                    self._mark_inference_success("ACID", acid_cycle_ms)
+                    module.STATE["acid_positive_streak"] = (
+                        module.STATE["acid_positive_streak"] + 1
+                        if acid_detected
+                        else 0
+                    )
+                    if module.STATE["acid_positive_streak"] >= int(module.ACID_CONFIRM_FRAMES):
+                        module.STATE["stage"] = "COMPLETED"
+                        annotated_display = annotated.copy()
+                        self._capture_session_image("acid_success_image_path", "acid_ok", annotated_display)
+                        self._save_zoom_region_image(
+                            "acid_zoom_image_path",
+                            "acid_zoom",
+                            frame,
+                            acid_info.get("acid_bbox") or module.STATE.get("last_acid_bbox"),
+                        )
+                        self._capture_session_image("final_image_path", "final_frame", annotated_display)
+                        self._set_status("Purity acid test completed successfully. Press Stop to continue.")
+                        if not self._acid_detected_announced:
+                            self.speak("Acid detected. Purity test completed. Click Stop to continue.")
+                            self._acid_detected_announced = True
                         with self._state_lock:
+                            self._session.stage = "COMPLETED"
                             self._session.acid_ok = True
                             self._session.completed_at = self._session.completed_at or self._stamp()
                             self._session.result = "SUCCESS"
+                    last_annotated = annotated.copy()
+                elif stage in {"READY_FOR_ACID", "RETRY"}:
+                    last_annotated = frame.copy()
                 elif last_annotated is None:
                     last_annotated = frame.copy()
 
@@ -1536,9 +2040,12 @@ class PurityTestManager:
                     self._session.status = "Purity test stopped due to an error"
                     self._session.inference_status = "Inference error"
                 elif self._session.acid_ok:
-                    self._session.result = "SUCCESS"
-                    self._session.status = "Purity test stopped after success"
+                    if not self._session.acid_result:
+                        self._session.result = "SUCCESS"
+                        self._session.status = "Purity test stopped after success"
                     self._session.inference_status = "Completed"
+                elif self._session.acid_result == "Inconclusive":
+                    self._session.inference_status = "Inconclusive"
                 elif self._session.rubbing_ok:
                     self._session.result = "Stopped after rubbing"
                     self._session.status = "Purity test stopped after rubbing stage"
@@ -1547,6 +2054,7 @@ class PurityTestManager:
                     self._session.result = self._requested_stop_reason or "Stopped by user"
                     self._session.status = "Purity test stopped"
                     self._session.inference_status = "Stopped"
+        self._clear_temporal_capture()
         self._thread = None
         self._release_session_resources()
 
@@ -1563,9 +2071,19 @@ class PurityTestManager:
                 models_loaded=bool(self._models_loaded),
                 error=self._availability_error,
                 audio_ok_threshold=self._audio_ok_confidence_threshold,
+                acid_result_enabled=bool(self._acid_result_enabled),
+                acid_result_available=self._temporal_model is not None,
+                acid_result_model=(
+                    self.temporal_model_path.name
+                    if self._temporal_model is not None
+                    else ""
+                ),
+                acid_result_error=self._temporal_model_error,
                 status="Purity test idle" if not self._availability_error else f"Purity test unavailable: {self._availability_error}",
             )
         self._session_root = None
+        self._clear_temporal_capture()
+        self._acid_detected_announced = False
         self._set_display_frame(None)
 
     def snapshot(self) -> dict[str, Any]:
@@ -1576,6 +2094,15 @@ class PurityTestManager:
         data["last_error"] = self._last_error or self._availability_error
         data["processing_roi"] = None
         data["audio_ok_threshold"] = float(self._audio_ok_confidence_threshold)
+        data["acid_result_enabled"] = bool(self._acid_result_enabled)
+        data["acid_result_available"] = self._temporal_model is not None
+        data["acid_result_ready"] = bool(
+            data.get("running") and str(data.get("stage") or "").upper() in {"READY_FOR_ACID", "RETRY"}
+        )
+        data["acid_result_model"] = (
+            self.temporal_model_path.name if self._temporal_model is not None else ""
+        )
+        data["acid_result_error"] = self._temporal_model_error
         data["ui_progress"] = self._build_progress_snapshot(data)
         return data
 

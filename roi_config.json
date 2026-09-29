@@ -74,6 +74,9 @@
   "audio_settings": {
     "ok_confidence_threshold": 0.7
   },
+  "acid_result_settings": {
+    "enabled": true
+  },
   "tassel_classifier_source": "candidate",
   "calibration_config": {
     "aruco_dict": "AprilTag_36h11",

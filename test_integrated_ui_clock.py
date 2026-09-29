@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+import subprocess
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -64,6 +65,72 @@ class IntegratedUiClockTests(unittest.TestCase):
             now_fn=lambda: expected,
         )
         self.assertEqual(manager._stamp(), "2026-09-09 12:30:00")
+
+    def test_pdf_keeps_previous_acid_details_and_prints_temporal_result(self):
+        for acid_result in ("22K gold", "Non-gold"):
+            with self.subTest(acid_result=acid_result), tempfile.TemporaryDirectory() as directory:
+                state = app_module.build_empty_state()
+                state["session_id"] = "acid-report-test"
+                state["pledge_id"] = "acid-report-test"
+                state["jewel_index"] = 1
+                state["classification"].update(
+                    {"confirmed": True, "confirmed_label": "Ring"}
+                )
+                state["purity_test"] = {
+                    "started_at": "2026-09-15 10:00:00",
+                    "stopped_at": "2026-09-15 10:00:10",
+                    "completed_at": "2026-09-15 10:00:09",
+                    "stage": "COMPLETED",
+                    "status": f"Acid test completed. {acid_result}.",
+                    "result": acid_result,
+                    "acid_result": acid_result,
+                    "rubbing_ok": True,
+                    "acid_ok": True,
+                    "running": False,
+                }
+                evidence = app_module.np.full((80, 120, 3), 180, dtype=app_module.np.uint8)
+                for artifact_key in (
+                    "rubbing_image",
+                    "rubbing_zoom_image",
+                    "acid_success_image",
+                    "acid_zoom_image",
+                ):
+                    image_path = Path(directory) / f"{artifact_key}.jpg"
+                    self.assertTrue(app_module.cv2.imwrite(str(image_path), evidence))
+                    state["purity_test"][artifact_key] = {
+                        "name": image_path.name,
+                        "path": str(image_path),
+                    }
+                pdf_path = Path(directory) / "report.pdf"
+                pdf_path.write_bytes(
+                    app_module.generate_pdf_report(
+                        [state],
+                        {"pledge_id": "acid-report-test", "jewel_count": 1},
+                    ).getvalue()
+                )
+
+                extracted = subprocess.run(
+                    ["pdftotext", str(pdf_path), "-"],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout
+
+                self.assertIn(f"Acid Result: {acid_result}", extracted)
+                self.assertIn("Stage: COMPLETED", extracted)
+                self.assertIn("Rubbing OK: Yes", extracted)
+                self.assertIn("Acid OK: Yes", extracted)
+                embedded_images = subprocess.run(
+                    ["pdfimages", "-list", str(pdf_path)],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout
+                image_rows = [
+                    line for line in embedded_images.splitlines()
+                    if line.split() and line.split()[0].isdigit()
+                ]
+                self.assertGreaterEqual(len(image_rows), 4)
 
 
 if __name__ == "__main__":

@@ -2826,7 +2826,11 @@ def draw_status(frame: np.ndarray) -> np.ndarray:
     
     # Minimal compact status at bottom-right
     indicators = []
-    stage_color = (0, 255, 255) if stage == "ACID" else (255, 220, 0)
+    stage_color = (
+        (0, 255, 255)
+        if stage in {"ACID", "WAIT_FOR_ACID", "OBSERVE_5S", "CLASSIFY"}
+        else (255, 220, 0)
+    )
     indicators.append((f"Stage: {stage}", stage_color))
     
     # Stone detected indicator
@@ -2853,9 +2857,19 @@ def draw_status(frame: np.ndarray) -> np.ndarray:
         sync_text = "Sync OK" if sync_ok else "Sync --"
         sync_color = (0, 255, 0) if sync_ok else (0, 165, 255)
         indicators.append((sync_text, sync_color))
-    elif stage == "ACID":
+    elif stage in {"ACID", "WAIT_FOR_ACID"}:
         acid_hits = int(STATE.get("acid_positive_streak", 0) or 0)
         indicators.append((f"Acid search {acid_hits}/{ACID_CONFIRM_FRAMES}", (0, 255, 255)))
+    elif stage == "READY_FOR_ACID":
+        indicators.append(("Ready for acid", (0, 165, 255)))
+    elif stage == "BASELINE_2S":
+        indicators.append(("Do not apply acid", (0, 165, 255)))
+    elif stage == "OBSERVE_5S":
+        indicators.append(("Keep stone still", (0, 255, 255)))
+    elif stage == "CLASSIFY":
+        indicators.append(("Classifying", (0, 255, 255)))
+    elif stage == "RETRY":
+        indicators.append(("Repeat acid test", (0, 0, 255)))
     
     # Draw compact indicators at bottom-right
     padding = 10

@@ -1,0 +1,4381 @@
+{
+  "source_image": "/home/pi/Desktop/Necklace/Necklace_20260825_144400_434_roi.png",
+  "image_shape": [
+    1876,
+    1423
+  ],
+  "ignored_regions": [],
+  "extraction_mode": "default",
+  "zoom_scale": 1,
+  "sahi_slicing": {
+    "enabled": true,
+    "slice_size": 256,
+    "overlap_ratio": 0.3,
+    "provider": "fallback"
+  },
+  "glare_preprocessing": {
+    "enabled": true,
+    "threshold": 225,
+    "patch_size": 14,
+    "saturation_max": 60
+  },
+  "color_correction": {
+    "saturation": 1.0,
+    "contrast": 1.0,
+    "brightness": 16.0
+  },
+  "analysis_normalization": {
+    "white_balance": true,
+    "clahe_clip_limit": 1.8,
+    "shadow_gamma": 0.92,
+    "color_boost": 1.0,
+    "green_recovery": 1.0,
+    "dark_green_recovery": 1.0
+  },
+  "background_calibration": {
+    "point": {
+      "x": 1225,
+      "y": 433
+    },
+    "sample_radius": 8,
+    "sample_count": 289,
+    "hsv_center": [
+      114.95,
+      7.0,
+      232.0
+    ],
+    "hsv_tolerance": [
+      4.0,
+      14.0,
+      14.0
+    ],
+    "lab_center": [
+      230.0,
+      129.0,
+      125.0
+    ],
+    "lab_tolerance": [
+      11.0,
+      10.0,
+      10.0
+    ],
+    "bgr_center": [
+      232.0,
+      227.0,
+      226.0
+    ],
+    "low_saturation": true,
+    "sampled_at": "2026-06-18 18:25:41"
+  },
+  "learned_stone_profiles": [],
+  "jewel_count": 1,
+  "note": "Gemstone names are color-based possibilities only, not a lab-grade identification.",
+  "jewels": [
+    {
+      "jewel_id": 1,
+      "jewel_area_px": 204545,
+      "stone_area_px": 441,
+      "stone_seed_area_px": 438,
+      "stone_mask_area_gain": 1.007,
+      "stone_percentage": 0.22,
+      "outputs": {
+        "masked_png": "/home/pi/Desktop/EMBSYS-AI/StoneDetection/stone_review_dataset/analysis_cache/Necklace_20260825_144400_434_roi_d74556e38522fa18/jewel_01_masked.png",
+        "overlay_png": "/home/pi/Desktop/EMBSYS-AI/StoneDetection/stone_review_dataset/analysis_cache/Necklace_20260825_144400_434_roi_d74556e38522fa18/jewel_01_overlay.png",
+        "color_mask_png": "/home/pi/Desktop/EMBSYS-AI/StoneDetection/stone_review_dataset/analysis_cache/Necklace_20260825_144400_434_roi_d74556e38522fa18/jewel_01_color_mask.png"
+      },
+      "detected_colors": [
+        {
+          "color": "Red",
+          "region_count": 31,
+          "area_px": 428,
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "learned_labels": []
+        },
+        {
+          "color": "Orange",
+          "region_count": 1,
+          "area_px": 13,
+          "possible_gemstones": [
+            "Fire Opal",
+            "Carnelian",
+            "Spessartite Garnet",
+            "Orange Sapphire"
+          ],
+          "learned_labels": []
+        }
+      ],
+      "learned_representations": [],
+      "regions": [
+        {
+          "region_id": 1,
+          "color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "area_px": 11,
+          "seed_area_px": 8,
+          "stone_region_expansion": {
+            "enabled": true,
+            "seed_area_px": 8,
+            "expanded_area_px": 30,
+            "area_gain": 3.75,
+            "method": "adaptive_region_grow",
+            "black_value_limit": 136.8,
+            "black_chroma_limit": 47.62,
+            "growth_radius_px": 5,
+            "maximum_area_px": 30,
+            "gold_overlap_px": 0,
+            "gold_overlap_share": 0.0
+          },
+          "bbox": [
+            273,
+            829,
+            4,
+            4
+          ],
+          "center": [
+            275,
+            830
+          ],
+          "mean_hsv": [
+            4.5,
+            242.9,
+            36.3
+          ],
+          "mean_lab_ab": [
+            10.9,
+            7.3
+          ],
+          "lab_chroma_mean": 13.5,
+          "gold_overlap_percent": 0.0,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.6,
+          "extent": 0.688,
+          "aspect_ratio": 1.0,
+          "circularity": 0.809,
+          "learned_matches": [],
+          "micro_stone_supported": true,
+          "micro_stone_group_count": 3,
+          "micro_stone_group_area_px": 87,
+          "micro_stone_local_jewel_density": 1.0,
+          "candidate_id": 2,
+          "source_methods": [
+            "adaptive_region_grow",
+            "full_roi",
+            "hsv_lab",
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.777,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 11.0,
+            "growth_ratio": 1.375,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.2727,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.3333,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8085,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "display_color": "Red",
+          "color_confidence": 0.896,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.896,
+            "lab_average": [
+              5.6,
+              10.91,
+              7.27
+            ],
+            "lab_chroma": 13.11,
+            "hsv_average": [
+              4.23,
+              242.91,
+              36.27
+            ],
+            "hsv_hue_concentration": 0.989,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 11,
+            "gold_overlap_ratio": 0.273,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          }
+        },
+        {
+          "area_px": 10,
+          "bbox": [
+            81,
+            421,
+            4,
+            3
+          ],
+          "center": [
+            82,
+            422
+          ],
+          "candidate_id": 3,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.777,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 10.0,
+            "growth_ratio": 1.25,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.2,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8061,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 2,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.894,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.894,
+            "lab_average": [
+              6.24,
+              12.9,
+              8.2
+            ],
+            "lab_chroma": 15.29,
+            "hsv_average": [
+              4.03,
+              244.3,
+              39.7
+            ],
+            "hsv_hue_concentration": 0.982,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 10,
+            "gold_overlap_ratio": 0.2,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            4.2,
+            244.3,
+            39.7
+          ],
+          "mean_lab_ab": [
+            12.9,
+            8.2
+          ],
+          "lab_chroma_mean": 15.7,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.4,
+          "extent": 0.833,
+          "aspect_ratio": 1.333,
+          "circularity": 0.806
+        },
+        {
+          "area_px": 10,
+          "bbox": [
+            652,
+            483,
+            4,
+            3
+          ],
+          "center": [
+            654,
+            484
+          ],
+          "candidate_id": 4,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.777,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 10.0,
+            "growth_ratio": 1.25,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.2,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8061,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 3,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.894,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.894,
+            "lab_average": [
+              7.02,
+              11.0,
+              8.9
+            ],
+            "lab_chroma": 14.15,
+            "hsv_average": [
+              6.04,
+              231.1,
+              39.1
+            ],
+            "hsv_hue_concentration": 0.984,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 10,
+            "gold_overlap_ratio": 0.2,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            6.2,
+            231.1,
+            39.1
+          ],
+          "mean_lab_ab": [
+            11.0,
+            8.9
+          ],
+          "lab_chroma_mean": 14.5,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.4,
+          "extent": 0.833,
+          "aspect_ratio": 1.333,
+          "circularity": 0.806
+        },
+        {
+          "area_px": 8,
+          "bbox": [
+            78,
+            524,
+            4,
+            3
+          ],
+          "center": [
+            80,
+            525
+          ],
+          "candidate_id": 5,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.783,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 0.9773,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 4,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.899,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.899,
+            "lab_average": [
+              8.97,
+              11.5,
+              13.12
+            ],
+            "lab_chroma": 17.45,
+            "hsv_average": [
+              12.12,
+              251.88,
+              44.38
+            ],
+            "hsv_hue_concentration": 0.998,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 8,
+            "gold_overlap_ratio": 0.0,
+            "metal_surround_ratio": 0.977,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            12.1,
+            251.9,
+            44.4
+          ],
+          "mean_lab_ab": [
+            11.5,
+            13.1
+          ],
+          "lab_chroma_mean": 17.5,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.9,
+          "extent": 0.667,
+          "aspect_ratio": 1.333,
+          "circularity": 0.857
+        },
+        {
+          "area_px": 8,
+          "bbox": [
+            96,
+            560,
+            4,
+            3
+          ],
+          "center": [
+            98,
+            561
+          ],
+          "candidate_id": 6,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.783,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 0.9773,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 5,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.898,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.898,
+            "lab_average": [
+              7.65,
+              15.75,
+              11.62
+            ],
+            "lab_chroma": 19.58,
+            "hsv_average": [
+              7.12,
+              254.5,
+              45.88
+            ],
+            "hsv_hue_concentration": 0.995,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 8,
+            "gold_overlap_ratio": 0.0,
+            "metal_surround_ratio": 0.977,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            7.1,
+            254.5,
+            45.9
+          ],
+          "mean_lab_ab": [
+            15.8,
+            11.6
+          ],
+          "lab_chroma_mean": 19.7,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.8,
+          "extent": 0.667,
+          "aspect_ratio": 1.333,
+          "circularity": 0.857
+        },
+        {
+          "area_px": 10,
+          "bbox": [
+            654,
+            588,
+            4,
+            3
+          ],
+          "center": [
+            656,
+            589
+          ],
+          "candidate_id": 7,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.777,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 10.0,
+            "growth_ratio": 1.25,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.2,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8061,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 0.9891,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 6,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.897,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.897,
+            "lab_average": [
+              8.08,
+              17.5,
+              12.3
+            ],
+            "lab_chroma": 21.39,
+            "hsv_average": [
+              6.49,
+              254.6,
+              48.2
+            ],
+            "hsv_hue_concentration": 0.991,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 10,
+            "gold_overlap_ratio": 0.2,
+            "metal_surround_ratio": 0.989,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            6.5,
+            254.6,
+            48.2
+          ],
+          "mean_lab_ab": [
+            17.5,
+            12.3
+          ],
+          "lab_chroma_mean": 21.8,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.7,
+          "extent": 0.833,
+          "aspect_ratio": 1.333,
+          "circularity": 0.806
+        },
+        {
+          "area_px": 10,
+          "bbox": [
+            127,
+            596,
+            4,
+            3
+          ],
+          "center": [
+            128,
+            597
+          ],
+          "candidate_id": 8,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.777,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 10.0,
+            "growth_ratio": 1.25,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.2,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8061,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 7,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.896,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.896,
+            "lab_average": [
+              14.12,
+              16.1,
+              12.1
+            ],
+            "lab_chroma": 20.14,
+            "hsv_average": [
+              5.24,
+              209.8,
+              62.3
+            ],
+            "hsv_hue_concentration": 0.99,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 10,
+            "gold_overlap_ratio": 0.2,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            5.5,
+            209.8,
+            62.3
+          ],
+          "mean_lab_ab": [
+            16.1,
+            12.1
+          ],
+          "lab_chroma_mean": 20.5,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.6,
+          "extent": 0.833,
+          "aspect_ratio": 1.333,
+          "circularity": 0.806
+        },
+        {
+          "area_px": 8,
+          "bbox": [
+            621,
+            607,
+            4,
+            3
+          ],
+          "center": [
+            622,
+            608
+          ],
+          "candidate_id": 9,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.783,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 8,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.899,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.899,
+            "lab_average": [
+              6.91,
+              8.5,
+              8.75
+            ],
+            "lab_chroma": 12.2,
+            "hsv_average": [
+              10.25,
+              228.5,
+              36.38
+            ],
+            "hsv_hue_concentration": 0.996,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 8,
+            "gold_overlap_ratio": 0.0,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            10.4,
+            228.5,
+            36.4
+          ],
+          "mean_lab_ab": [
+            8.5,
+            8.8
+          ],
+          "lab_chroma_mean": 12.3,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.9,
+          "extent": 0.667,
+          "aspect_ratio": 1.333,
+          "circularity": 0.857
+        },
+        {
+          "area_px": 14,
+          "bbox": [
+            100,
+            613,
+            4,
+            4
+          ],
+          "center": [
+            102,
+            614
+          ],
+          "candidate_id": 10,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.783,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.75,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.4286,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.3333,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 9,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.895,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.895,
+            "lab_average": [
+              8.99,
+              14.29,
+              12.64
+            ],
+            "lab_chroma": 19.08,
+            "hsv_average": [
+              6.87,
+              247.43,
+              48.21
+            ],
+            "hsv_hue_concentration": 0.987,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 14,
+            "gold_overlap_ratio": 0.429,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            7.0,
+            247.4,
+            48.2
+          ],
+          "mean_lab_ab": [
+            14.3,
+            12.6
+          ],
+          "lab_chroma_mean": 19.6,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.5,
+          "extent": 0.875,
+          "aspect_ratio": 1.0,
+          "circularity": 0.857
+        },
+        {
+          "area_px": 13,
+          "bbox": [
+            26,
+            471,
+            4,
+            4
+          ],
+          "center": [
+            27,
+            473
+          ],
+          "candidate_id": 11,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.788,
+          "refinement_diagnostics": {
+            "seed_area_px": 10.0,
+            "refined_area_px": 13.0,
+            "growth_ratio": 1.3,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8984,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 0.9592,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 10,
+          "color": "Orange",
+          "display_color": "Orange",
+          "possible_gemstones": [
+            "Fire Opal",
+            "Carnelian",
+            "Spessartite Garnet",
+            "Orange Sapphire"
+          ],
+          "color_confidence": 0.896,
+          "color_classification": {
+            "color": "Orange",
+            "display_color": "Orange",
+            "color_confidence": 0.896,
+            "lab_average": [
+              10.77,
+              3.69,
+              11.85
+            ],
+            "lab_chroma": 12.41,
+            "hsv_average": [
+              17.66,
+              206.15,
+              39.38
+            ],
+            "hsv_hue_concentration": 0.988,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 13,
+            "gold_overlap_ratio": 0.0,
+            "metal_surround_ratio": 0.959,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            18.2,
+            206.2,
+            39.4
+          ],
+          "mean_lab_ab": [
+            3.7,
+            11.8
+          ],
+          "lab_chroma_mean": 13.0,
+          "color_mix_percent": {
+            "Orange": 100.0
+          },
+          "dominant_share_percent": 89.6,
+          "extent": 0.812,
+          "aspect_ratio": 1.0,
+          "circularity": 0.898
+        },
+        {
+          "area_px": 11,
+          "bbox": [
+            652,
+            500,
+            5,
+            3
+          ],
+          "center": [
+            654,
+            501
+          ],
+          "candidate_id": 13,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.62,
+          "refinement_diagnostics": {
+            "seed_area_px": 11.0,
+            "refined_area_px": 11.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8085,
+            "solidity": 1.0,
+            "aspect_ratio": 1.6667,
+            "metal_surround_ratio": 0.9479,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 11,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.899,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.899,
+            "lab_average": [
+              8.73,
+              16.09,
+              12.09
+            ],
+            "lab_chroma": 20.13,
+            "hsv_average": [
+              7.57,
+              241.27,
+              48.27
+            ],
+            "hsv_hue_concentration": 0.997,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 11,
+            "gold_overlap_ratio": 0.0,
+            "metal_surround_ratio": 0.948,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            7.5,
+            241.3,
+            48.3
+          ],
+          "mean_lab_ab": [
+            16.1,
+            12.1
+          ],
+          "lab_chroma_mean": 20.2,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.9,
+          "extent": 0.733,
+          "aspect_ratio": 1.667,
+          "circularity": 0.809
+        },
+        {
+          "area_px": 8,
+          "bbox": [
+            460,
+            859,
+            3,
+            3
+          ],
+          "center": [
+            461,
+            860
+          ],
+          "candidate_id": 14,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.776,
+          "refinement_diagnostics": {
+            "seed_area_px": 7.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.1429,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.125,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8001,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 0.9884,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 12,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.898,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.898,
+            "lab_average": [
+              5.98,
+              10.25,
+              6.5
+            ],
+            "lab_chroma": 12.14,
+            "hsv_average": [
+              4.98,
+              232.25,
+              36.12
+            ],
+            "hsv_hue_concentration": 0.996,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 8,
+            "gold_overlap_ratio": 0.125,
+            "metal_surround_ratio": 0.988,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            5.3,
+            232.2,
+            36.1
+          ],
+          "mean_lab_ab": [
+            10.2,
+            6.5
+          ],
+          "lab_chroma_mean": 12.3,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.8,
+          "extent": 0.889,
+          "aspect_ratio": 1.0,
+          "circularity": 0.8
+        },
+        {
+          "area_px": 12,
+          "bbox": [
+            681,
+            555,
+            5,
+            4
+          ],
+          "center": [
+            683,
+            556
+          ],
+          "candidate_id": 15,
+          "source_methods": [
+            "dark_structure",
+            "edge_enclosure",
+            "local_contrast",
+            "non_gold_hsv_residual",
+            "structural"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.62,
+          "refinement_diagnostics": {
+            "seed_area_px": 12.0,
+            "refined_area_px": 12.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8001,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 0.94,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 13,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.899,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.899,
+            "lab_average": [
+              9.28,
+              12.33,
+              12.67
+            ],
+            "lab_chroma": 17.68,
+            "hsv_average": [
+              11.39,
+              239.25,
+              45.0
+            ],
+            "hsv_hue_concentration": 0.996,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 12,
+            "gold_overlap_ratio": 0.0,
+            "metal_surround_ratio": 0.94,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            11.3,
+            239.2,
+            45.0
+          ],
+          "mean_lab_ab": [
+            12.3,
+            12.7
+          ],
+          "lab_chroma_mean": 17.8,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.9,
+          "extent": 0.6,
+          "aspect_ratio": 1.25,
+          "circularity": 0.8
+        },
+        {
+          "area_px": 14,
+          "bbox": [
+            234,
+            868,
+            6,
+            3
+          ],
+          "center": [
+            236,
+            869
+          ],
+          "candidate_id": 16,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.62,
+          "refinement_diagnostics": {
+            "seed_area_px": 14.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.7398,
+            "solidity": 1.0,
+            "aspect_ratio": 2.0,
+            "metal_surround_ratio": 0.9038,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 14,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.898,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.898,
+            "lab_average": [
+              15.63,
+              14.93,
+              8.93
+            ],
+            "lab_chroma": 17.39,
+            "hsv_average": [
+              3.59,
+              207.79,
+              64.79
+            ],
+            "hsv_hue_concentration": 0.996,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 14,
+            "gold_overlap_ratio": 0.0,
+            "metal_surround_ratio": 0.904,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            4.1,
+            207.8,
+            64.8
+          ],
+          "mean_lab_ab": [
+            14.9,
+            8.9
+          ],
+          "lab_chroma_mean": 17.6,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.8,
+          "extent": 0.778,
+          "aspect_ratio": 2.0,
+          "circularity": 0.74
+        },
+        {
+          "area_px": 16,
+          "bbox": [
+            117,
+            486,
+            6,
+            4
+          ],
+          "center": [
+            119,
+            488
+          ],
+          "candidate_id": 17,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.62,
+          "refinement_diagnostics": {
+            "seed_area_px": 16.0,
+            "refined_area_px": 16.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.6987,
+            "solidity": 0.9048,
+            "aspect_ratio": 1.5,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 15,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.897,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.897,
+            "lab_average": [
+              9.73,
+              14.56,
+              8.06
+            ],
+            "lab_chroma": 16.65,
+            "hsv_average": [
+              2.97,
+              209.06,
+              48.69
+            ],
+            "hsv_hue_concentration": 0.991,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 16,
+            "gold_overlap_ratio": 0.0,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            2.9,
+            209.1,
+            48.7
+          ],
+          "mean_lab_ab": [
+            14.6,
+            8.1
+          ],
+          "lab_chroma_mean": 16.8,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.7,
+          "extent": 0.667,
+          "aspect_ratio": 1.5,
+          "circularity": 0.699
+        },
+        {
+          "area_px": 14,
+          "bbox": [
+            576,
+            736,
+            5,
+            4
+          ],
+          "center": [
+            578,
+            737
+          ],
+          "candidate_id": 18,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.785,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.75,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.4286,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.25,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8715,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 16,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.897,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.897,
+            "lab_average": [
+              9.16,
+              14.57,
+              11.93
+            ],
+            "lab_chroma": 18.83,
+            "hsv_average": [
+              6.02,
+              237.0,
+              48.71
+            ],
+            "hsv_hue_concentration": 0.991,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 14,
+            "gold_overlap_ratio": 0.429,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            6.3,
+            237.0,
+            48.7
+          ],
+          "mean_lab_ab": [
+            14.6,
+            11.9
+          ],
+          "lab_chroma_mean": 19.2,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.7,
+          "extent": 0.7,
+          "aspect_ratio": 1.25,
+          "circularity": 0.871
+        },
+        {
+          "area_px": 12,
+          "bbox": [
+            93,
+            474,
+            4,
+            5
+          ],
+          "center": [
+            94,
+            476
+          ],
+          "candidate_id": 20,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.776,
+          "refinement_diagnostics": {
+            "seed_area_px": 11.0,
+            "refined_area_px": 12.0,
+            "growth_ratio": 1.0909,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0833,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8001,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 17,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.897,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.897,
+            "lab_average": [
+              11.96,
+              14.83,
+              11.83
+            ],
+            "lab_chroma": 18.98,
+            "hsv_average": [
+              6.66,
+              220.42,
+              54.5
+            ],
+            "hsv_hue_concentration": 0.99,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 12,
+            "gold_overlap_ratio": 0.083,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            6.7,
+            220.4,
+            54.5
+          ],
+          "mean_lab_ab": [
+            14.8,
+            11.8
+          ],
+          "lab_chroma_mean": 19.4,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.7,
+          "extent": 0.6,
+          "aspect_ratio": 1.25,
+          "circularity": 0.8
+        },
+        {
+          "area_px": 12,
+          "bbox": [
+            70,
+            508,
+            5,
+            4
+          ],
+          "center": [
+            72,
+            510
+          ],
+          "candidate_id": 21,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.776,
+          "refinement_diagnostics": {
+            "seed_area_px": 11.0,
+            "refined_area_px": 12.0,
+            "growth_ratio": 1.0909,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0833,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8001,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 0.89,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 18,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.899,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.899,
+            "lab_average": [
+              14.74,
+              19.08,
+              21.0
+            ],
+            "lab_chroma": 28.38,
+            "hsv_average": [
+              10.14,
+              247.67,
+              66.83
+            ],
+            "hsv_hue_concentration": 0.998,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 12,
+            "gold_overlap_ratio": 0.083,
+            "metal_surround_ratio": 0.89,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            10.2,
+            247.7,
+            66.8
+          ],
+          "mean_lab_ab": [
+            19.1,
+            21.0
+          ],
+          "lab_chroma_mean": 28.5,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.9,
+          "extent": 0.6,
+          "aspect_ratio": 1.25,
+          "circularity": 0.8
+        },
+        {
+          "area_px": 14,
+          "bbox": [
+            570,
+            741,
+            5,
+            5
+          ],
+          "center": [
+            572,
+            743
+          ],
+          "candidate_id": 22,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.771,
+          "refinement_diagnostics": {
+            "seed_area_px": 13.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.0769,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0714,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.7543,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 19,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.9,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.9,
+            "lab_average": [
+              6.33,
+              10.5,
+              9.21
+            ],
+            "lab_chroma": 13.97,
+            "hsv_average": [
+              10.06,
+              251.79,
+              37.43
+            ],
+            "hsv_hue_concentration": 0.999,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 14,
+            "gold_overlap_ratio": 0.071,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            10.1,
+            251.8,
+            37.4
+          ],
+          "mean_lab_ab": [
+            10.5,
+            9.2
+          ],
+          "lab_chroma_mean": 14.0,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 90.0,
+          "extent": 0.56,
+          "aspect_ratio": 1.0,
+          "circularity": 0.754
+        },
+        {
+          "area_px": 9,
+          "bbox": [
+            301,
+            838,
+            3,
+            4
+          ],
+          "center": [
+            302,
+            839
+          ],
+          "candidate_id": 27,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.78,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 9.0,
+            "growth_ratio": 1.125,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.1111,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8323,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 20,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.897,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.897,
+            "lab_average": [
+              10.76,
+              14.44,
+              7.56
+            ],
+            "lab_chroma": 16.3,
+            "hsv_average": [
+              3.99,
+              199.22,
+              50.67
+            ],
+            "hsv_hue_concentration": 0.991,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 9,
+            "gold_overlap_ratio": 0.111,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            3.3,
+            199.2,
+            50.7
+          ],
+          "mean_lab_ab": [
+            14.4,
+            7.6
+          ],
+          "lab_chroma_mean": 16.4,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.7,
+          "extent": 0.75,
+          "aspect_ratio": 1.333,
+          "circularity": 0.832
+        },
+        {
+          "area_px": 13,
+          "bbox": [
+            77,
+            631,
+            4,
+            5
+          ],
+          "center": [
+            79,
+            633
+          ],
+          "candidate_id": 29,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.772,
+          "refinement_diagnostics": {
+            "seed_area_px": 10.0,
+            "refined_area_px": 13.0,
+            "growth_ratio": 1.3,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.2308,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.7689,
+            "solidity": 0.9375,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 21,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.899,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.899,
+            "lab_average": [
+              8.42,
+              8.31,
+              6.38
+            ],
+            "lab_chroma": 10.48,
+            "hsv_average": [
+              6.19,
+              186.08,
+              38.38
+            ],
+            "hsv_hue_concentration": 0.996,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 13,
+            "gold_overlap_ratio": 0.231,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            6.2,
+            186.1,
+            38.4
+          ],
+          "mean_lab_ab": [
+            8.3,
+            6.4
+          ],
+          "lab_chroma_mean": 10.6,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.9,
+          "extent": 0.65,
+          "aspect_ratio": 1.25,
+          "circularity": 0.769
+        },
+        {
+          "area_px": 21,
+          "bbox": [
+            143,
+            615,
+            5,
+            6
+          ],
+          "center": [
+            145,
+            617
+          ],
+          "candidate_id": 30,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.781,
+          "refinement_diagnostics": {
+            "seed_area_px": 14.0,
+            "refined_area_px": 21.0,
+            "growth_ratio": 1.5,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.3333,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.25,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8385,
+            "solidity": 0.9655,
+            "aspect_ratio": 1.2,
+            "metal_surround_ratio": 0.9391,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 22,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.897,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.897,
+            "lab_average": [
+              14.49,
+              14.1,
+              11.24
+            ],
+            "lab_chroma": 18.03,
+            "hsv_average": [
+              6.01,
+              204.19,
+              60.38
+            ],
+            "hsv_hue_concentration": 0.992,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 21,
+            "gold_overlap_ratio": 0.333,
+            "metal_surround_ratio": 0.939,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            6.3,
+            204.2,
+            60.4
+          ],
+          "mean_lab_ab": [
+            14.1,
+            11.2
+          ],
+          "lab_chroma_mean": 18.3,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.7,
+          "extent": 0.7,
+          "aspect_ratio": 1.2,
+          "circularity": 0.838
+        },
+        {
+          "area_px": 14,
+          "bbox": [
+            570,
+            785,
+            5,
+            3
+          ],
+          "center": [
+            572,
+            786
+          ],
+          "candidate_id": 31,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.767,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.75,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.4286,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.25,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.7234,
+            "solidity": 1.0,
+            "aspect_ratio": 1.6667,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 23,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.899,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.899,
+            "lab_average": [
+              13.59,
+              14.79,
+              12.71
+            ],
+            "lab_chroma": 19.5,
+            "hsv_average": [
+              7.31,
+              200.86,
+              58.79
+            ],
+            "hsv_hue_concentration": 0.996,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 14,
+            "gold_overlap_ratio": 0.429,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            7.3,
+            200.9,
+            58.8
+          ],
+          "mean_lab_ab": [
+            14.8,
+            12.7
+          ],
+          "lab_chroma_mean": 19.6,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.9,
+          "extent": 0.933,
+          "aspect_ratio": 1.667,
+          "circularity": 0.723
+        },
+        {
+          "area_px": 6,
+          "bbox": [
+            678,
+            559,
+            4,
+            2
+          ],
+          "center": [
+            680,
+            560
+          ],
+          "candidate_id": 32,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.745,
+          "refinement_diagnostics": {
+            "seed_area_px": 6.0,
+            "refined_area_px": 6.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.539,
+            "solidity": 1.0,
+            "aspect_ratio": 2.0,
+            "metal_surround_ratio": 0.8929,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 24,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.899,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.899,
+            "lab_average": [
+              7.58,
+              7.67,
+              10.67
+            ],
+            "lab_chroma": 13.14,
+            "hsv_average": [
+              12.68,
+              236.5,
+              37.0
+            ],
+            "hsv_hue_concentration": 0.998,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 6,
+            "gold_overlap_ratio": 0.0,
+            "metal_surround_ratio": 0.893,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            12.7,
+            236.5,
+            37.0
+          ],
+          "mean_lab_ab": [
+            7.7,
+            10.7
+          ],
+          "lab_chroma_mean": 13.2,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.9,
+          "extent": 0.75,
+          "aspect_ratio": 2.0,
+          "circularity": 0.539
+        },
+        {
+          "area_px": 23,
+          "bbox": [
+            116,
+            594,
+            6,
+            6
+          ],
+          "center": [
+            118,
+            596
+          ],
+          "candidate_id": 33,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.772,
+          "refinement_diagnostics": {
+            "seed_area_px": 13.0,
+            "refined_area_px": 23.0,
+            "growth_ratio": 1.7692,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.3913,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.2,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.7705,
+            "solidity": 0.9394,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 25,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.896,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.896,
+            "lab_average": [
+              9.82,
+              10.13,
+              9.3
+            ],
+            "lab_chroma": 13.75,
+            "hsv_average": [
+              7.23,
+              215.35,
+              44.48
+            ],
+            "hsv_hue_concentration": 0.988,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 23,
+            "gold_overlap_ratio": 0.391,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            7.7,
+            215.3,
+            44.5
+          ],
+          "mean_lab_ab": [
+            10.1,
+            9.3
+          ],
+          "lab_chroma_mean": 14.1,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.6,
+          "extent": 0.639,
+          "aspect_ratio": 1.0,
+          "circularity": 0.771
+        },
+        {
+          "area_px": 9,
+          "bbox": [
+            364,
+            1086,
+            4,
+            4
+          ],
+          "center": [
+            366,
+            1087
+          ],
+          "candidate_id": 38,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.762,
+          "refinement_diagnostics": {
+            "seed_area_px": 8.0,
+            "refined_area_px": 9.0,
+            "growth_ratio": 1.125,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.1111,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.6872,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 0.9149,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 26,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.899,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.899,
+            "lab_average": [
+              8.63,
+              9.44,
+              6.44
+            ],
+            "lab_chroma": 11.43,
+            "hsv_average": [
+              4.83,
+              204.22,
+              40.56
+            ],
+            "hsv_hue_concentration": 0.996,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 9,
+            "gold_overlap_ratio": 0.111,
+            "metal_surround_ratio": 0.915,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            5.2,
+            204.2,
+            40.6
+          ],
+          "mean_lab_ab": [
+            9.4,
+            6.4
+          ],
+          "lab_chroma_mean": 11.5,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.9,
+          "extent": 0.562,
+          "aspect_ratio": 1.0,
+          "circularity": 0.687
+        },
+        {
+          "area_px": 8,
+          "bbox": [
+            470,
+            825,
+            4,
+            3
+          ],
+          "center": [
+            472,
+            826
+          ],
+          "candidate_id": 40,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.783,
+          "refinement_diagnostics": {
+            "seed_area_px": 7.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.1429,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 0.9545,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 27,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.897,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.897,
+            "lab_average": [
+              9.8,
+              8.5,
+              4.0
+            ],
+            "lab_chroma": 9.39,
+            "hsv_average": [
+              3.08,
+              188.5,
+              41.25
+            ],
+            "hsv_hue_concentration": 0.992,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 8,
+            "gold_overlap_ratio": 0.0,
+            "metal_surround_ratio": 0.955,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            2.2,
+            188.5,
+            41.2
+          ],
+          "mean_lab_ab": [
+            8.5,
+            4.0
+          ],
+          "lab_chroma_mean": 9.6,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.7,
+          "extent": 0.667,
+          "aspect_ratio": 1.333,
+          "circularity": 0.857
+        },
+        {
+          "area_px": 20,
+          "bbox": [
+            668,
+            637,
+            7,
+            8
+          ],
+          "center": [
+            671,
+            641
+          ],
+          "candidate_id": 41,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.62,
+          "refinement_diagnostics": {
+            "seed_area_px": 20.0,
+            "refined_area_px": 20.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.1,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.3779,
+            "solidity": 0.7188,
+            "aspect_ratio": 1.1429,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 28,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.897,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.897,
+            "lab_average": [
+              11.69,
+              13.25,
+              8.4
+            ],
+            "lab_chroma": 15.69,
+            "hsv_average": [
+              4.57,
+              206.6,
+              52.3
+            ],
+            "hsv_hue_concentration": 0.992,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 20,
+            "gold_overlap_ratio": 0.1,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            4.4,
+            206.6,
+            52.3
+          ],
+          "mean_lab_ab": [
+            13.2,
+            8.4
+          ],
+          "lab_chroma_mean": 15.8,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.7,
+          "extent": 0.357,
+          "aspect_ratio": 1.143,
+          "circularity": 0.378
+        },
+        {
+          "area_px": 12,
+          "bbox": [
+            423,
+            995,
+            5,
+            4
+          ],
+          "center": [
+            425,
+            996
+          ],
+          "candidate_id": 44,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.776,
+          "refinement_diagnostics": {
+            "seed_area_px": 10.0,
+            "refined_area_px": 12.0,
+            "growth_ratio": 1.2,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.1667,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.25,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8001,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 29,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.898,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.898,
+            "lab_average": [
+              12.03,
+              15.42,
+              12.5
+            ],
+            "lab_chroma": 19.85,
+            "hsv_average": [
+              7.13,
+              213.42,
+              55.08
+            ],
+            "hsv_hue_concentration": 0.995,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 12,
+            "gold_overlap_ratio": 0.167,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            7.3,
+            213.4,
+            55.1
+          ],
+          "mean_lab_ab": [
+            15.4,
+            12.5
+          ],
+          "lab_chroma_mean": 20.0,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.8,
+          "extent": 0.6,
+          "aspect_ratio": 1.25,
+          "circularity": 0.8
+        },
+        {
+          "area_px": 22,
+          "bbox": [
+            653,
+            644,
+            9,
+            4
+          ],
+          "center": [
+            656,
+            646
+          ],
+          "candidate_id": 45,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.62,
+          "refinement_diagnostics": {
+            "seed_area_px": 22.0,
+            "refined_area_px": 22.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.338,
+            "solidity": 0.641,
+            "aspect_ratio": 2.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 30,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.899,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.899,
+            "lab_average": [
+              10.55,
+              17.32,
+              13.68
+            ],
+            "lab_chroma": 22.07,
+            "hsv_average": [
+              7.48,
+              236.27,
+              53.59
+            ],
+            "hsv_hue_concentration": 0.998,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 22,
+            "gold_overlap_ratio": 0.0,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            7.5,
+            236.3,
+            53.6
+          ],
+          "mean_lab_ab": [
+            17.3,
+            13.7
+          ],
+          "lab_chroma_mean": 22.2,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.9,
+          "extent": 0.611,
+          "aspect_ratio": 2.25,
+          "circularity": 0.338
+        },
+        {
+          "area_px": 21,
+          "bbox": [
+            188,
+            775,
+            7,
+            5
+          ],
+          "center": [
+            191,
+            777
+          ],
+          "candidate_id": 46,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.752,
+          "refinement_diagnostics": {
+            "seed_area_px": 12.0,
+            "refined_area_px": 21.0,
+            "growth_ratio": 1.75,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.2857,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.4583,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.6011,
+            "solidity": 0.8387,
+            "aspect_ratio": 1.4,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 31,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.897,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.897,
+            "lab_average": [
+              6.39,
+              9.67,
+              6.76
+            ],
+            "lab_chroma": 11.8,
+            "hsv_average": [
+              4.81,
+              219.05,
+              35.19
+            ],
+            "hsv_hue_concentration": 0.991,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 21,
+            "gold_overlap_ratio": 0.286,
+            "metal_surround_ratio": 1.0,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            5.2,
+            219.0,
+            35.2
+          ],
+          "mean_lab_ab": [
+            9.7,
+            6.8
+          ],
+          "lab_chroma_mean": 12.0,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.7,
+          "extent": 0.6,
+          "aspect_ratio": 1.4,
+          "circularity": 0.601
+        },
+        {
+          "area_px": 48,
+          "bbox": [
+            86,
+            525,
+            13,
+            4
+          ],
+          "center": [
+            92,
+            527
+          ],
+          "candidate_id": 48,
+          "source_methods": [
+            "non_gold_hsv_residual"
+          ],
+          "segmentation_method": "opencv",
+          "boundary_confidence": 0.659,
+          "refinement_diagnostics": {
+            "seed_area_px": 65.0,
+            "refined_area_px": 48.0,
+            "growth_ratio": 0.7385,
+            "seed_overlap": 0.6154,
+            "jewel_area_fraction": 0.0002,
+            "gold_overlap": 0.1667,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 0.437,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.5278,
+            "solidity": 1.0,
+            "aspect_ratio": 3.25,
+            "metal_surround_ratio": 0.8294,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          "watershed_split": false,
+          "region_id": 32,
+          "color": "Red",
+          "display_color": "Red",
+          "possible_gemstones": [
+            "Ruby",
+            "Garnet",
+            "Spinel",
+            "Red Coral",
+            "Rhodolite",
+            "Pyrope"
+          ],
+          "color_confidence": 0.895,
+          "color_classification": {
+            "color": "Red",
+            "display_color": "Red",
+            "color_confidence": 0.895,
+            "lab_average": [
+              10.24,
+              12.08,
+              9.21
+            ],
+            "lab_chroma": 15.19,
+            "hsv_average": [
+              6.28,
+              206.88,
+              47.19
+            ],
+            "hsv_hue_concentration": 0.987,
+            "secondary_colors": [],
+            "valid_color_pixel_count": 48,
+            "gold_overlap_ratio": 0.167,
+            "metal_surround_ratio": 0.829,
+            "likely_gold_metal": false
+          },
+          "mean_hsv": [
+            5.6,
+            206.9,
+            47.2
+          ],
+          "mean_lab_ab": [
+            12.1,
+            9.2
+          ],
+          "lab_chroma_mean": 15.6,
+          "color_mix_percent": {
+            "Red": 100.0
+          },
+          "dominant_share_percent": 89.5,
+          "extent": 0.923,
+          "aspect_ratio": 3.25,
+          "circularity": 0.528
+        }
+      ],
+      "bbox_global": [
+        570,
+        139,
+        752,
+        1124
+      ],
+      "stone_area_statistics": {
+        "success": true,
+        "jewel_area_pixels": 204545,
+        "stone_area_pixels": 441,
+        "metal_area_pixels": 204104,
+        "stone_percentage": 0.22,
+        "metal_percentage": 99.78,
+        "overlapping_class_pixels": 0,
+        "denominator_source": "segmented_jewel_mask",
+        "supplied_jewel_mask_pixels": 204545,
+        "stone_pixels_outside_jewel_rejected": 0,
+        "colors": {
+          "Red": {
+            "area_pixels": 428,
+            "percentage_of_jewel": 0.21,
+            "percentage_of_stones": 97.05,
+            "component_count": 31
+          },
+          "Orange": {
+            "area_pixels": 13,
+            "percentage_of_jewel": 0.01,
+            "percentage_of_stones": 2.95,
+            "component_count": 1
+          }
+        }
+      },
+      "metal_area_px": 204104,
+      "metal_percentage": 99.78,
+      "area_denominator": "segmented_jewel_mask",
+      "mask_cleanup": {
+        "measurement_space": "native_crop_pixels",
+        "input_jewel_area_px": 204545,
+        "background_hole_pixels_removed": 0,
+        "background_hole_count": 0,
+        "refined_jewel_area_px": 204545,
+        "analysis_zoom_scale": 1,
+        "background_hole_pixels_removed_analysis": 0
+      },
+      "seeded_instance_separation": {
+        "enabled": true,
+        "input_region_count": 32,
+        "touching_cluster_count": 0,
+        "separated_region_count": 0,
+        "overlap_pixels_resolved": 0,
+        "boundary_pixels_removed": 0,
+        "disconnected_pixels_removed": 0
+      },
+      "stone_analysis_v2": {
+        "candidate_count": 48,
+        "accepted_candidate_count": 48,
+        "stone_instance_count": 32,
+        "fastsam_candidate_calls": 8,
+        "segmentation_method_counts": {
+          "opencv": 32
+        },
+        "candidates": [
+          {
+            "candidate_id": 1,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 14.0,
+            "accepted": true,
+            "candidate_confidence": 0.89,
+            "boundary_confidence": 0.62,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8715,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 2,
+            "candidate_method": [
+              "adaptive_region_grow",
+              "full_roi",
+              "hsv_lab",
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.889,
+            "boundary_confidence": 0.777,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 11.0,
+            "growth_ratio": 1.375,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.2727,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.3333,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8085,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 3,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.889,
+            "boundary_confidence": 0.777,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 10.0,
+            "growth_ratio": 1.25,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.2,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8061,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 4,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.889,
+            "boundary_confidence": 0.777,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 10.0,
+            "growth_ratio": 1.25,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.2,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8061,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 5,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.889,
+            "boundary_confidence": 0.783,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 0.9773,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 6,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.889,
+            "boundary_confidence": 0.783,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 0.9773,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 7,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.889,
+            "boundary_confidence": 0.777,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 10.0,
+            "growth_ratio": 1.25,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.2,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8061,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 0.9891,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 8,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.889,
+            "boundary_confidence": 0.777,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 10.0,
+            "growth_ratio": 1.25,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.2,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8061,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 9,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.889,
+            "boundary_confidence": 0.783,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 10,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.889,
+            "boundary_confidence": 0.783,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.75,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.4286,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.3333,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 11,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 10.0,
+            "accepted": true,
+            "candidate_confidence": 0.887,
+            "boundary_confidence": 0.788,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 13.0,
+            "growth_ratio": 1.3,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8984,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 0.9592,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 12,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 10.0,
+            "accepted": true,
+            "candidate_confidence": 0.887,
+            "boundary_confidence": 0.788,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 13.0,
+            "growth_ratio": 1.3,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.2308,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8984,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 13,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 11.0,
+            "accepted": true,
+            "candidate_confidence": 0.885,
+            "boundary_confidence": 0.62,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 11.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8085,
+            "solidity": 1.0,
+            "aspect_ratio": 1.6667,
+            "metal_surround_ratio": 0.9479,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 14,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 7.0,
+            "accepted": true,
+            "candidate_confidence": 0.885,
+            "boundary_confidence": 0.776,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.1429,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.125,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8001,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 0.9884,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 15,
+            "candidate_method": [
+              "dark_structure",
+              "edge_enclosure",
+              "local_contrast",
+              "non_gold_hsv_residual",
+              "structural"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 12.0,
+            "accepted": true,
+            "candidate_confidence": 0.884,
+            "boundary_confidence": 0.62,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 12.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8001,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 0.94,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 16,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 14.0,
+            "accepted": true,
+            "candidate_confidence": 0.879,
+            "boundary_confidence": 0.62,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.7398,
+            "solidity": 1.0,
+            "aspect_ratio": 2.0,
+            "metal_surround_ratio": 0.9038,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 17,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 16.0,
+            "accepted": true,
+            "candidate_confidence": 0.876,
+            "boundary_confidence": 0.62,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 16.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.6987,
+            "solidity": 0.9048,
+            "aspect_ratio": 1.5,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 18,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.876,
+            "boundary_confidence": 0.785,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.75,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.4286,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.25,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8715,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 19,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.876,
+            "boundary_confidence": 0.762,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 9.0,
+            "growth_ratio": 1.125,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.1111,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.6872,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 20,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 11.0,
+            "accepted": true,
+            "candidate_confidence": 0.875,
+            "boundary_confidence": 0.776,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 12.0,
+            "growth_ratio": 1.0909,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0833,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8001,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 21,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 11.0,
+            "accepted": true,
+            "candidate_confidence": 0.875,
+            "boundary_confidence": 0.776,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 12.0,
+            "growth_ratio": 1.0909,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0833,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8001,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 0.89,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 22,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 13.0,
+            "accepted": true,
+            "candidate_confidence": 0.873,
+            "boundary_confidence": 0.771,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.0769,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0714,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.7543,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 23,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.873,
+            "boundary_confidence": 0.764,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.6981,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 24,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 7.0,
+            "accepted": true,
+            "candidate_confidence": 0.871,
+            "boundary_confidence": 0.783,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.1429,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 25,
+            "candidate_method": [
+              "adaptive_region_grow",
+              "full_roi",
+              "hsv_lab",
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.869,
+            "boundary_confidence": 0.783,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 26,
+            "candidate_method": [
+              "adaptive_region_grow",
+              "full_roi",
+              "hsv_lab",
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.868,
+            "boundary_confidence": 0.783,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 27,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.868,
+            "boundary_confidence": 0.78,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 9.0,
+            "growth_ratio": 1.125,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.1111,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8323,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 28,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 11.0,
+            "accepted": true,
+            "candidate_confidence": 0.867,
+            "boundary_confidence": 0.785,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.2727,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.1429,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8715,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 29,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 10.0,
+            "accepted": true,
+            "candidate_confidence": 0.866,
+            "boundary_confidence": 0.772,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 13.0,
+            "growth_ratio": 1.3,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.2308,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.7689,
+            "solidity": 0.9375,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 30,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 14.0,
+            "accepted": true,
+            "candidate_confidence": 0.865,
+            "boundary_confidence": 0.781,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 21.0,
+            "growth_ratio": 1.5,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.3333,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.25,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8385,
+            "solidity": 0.9655,
+            "aspect_ratio": 1.2,
+            "metal_surround_ratio": 0.9391,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 31,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.863,
+            "boundary_confidence": 0.767,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 14.0,
+            "growth_ratio": 1.75,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.4286,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.25,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.7234,
+            "solidity": 1.0,
+            "aspect_ratio": 1.6667,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 32,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 6.0,
+            "accepted": true,
+            "candidate_confidence": 0.863,
+            "boundary_confidence": 0.745,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 6.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.539,
+            "solidity": 1.0,
+            "aspect_ratio": 2.0,
+            "metal_surround_ratio": 0.8929,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 33,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 13.0,
+            "accepted": true,
+            "candidate_confidence": 0.86,
+            "boundary_confidence": 0.772,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 23.0,
+            "growth_ratio": 1.7692,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.3913,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.2,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.7705,
+            "solidity": 0.9394,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 34,
+            "candidate_method": [
+              "adaptive_region_grow",
+              "full_roi",
+              "hsv_lab",
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 19.0,
+            "accepted": true,
+            "candidate_confidence": 0.859,
+            "boundary_confidence": 0.62,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 60.0,
+            "growth_ratio": 3.1579,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0003,
+            "gold_overlap": 0.6833,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 5.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.2176,
+            "solidity": 0.4561,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 0.9738,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 35,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 10.0,
+            "accepted": true,
+            "candidate_confidence": 0.855,
+            "boundary_confidence": 0.788,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 13.0,
+            "growth_ratio": 1.3,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.2308,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8984,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 0.9082,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 36,
+            "candidate_method": [
+              "edge_aware_grabcut",
+              "full_roi",
+              "hsv_lab",
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 12.0,
+            "accepted": true,
+            "candidate_confidence": 0.854,
+            "boundary_confidence": 0.762,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 16.0,
+            "growth_ratio": 1.3333,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.25,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.6872,
+            "solidity": 1.0,
+            "aspect_ratio": 2.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 37,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 11.0,
+            "accepted": true,
+            "candidate_confidence": 0.854,
+            "boundary_confidence": 0.786,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 17.0,
+            "growth_ratio": 1.5455,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.1765,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.25,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8868,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 38,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.854,
+            "boundary_confidence": 0.762,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 9.0,
+            "growth_ratio": 1.125,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.1111,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.6872,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 0.9149,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 39,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 6.0,
+            "accepted": true,
+            "candidate_confidence": 0.854,
+            "boundary_confidence": 0.78,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 9.0,
+            "growth_ratio": 1.5,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.1111,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8323,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 40,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 7.0,
+            "accepted": true,
+            "candidate_confidence": 0.853,
+            "boundary_confidence": 0.783,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.1429,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8574,
+            "solidity": 1.0,
+            "aspect_ratio": 1.3333,
+            "metal_surround_ratio": 0.9545,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 41,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 20.0,
+            "accepted": true,
+            "candidate_confidence": 0.85,
+            "boundary_confidence": 0.62,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 20.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.1,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.3779,
+            "solidity": 0.7188,
+            "aspect_ratio": 1.1429,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 42,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.849,
+            "boundary_confidence": 0.764,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 8.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.6981,
+            "solidity": 1.0,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 43,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 50.0,
+            "accepted": true,
+            "candidate_confidence": 0.848,
+            "boundary_confidence": 0.679,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 41.0,
+            "growth_ratio": 0.82,
+            "seed_overlap": 0.72,
+            "jewel_area_fraction": 0.0002,
+            "gold_overlap": 0.0976,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 0.75,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.5016,
+            "solidity": 0.9333,
+            "aspect_ratio": 3.0,
+            "metal_surround_ratio": 0.9125,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 44,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 10.0,
+            "accepted": true,
+            "candidate_confidence": 0.848,
+            "boundary_confidence": 0.776,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 12.0,
+            "growth_ratio": 1.2,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.1667,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.25,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.8001,
+            "solidity": 1.0,
+            "aspect_ratio": 1.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 45,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 22.0,
+            "accepted": true,
+            "candidate_confidence": 0.847,
+            "boundary_confidence": 0.62,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 22.0,
+            "growth_ratio": 1.0,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.0,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.338,
+            "solidity": 0.641,
+            "aspect_ratio": 2.25,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "existing_adaptive_refinement",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 46,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 12.0,
+            "accepted": true,
+            "candidate_confidence": 0.845,
+            "boundary_confidence": 0.752,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 21.0,
+            "growth_ratio": 1.75,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0001,
+            "gold_overlap": 0.2857,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.4583,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.6011,
+            "solidity": 0.8387,
+            "aspect_ratio": 1.4,
+            "metal_surround_ratio": 1.0,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 47,
+            "candidate_method": [
+              "adaptive_region_grow",
+              "full_roi",
+              "hsv_lab",
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 8.0,
+            "accepted": true,
+            "candidate_confidence": 0.845,
+            "boundary_confidence": 0.762,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 9.0,
+            "growth_ratio": 1.125,
+            "seed_overlap": 1.0,
+            "jewel_area_fraction": 0.0,
+            "gold_overlap": 0.1111,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 1.0,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.6872,
+            "solidity": 0.9,
+            "aspect_ratio": 1.0,
+            "metal_surround_ratio": 0.8925,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          },
+          {
+            "candidate_id": 48,
+            "candidate_method": [
+              "non_gold_hsv_residual"
+            ],
+            "segmentation_method": "opencv",
+            "seed_area_px": 65.0,
+            "accepted": true,
+            "candidate_confidence": 0.844,
+            "boundary_confidence": 0.659,
+            "overlap_with_accepted_instances": 0.0,
+            "refined_area_px": 48.0,
+            "growth_ratio": 0.7385,
+            "seed_overlap": 0.6154,
+            "jewel_area_fraction": 0.0002,
+            "gold_overlap": 0.1667,
+            "strict_gold_overlap": 0.0,
+            "bbox_growth": 0.437,
+            "boundary_touch_percentage": 0.0,
+            "compactness": 0.5278,
+            "solidity": 1.0,
+            "aspect_ratio": 3.25,
+            "metal_surround_ratio": 0.8294,
+            "opencv_method": "seeded_grabcut",
+            "rejected_reasons": []
+          }
+        ],
+        "enabled": true,
+        "rejected_gold_metal_regions": 16,
+        "color_measurement_image": "captured_original_with_conservative_white_reference"
+      },
+      "stone_instance_count": 32,
+      "segmentation_method_counts": {
+        "opencv": 32
+      },
+      "debug_artifacts": {},
+      "stone_measurements": {
+        "success": false,
+        "error": "Metric calibration is unavailable.",
+        "instances": []
+      },
+      "glare_mask_px": 44,
+      "glare_region_count": 3,
+      "glare_inpaint_px": 796,
+      "reflection": {
+        "coverage_percent": 0.02,
+        "local_density_percent": 5.16,
+        "region_count": 3,
+        "largest_region_px": 22,
+        "largest_region_percent": 0.01,
+        "flagged": false,
+        "risk_status": "NORMAL",
+        "possible_transparent_stones": false,
+        "level": "normal",
+        "message": "Reflection is present but not dense enough to classify the jewel as RISK."
+      },
+      "skipped_stone_detection": false,
+      "gold_support_px": 183912,
+      "gold_support_ratio": 0.8991
+    }
+  ],
+  "seeded_instance_separation": {
+    "enabled": true,
+    "touching_cluster_count": 0,
+    "separated_region_count": 0,
+    "overlap_pixels_resolved": 0,
+    "boundary_pixels_removed": 0,
+    "disconnected_pixels_removed": 0
+  },
+  "jewel_area_px_total": 204545,
+  "stone_area_px_total": 441,
+  "stone_seed_area_px_total": 438,
+  "stone_mask_area_gain": 1.007,
+  "stone_percentage": 0.22,
+  "area_denominator": "sum_of_segmented_jewel_masks",
+  "stone_surface_coverage_percent": 0.22,
+  "stone_instance_count": 32,
+  "segmentation_method_counts": {
+    "opencv": 32
+  },
+  "background_hole_pixels_removed": 0,
+  "background_hole_count": 0,
+  "reflection_flagged": false,
+  "reflection_risk": false,
+  "risk_jewel": false,
+  "risk_reasons": [],
+  "stone_surface_risk": {
+    "level": "LOW",
+    "status": "LOW STONE AREA \u2014 NORMAL",
+    "stone_surface_coverage_percent": 0.22,
+    "stone_instance_count": 32,
+    "high_risk": false,
+    "reflection_risk": false,
+    "thresholds": {
+      "low_percent": 5.0,
+      "moderate_percent": 20.0,
+      "high_percent": 40.0
+    },
+    "basis": "final_stone_union_mask_over_segmented_jewel_mask"
+  },
+  "stone_surface_risk_level": "LOW",
+  "stone_surface_status": "LOW STONE AREA \u2014 NORMAL",
+  "stone_measurements": {
+    "success": false,
+    "instance_count": 0,
+    "estimated_total_average_ct": 0,
+    "estimated_total_minimum_ct": 0,
+    "estimated_total_maximum_ct": 0,
+    "estimated_total_average_g": 0,
+    "estimated_total_typical_g": 0,
+    "estimated_total_minimum_g": 0,
+    "estimated_total_maximum_g": 0,
+    "instances": [],
+    "note": "Face-up geometry is measured; hidden depth and material density remain uncertain."
+  },
+  "review_analysis_backend": "fastsam_hailo",
+  "review_analysis_backend_error": null
+}
